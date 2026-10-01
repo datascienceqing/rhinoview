@@ -34,16 +34,40 @@ is worse than a blocked task: it lands in a tree someone else is editing concurr
 | `docs/**` | **Orchestrator — frozen.** |
 | `package.json`, `tsconfig.json`, `vite.config.ts`, `eslint.config.js` | **Orchestrator — frozen.** Every dependency you need is already installed. |
 | `server/env.ts` | **Orchestrator — frozen.** Only place the API key is read. |
-| `server/**` (except `env.ts`) | Worker A |
+| `server/market/types.ts` | **Orchestrator — frozen.** The engine seam + its invariants. |
+| `server/market/**` (except `types.ts`) | Worker A1 — synthetic data engine |
+| `server/provider/**`, `server/routes/**`, `server/cache/**`, `server/index.ts` | Worker A2 — HTTP layer |
 | `src/chart/**`, `src/data/**`, `src/ui/**`, `mocks/**` | Worker B |
+| `src/App.tsx`, `src/styles.css`, `src/test-setup.ts` | Worker B (it builds the shell) |
 | `src/indicators/**` | Worker C |
 | `src/panes/**` | Worker D |
-| `src/App.tsx`, `src/main.tsx`, `src/styles.css` | Orchestrator — request changes, don't make them |
+| `src/main.tsx`, `index.html` | Orchestrator — request changes, don't make them |
 
 **Need a new dependency?** Stop and ask. Do not run `npm install` — concurrent
 installs corrupt the lockfile for whoever else is running.
 
 ---
+
+## Where the data comes from
+
+**There is no market-data subscription.** A deterministic **synthetic engine** stands
+in for one, selected by `DATA_PROVIDER=synthetic` (the default — the server boots with
+no credentials). A real massive.com client will later implement the same
+`MarketEngine` interface behind the same `DATA_PROVIDER` switch.
+
+This changes nothing above the engine seam. The HTTP contract in
+[`docs/CONTRACT.md`](./CONTRACT.md) is unchanged, and the client cannot tell the
+difference — which is the point, and also the test: if any client code needs to know
+the data is synthetic, the seam leaked.
+
+The seam and its seven invariants are in
+[`server/market/types.ts`](../server/market/types.ts). Read them before writing engine
+or provider code. Invariant 2 — cross-timeframe coherence — is the hard one and the
+one the reviewer will press on.
+
+Upstream massive.com specifics are retained in trap #5 and #6 below and in
+`docs/CONTRACT.md` for whoever eventually writes the real client. They do not apply
+to the synthetic engine.
 
 ## Commands
 

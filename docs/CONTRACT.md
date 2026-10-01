@@ -9,6 +9,19 @@ via `@shared/types` — never redeclare them locally.
 
 ---
 
+## Data source
+
+The proxy serves this contract from a **`MarketEngine`** implementation, selected by
+`DATA_PROVIDER` in `server/env.ts`:
+
+- **`synthetic`** (default, no credentials) — a deterministic generated market, per
+  [`server/market/types.ts`](../server/market/types.ts).
+- **`massive`** — the real massive.com API. Not implemented yet; the upstream paths
+  and shapes documented below are the specification for whoever writes it.
+
+The contract below is **identical either way**. If any client code can tell which
+provider is active, the seam has leaked.
+
 ## Global rules
 
 **Base path.** All endpoints are under `/api`. The client calls them same-origin;
@@ -88,9 +101,9 @@ Historical OHLCV. The core endpoint.
 
 | Param | Type | Required | Notes |
 |---|---|---|---|
-| `symbol` | string | yes | 1–16 chars. **Case-sensitive upstream** — pass through verbatim, do not upcase. |
+| `symbol` | string | yes | 1–16 chars. Pass through **verbatim**; the engine resolves case-insensitively and the response echoes the canonical form. |
 | `timeframe` | `Timeframe` | yes | One of `1m 5m 15m 1h 1D 1W`. Anything else → `BAD_REQUEST`. |
-| `from` | int | yes | Unix **seconds**, inclusive. |
+| `from` | int | yes | Unix **seconds**, inclusive. Values below 0 are **clamped to 0**, not rejected. |
 | `to` | int | yes | Unix **seconds**, inclusive. Must be `>= from`. |
 | `adjusted` | bool | no | Default `true`. |
 
@@ -110,7 +123,8 @@ The proxy owns this table. The client never sends `multiplier`/`timespan`.
 | `1W` | 1 | `week` |
 
 Upstream: `GET /v2/aggs/ticker/{symbol}/range/{multiplier}/{timespan}/{from}/{to}`
-with `adjusted`, `sort=asc`, `limit=50000`.
+with `adjusted` and `limit=50000`. See guarantee 4 below on sort order — `sort=asc`
+with a page cap silently drops the newest bars, which is the wrong end to lose.
 
 ### Guarantees the proxy must uphold
 
@@ -119,19 +133,88 @@ with `adjusted`, `sort=asc`, `limit=50000`.
 2. **Milliseconds converted to seconds.** Once, in `server/massive/`.
 3. **`vwap` and `transactions` are `number | null`.** Upstream `vw`/`n` are sometimes
    absent. Absent becomes `null`, never `0` — a zero VWAP is a plausible-looking lie.
-4. **Pagination followed via `next_url`**, because upstream's default `limit` is 5,000
-   and will silently truncate. Cap at a fixed number of pages (suggest 20); if the cap
-   is reached, return `truncated: true` rather than pretending the range is complete.
-   `next_url` arrives **without** the API key — re-attach it before following.
+4. **Truncation keeps the NEWEST bars, never the oldest.** When a request covers more
+   bars than the proxy will return, it returns **the most recent `limit` bars in range**
+   and sets `truncated: true`. The partial edge is therefore the **oldest** returned
+   bar, and the client continues backwards from there — which is exactly how the chart
+   lazy-loads history as the user pans left.
+
+   This matters because the naive implementation does the opposite. Fetching upstream
+   with `sort=asc` from `from` and stopping at a page cap drops the *newest* bars,
+   which means a chart asking for a wide range opens on stale history with a gap
+   where the present should be. A real-upstream implementation must therefore either
+   fetch with `sort=desc` or fetch ascending and keep the tail.
+
+   For a real upstream, follow `next_url` to collect pages (upstream's default `limit`
+   is 5,000 and silently truncates). `next_url` arrives **without** the API key —
+   re-attach it before following.
 5. **Range filtering is inclusive** on both ends after conversion to seconds.
+
+5a. **No bars in the future, and no future data inside a present bar.** The proxy
+   clamps `to` to the current time before calling the engine, and never returns a bar
+   whose `time` is after now. The newest bar may straddle now, and when it does it must
+   reflect **only elapsed time**: its open, high, low, close, volume and transactions
+   must be computed from the part of the bucket that has actually happened. A bucket
+   that has begun but in which nothing has traded yet is dropped, not returned empty.
+
+   The second clause is the one that matters, and the first version of this guarantee
+   omitted it. Clamping `to` is not sufficient on its own. A bar is stamped with its
+   *open*, so a clockless engine hands back today's 1D bar — timestamped 09:30, and
+   therefore passing any "no bar after now" check — carrying the 16:00 close and the
+   full day's volume. Midweek, the weekly bar carries Thursday and Friday. The
+   timestamp looks innocent while the OHLC leaks prices that have not happened, which
+   makes this strictly worse than returning an obviously future-dated bar.
+
+   **The forming bar ends at the last completed minute.** A minute that is still in
+   progress is excluded, not included whole. The engine's atom is one minute, so
+   including a partially-elapsed minute means including the rest of that minute — the
+   same future-data leak this guarantee exists to prevent, just one bucket smaller.
+   This also makes the chart's newest close agree with `/api/snapshot`, which already
+   uses completed minutes only; the two sit side by side in the header-plus-chart
+   layout, and disagreeing there is a visible contradiction.
+
+   Rebuilding the forming bar from 1-minute bars is exact rather than approximate
+   because engine invariant 2 guarantees every bucket is the exact aggregate of its
+   minutes. That is a dependency on the engine seam, not an implementation detail of
+   one provider: any future provider must offer the same guarantee, or state how the
+   forming bar is to be built instead.
+
+   This was missing from the first version of this contract, and the omission was
+   load-bearing: a deterministic engine has no clock by design — its whole contract is
+   that a bar is identical regardless of what else was requested — so it will happily
+   generate 2027 for you. Asking for a wide range therefore returned a year of
+   fabricated future candles. Neither the engine nor the route was wrong; the spec
+   simply never said. The clamp belongs here, at the HTTP layer, because it is the
+   only layer that is allowed to know what time it is.
 6. **`cached`** reports whether this response came from the proxy's LRU. Diagnostics only;
    the client must behave identically either way.
 
+### Request bounds
+
+A single request must not be able to consume unbounded CPU or memory. The engine is
+**synchronous**, so one oversized request blocks the event loop and the server answers
+nothing else meanwhile — including `/api/health`.
+
+- Cap the number of bars any one request may return, per timeframe, independent of the
+  caller's range. Exceeding it is not an error: return the newest bars within the cap
+  and set `truncated: true`, exactly as guarantee 4 describes.
+- A request whose range is wider than the cap allows must not be handed to the engine
+  whole. Narrow the range first.
+
 ### Caching
 
-LRU keyed on `symbol|timeframe|from|to|adjusted`. Suggested policy: intraday
-timeframes short TTL (~60s), daily/weekly longer (~10min). Cap entries by count, not
-bytes; a 50,000-bar response is a few MB and a few hundred entries is plenty.
+LRU keyed on `symbol|timeframe|from|to|adjusted`, with `to` replaced by a `'now'`
+sentinel whenever the caller is asking for data up to the present, so that requests
+differing only in a future or near-present `to` share one entry.
+
+Policy: intraday timeframes short TTL (~60s), daily/weekly longer (~10min).
+
+**Bound the cache by total bars, not by entry count.** An earlier version of this
+section said "a 50,000-bar response is a few MB and a few hundred entries is plenty".
+That was wrong by about two orders of magnitude: 200 entries of 50,000 live `Bar`
+objects measures at roughly **1.5 GB** of heap, because the cost is per-object
+overhead, not JSON bytes. Size the cache by summed bar count with a hard ceiling, and
+bound the work per request as well — see "Request bounds" below.
 
 ---
 

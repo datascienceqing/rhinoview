@@ -20,6 +20,7 @@
 | Repo | New git repo at `~/projects/charting-app` |
 | Backend | Thin proxy server holding the API key; browser never sees it |
 | Package manager | `npm` (local pnpm is 7.5.2, too old to bother with) |
+| **Data source** | **Deterministic synthetic engine** behind a `MarketEngine` seam — no subscription available. Real massive.com client implements the same interface later, selected by `DATA_PROVIDER`. |
 
 Streaming and drawing tools are deliberately deferred, but the data layer in Phase 1 is shaped so a WebSocket source drops in behind the same interface later.
 
@@ -80,7 +81,17 @@ Nothing spawns until this is done. This is the phase that determines whether the
 6. **Verify the upstream API by hand with `curl`**, using a real key, before writing a line of client code. Confirm: auth mechanism (`apiKey` query param vs `Authorization: Bearer` — docs are ambiguous, so this gets settled empirically), the real response shape, and which plan tier the key has (delayed vs real-time changes what "live" means).
 7. Record fixtures from those real responses into `mocks/fixtures/`.
 
-**Gate 0:** a real `curl` against massive.com returns real AAPL bars, and the fixtures are on disk. If the key or tier is wrong, everything downstream is built on a guess.
+**Gate 0 (revised):** no subscription is available, so the original gate — a real `curl`
+returning real bars — cannot be met and has been replaced. The engine seam
+`server/market/types.ts` is frozen with explicit invariants, contract-valid fixtures
+are on disk, and the server boots and answers `/api/health` with **no credentials
+configured**. Verified.
+
+The risk the original gate protected against has moved rather than vanished: instead of
+"is our assumption about upstream auth right?", it is now "does the synthetic engine
+behave enough like a real market that code written against it survives contact with a
+real feed?" That is what invariants 2 and 3 in the seam exist to force, and what the
+eventual `DATA_PROVIDER=massive` implementation will test.
 
 ### massive.com specifics that go in the brief
 
@@ -99,8 +110,23 @@ Nothing spawns until this is done. This is the phase that determines whether the
 
 Both run against the same contract. Neither waits for the other, because the front end builds against MSW handlers generated from the Phase 0 fixtures. Integration becomes a merge, not a rewrite.
 
-### Worker A — Proxy backend · Sonnet 5.5
-**Owns:** `server/**` — nothing else.
+### Worker A1 — Synthetic market engine · Sonnet 5.5
+**Owns:** `server/market/**` except the frozen `types.ts`.
+
+Implements `MarketEngine`: one deterministic minute-level price path per symbol,
+bucketed into whatever timeframe is requested, over a correct US equity session
+calendar. Pure and dependency-free — no HTTP, no caching, no env access beyond the
+delayed flag. The seven invariants in `server/market/types.ts` are the acceptance
+criteria, and **invariant 2, cross-timeframe coherence, is the hard one**: 5m bars must
+aggregate exactly into 1h, 1h into 1D, 1D into 1W. Generating each timeframe
+independently cannot satisfy it, and switching timeframes would then show
+contradictory prices for the same instant.
+
+This is the Phase 1 analogue of Worker C: pure, numerically fussy, independently
+testable. It gets its own worker for the same reason.
+
+### Worker A2 — HTTP layer · Sonnet 5.5
+**Owns:** `server/provider/**`, `server/routes/**`, `server/cache/**`, `server/index.ts`.
 
 - Implement the four contract endpoints.
 - `server/massive/` client: key injection, `next_url` pagination, LRU cache keyed by `symbol+timeframe+range`, 429/5xx retry with backoff + jitter, request timeouts.
@@ -125,21 +151,21 @@ Both run against the same contract. Neither waits for the other, because the fro
 
 ### Gate 1 — Reviewer · Opus 5.5 (read-only)
 
-Reviews **both diffs together**, which is the point — the one thing a per-worker review cannot catch is drift between them.
+Reviews **all three diffs together** (A1, A2, B), which is the point — the one thing a per-worker review cannot catch is drift between them.
 
-Focus: contract conformance on both sides · timestamp handling end to end · pagination correctness · resource leaks in the chart wrapper (lightweight-charts needs explicit `remove()`) · error paths that silently swallow · anything hardcoded that should be contract-driven.
+Focus: contract conformance on all sides · timestamp handling end to end · **the engine's cross-timeframe coherence invariant** · session-calendar correctness across a DST boundary · resource leaks in the chart wrapper (lightweight-charts needs explicit `remove()`) · error paths that silently swallow · anything hardcoded that should be contract-driven.
 
-Output: findings ranked by severity, each with a concrete failure scenario, marked blocking or non-blocking. Fixes routed back to Worker A or B by `SendMessage`. Max 2 rounds; a third escalates to me.
+Output: findings ranked by severity, each with a concrete failure scenario, marked blocking or non-blocking. Fixes routed back to the originating worker by `SendMessage`. Max 2 rounds; a third escalates to me.
 
 ---
 
 ## Phase 2 — Real integration (orchestrator + 1 worker)
 
 1. Swap MSW for the live proxy.
-2. Fix the real-data mismatches that fixtures always hide: half-days, gaps, pre/post-market bars, splits under `adjusted=true`, symbols with thin history.
+2. Fix the mismatches that static fixtures hide — half-days, session gaps, splits under `adjusted=true`, thinly-listed symbols. The synthetic engine generates all of these on demand, which is strictly better for this phase than a fixture set: the edge cases are reachable deliberately rather than whenever the market happens to produce one.
 3. **I verify in the browser myself** — built-in browser pane, screenshot, console and network panels — rather than accepting a worker's "it works."
 
-**Gate 2:** real AAPL daily and 5-minute candles render from live massive.com data, clean console, network tab shows no key leaking to the client.
+**Gate 2:** daily and 5-minute candles render from the live proxy, clean console, and the network tab shows the client calling only same-origin `/api/*` — no credentials and no upstream URL in the browser.
 
 ---
 
