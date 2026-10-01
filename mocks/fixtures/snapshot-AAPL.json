@@ -1,0 +1,16 @@
+{
+  "ok": true,
+  "data": {
+    "symbol": "AAPL",
+    "price": 220.23,
+    "change": 1.46,
+    "changePercent": 0.006674,
+    "previousClose": 218.77,
+    "dayOpen": 217.1,
+    "dayHigh": 221.8,
+    "dayLow": 205.24,
+    "dayVolume": 22850604,
+    "updated": 1790798400,
+    "delayed": true
+  }
+}

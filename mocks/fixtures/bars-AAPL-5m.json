@@ -1,0 +1,792 @@
+{
+  "ok": true,
+  "data": {
+    "symbol": "AAPL",
+    "timeframe": "5m",
+    "adjusted": true,
+    "bars": [
+      {
+        "time": 1790775000,
+        "open": 217.1,
+        "high": 219.75,
+        "low": 215.98,
+        "close": 218.55,
+        "volume": 277578,
+        "vwap": 218.09,
+        "transactions": 2922
+      },
+      {
+        "time": 1790775300,
+        "open": 218.55,
+        "high": 218.65,
+        "low": 216.98,
+        "close": 217.93,
+        "volume": 451234,
+        "vwap": 217.85,
+        "transactions": 4750
+      },
+      {
+        "time": 1790775600,
+        "open": 217.93,
+        "high": 220.44,
+        "low": 217.06,
+        "close": 219.7,
+        "volume": 173993,
+        "vwap": 219.07,
+        "transactions": 1832
+      },
+      {
+        "time": 1790775900,
+        "open": 219.7,
+        "high": 220.76,
+        "low": 218.2,
+        "close": 219.9,
+        "volume": 258636,
+        "vwap": 219.62,
+        "transactions": 2722
+      },
+      {
+        "time": 1790776200,
+        "open": 219.9,
+        "high": 221.25,
+        "low": 219.03,
+        "close": 219.99,
+        "volume": 314303,
+        "vwap": 220.09,
+        "transactions": 3308
+      },
+      {
+        "time": 1790776500,
+        "open": 219.99,
+        "high": 220.13,
+        "low": 219.25,
+        "close": 219.89,
+        "volume": 438467,
+        "vwap": 219.76,
+        "transactions": 4615
+      },
+      {
+        "time": 1790776800,
+        "open": 219.89,
+        "high": 221.8,
+        "low": 217.86,
+        "close": 218.65,
+        "volume": 250070,
+        "vwap": 219.44,
+        "transactions": 2632
+      },
+      {
+        "time": 1790777100,
+        "open": 218.65,
+        "high": 218.99,
+        "low": 216.65,
+        "close": 217.7,
+        "volume": 437783,
+        "vwap": 217.78,
+        "transactions": 4608
+      },
+      {
+        "time": 1790777400,
+        "open": 217.7,
+        "high": 217.97,
+        "low": 215.07,
+        "close": 216.26,
+        "volume": 197151,
+        "vwap": 216.43,
+        "transactions": 2075
+      },
+      {
+        "time": 1790777700,
+        "open": 216.26,
+        "high": 217.07,
+        "low": 214.06,
+        "close": 215.4,
+        "volume": 210246,
+        "vwap": 215.51,
+        "transactions": 2213
+      },
+      {
+        "time": 1790778000,
+        "open": 215.4,
+        "high": 217.16,
+        "low": 213.4,
+        "close": 213.59,
+        "volume": 186310,
+        "vwap": 214.72,
+        "transactions": 1961
+      },
+      {
+        "time": 1790778300,
+        "open": 213.59,
+        "high": 215.49,
+        "low": 211.85,
+        "close": 213.61,
+        "volume": 334756,
+        "vwap": 213.65,
+        "transactions": 3524
+      },
+      {
+        "time": 1790778600,
+        "open": 213.61,
+        "high": 214.52,
+        "low": 210.79,
+        "close": 212.27,
+        "volume": 182662,
+        "vwap": 212.53,
+        "transactions": 1923
+      },
+      {
+        "time": 1790778900,
+        "open": 212.27,
+        "high": 215.22,
+        "low": 212.09,
+        "close": 213.99,
+        "volume": 442285,
+        "vwap": 213.77,
+        "transactions": 4656
+      },
+      {
+        "time": 1790779200,
+        "open": 213.99,
+        "high": 215.49,
+        "low": 213.04,
+        "close": 213.28,
+        "volume": 414809,
+        "vwap": 213.94,
+        "transactions": 4366
+      },
+      {
+        "time": 1790779500,
+        "open": 213.28,
+        "high": 214.18,
+        "low": 211.38,
+        "close": 213.88,
+        "volume": 210491,
+        "vwap": 213.15,
+        "transactions": 2216
+      },
+      {
+        "time": 1790779800,
+        "open": 213.88,
+        "high": 216.37,
+        "low": 213.74,
+        "close": 214.88,
+        "volume": 270299,
+        "vwap": 215,
+        "transactions": 2845
+      },
+      {
+        "time": 1790780100,
+        "open": 214.88,
+        "high": 216.64,
+        "low": 213.09,
+        "close": 215.1,
+        "volume": 167492,
+        "vwap": 214.94,
+        "transactions": 1763
+      },
+      {
+        "time": 1790780400,
+        "open": 215.1,
+        "high": 216.76,
+        "low": 214.27,
+        "close": 214.46,
+        "volume": 251291,
+        "vwap": 215.17,
+        "transactions": 2645
+      },
+      {
+        "time": 1790780700,
+        "open": 214.46,
+        "high": 215.53,
+        "low": 214.07,
+        "close": 215.13,
+        "volume": 330139,
+        "vwap": 214.91,
+        "transactions": 3475
+      },
+      {
+        "time": 1790781000,
+        "open": 215.13,
+        "high": 216.51,
+        "low": 213.88,
+        "close": 213.91,
+        "volume": 227668,
+        "vwap": 214.77,
+        "transactions": 2397
+      },
+      {
+        "time": 1790781300,
+        "open": 213.91,
+        "high": 215.03,
+        "low": 210.94,
+        "close": 212.33,
+        "volume": 205414,
+        "vwap": 212.77,
+        "transactions": 2162
+      },
+      {
+        "time": 1790781600,
+        "open": 212.33,
+        "high": 214.13,
+        "low": 210.93,
+        "close": 212.8,
+        "volume": 311799,
+        "vwap": 212.62,
+        "transactions": 3282
+      },
+      {
+        "time": 1790781900,
+        "open": 212.8,
+        "high": 214.32,
+        "low": 212.75,
+        "close": 213.37,
+        "volume": 396849,
+        "vwap": 213.48,
+        "transactions": 4177
+      },
+      {
+        "time": 1790782200,
+        "open": 213.37,
+        "high": 214.09,
+        "low": 212.37,
+        "close": 213.29,
+        "volume": 238115,
+        "vwap": 213.25,
+        "transactions": 2506
+      },
+      {
+        "time": 1790782500,
+        "open": 213.29,
+        "high": 213.61,
+        "low": 211.3,
+        "close": 212.49,
+        "volume": 433083,
+        "vwap": 212.47,
+        "transactions": 4559
+      },
+      {
+        "time": 1790782800,
+        "open": 212.49,
+        "high": 214.08,
+        "low": 210.29,
+        "close": 211.62,
+        "volume": 461921,
+        "vwap": 212,
+        "transactions": 4862
+      },
+      {
+        "time": 1790783100,
+        "open": 211.62,
+        "high": 212.61,
+        "low": 211.19,
+        "close": 212.39,
+        "volume": 248342,
+        "vwap": 212.07,
+        "transactions": 2614
+      },
+      {
+        "time": 1790783400,
+        "open": 212.39,
+        "high": 213.43,
+        "low": 211.33,
+        "close": 211.73,
+        "volume": 341354,
+        "vwap": 212.16,
+        "transactions": 3593
+      },
+      {
+        "time": 1790783700,
+        "open": 211.73,
+        "high": 213.25,
+        "low": 210.09,
+        "close": 210.84,
+        "volume": 305310,
+        "vwap": 211.39,
+        "transactions": 3214
+      },
+      {
+        "time": 1790784000,
+        "open": 210.84,
+        "high": 212.5,
+        "low": 209.23,
+        "close": 212,
+        "volume": 339962,
+        "vwap": 211.24,
+        "transactions": 3579
+      },
+      {
+        "time": 1790784300,
+        "open": 212,
+        "high": 213.71,
+        "low": 210.17,
+        "close": 210.44,
+        "volume": 343431,
+        "vwap": 211.44,
+        "transactions": 3615
+      },
+      {
+        "time": 1790784600,
+        "open": 210.44,
+        "high": 213.56,
+        "low": 210,
+        "close": 211.79,
+        "volume": 256351,
+        "vwap": 211.78,
+        "transactions": 2698
+      },
+      {
+        "time": 1790784900,
+        "open": 211.79,
+        "high": 212.73,
+        "low": 209.28,
+        "close": 210.66,
+        "volume": 210610,
+        "vwap": 210.89,
+        "transactions": 2217
+      },
+      {
+        "time": 1790785200,
+        "open": 210.66,
+        "high": 212.67,
+        "low": 210.04,
+        "close": 212.47,
+        "volume": 431919,
+        "vwap": 211.72,
+        "transactions": 4547
+      },
+      {
+        "time": 1790785500,
+        "open": 212.47,
+        "high": 213.66,
+        "low": 211.07,
+        "close": 211.07,
+        "volume": 305536,
+        "vwap": 211.93,
+        "transactions": 3216
+      },
+      {
+        "time": 1790785800,
+        "open": 211.07,
+        "high": 213.26,
+        "low": 210.32,
+        "close": 211.56,
+        "volume": 336683,
+        "vwap": 211.71,
+        "transactions": 3544
+      },
+      {
+        "time": 1790786100,
+        "open": 211.56,
+        "high": 212.91,
+        "low": 210.86,
+        "close": 212.44,
+        "volume": 187373,
+        "vwap": 212.07,
+        "transactions": 1972
+      },
+      {
+        "time": 1790786400,
+        "open": 212.44,
+        "high": 213.79,
+        "low": 211.12,
+        "close": 211.18,
+        "volume": 329179,
+        "vwap": 212.03,
+        "transactions": 3465
+      },
+      {
+        "time": 1790786700,
+        "open": 211.18,
+        "high": 212.75,
+        "low": 209.73,
+        "close": 212.08,
+        "volume": 346337,
+        "vwap": 211.52,
+        "transactions": 3646
+      },
+      {
+        "time": 1790787000,
+        "open": 212.08,
+        "high": 214.32,
+        "low": 211.66,
+        "close": 212.79,
+        "volume": 265879,
+        "vwap": 212.93,
+        "transactions": 2799
+      },
+      {
+        "time": 1790787300,
+        "open": 212.79,
+        "high": 214.1,
+        "low": 211.29,
+        "close": 212.27,
+        "volume": 281512,
+        "vwap": 212.55,
+        "transactions": 2963
+      },
+      {
+        "time": 1790787600,
+        "open": 212.27,
+        "high": 214.13,
+        "low": 210.78,
+        "close": 212.31,
+        "volume": 171762,
+        "vwap": 212.41,
+        "transactions": 1808
+      },
+      {
+        "time": 1790787900,
+        "open": 212.31,
+        "high": 212.7,
+        "low": 210.69,
+        "close": 211.07,
+        "volume": 242216,
+        "vwap": 211.49,
+        "transactions": 2550
+      },
+      {
+        "time": 1790788200,
+        "open": 211.07,
+        "high": 212.08,
+        "low": 208.18,
+        "close": 209.41,
+        "volume": 303440,
+        "vwap": 209.89,
+        "transactions": 3194
+      },
+      {
+        "time": 1790788500,
+        "open": 209.41,
+        "high": 210.75,
+        "low": 207.85,
+        "close": 208.54,
+        "volume": 290077,
+        "vwap": 209.04,
+        "transactions": 3053
+      },
+      {
+        "time": 1790788800,
+        "open": 208.54,
+        "high": 209.94,
+        "low": 206.01,
+        "close": 207.56,
+        "volume": 219091,
+        "vwap": 207.84,
+        "transactions": 2306
+      },
+      {
+        "time": 1790789100,
+        "open": 207.56,
+        "high": 208.99,
+        "low": 205.24,
+        "close": 206.9,
+        "volume": 425084,
+        "vwap": 207.04,
+        "transactions": 4475
+      },
+      {
+        "time": 1790789400,
+        "open": 206.9,
+        "high": 210.08,
+        "low": 205.32,
+        "close": 208.64,
+        "volume": 216267,
+        "vwap": 208.01,
+        "transactions": 2276
+      },
+      {
+        "time": 1790789700,
+        "open": 208.64,
+        "high": 211.13,
+        "low": 208.58,
+        "close": 210.34,
+        "volume": 395794,
+        "vwap": 210.02,
+        "transactions": 4166
+      },
+      {
+        "time": 1790790000,
+        "open": 210.34,
+        "high": 211.5,
+        "low": 209.92,
+        "close": 210.02,
+        "volume": 430520,
+        "vwap": 210.48,
+        "transactions": 4532
+      },
+      {
+        "time": 1790790300,
+        "open": 210.02,
+        "high": 211.72,
+        "low": 208.66,
+        "close": 211.52,
+        "volume": 462275,
+        "vwap": 210.63,
+        "transactions": 4866
+      },
+      {
+        "time": 1790790600,
+        "open": 211.52,
+        "high": 211.61,
+        "low": 210.36,
+        "close": 211.42,
+        "volume": 379520,
+        "vwap": 211.13,
+        "transactions": 3995
+      },
+      {
+        "time": 1790790900,
+        "open": 211.42,
+        "high": 212.8,
+        "low": 210.12,
+        "close": 211.5,
+        "volume": 315525,
+        "vwap": 211.47,
+        "transactions": 3321
+      },
+      {
+        "time": 1790791200,
+        "open": 211.5,
+        "high": 213.06,
+        "low": 211.06,
+        "close": 211.6,
+        "volume": 254030,
+        "vwap": 211.91,
+        "transactions": 2674
+      },
+      {
+        "time": 1790791500,
+        "open": 211.6,
+        "high": 213.47,
+        "low": 211.26,
+        "close": 212.31,
+        "volume": 425313,
+        "vwap": 212.35,
+        "transactions": 4477
+      },
+      {
+        "time": 1790791800,
+        "open": 212.31,
+        "high": 215.05,
+        "low": 210.51,
+        "close": 213.58,
+        "volume": 432857,
+        "vwap": 213.05,
+        "transactions": 4556
+      },
+      {
+        "time": 1790792100,
+        "open": 213.58,
+        "high": 214.67,
+        "low": 212.58,
+        "close": 213.36,
+        "volume": 249916,
+        "vwap": 213.54,
+        "transactions": 2631
+      },
+      {
+        "time": 1790792400,
+        "open": 213.36,
+        "high": 214.67,
+        "low": 211.92,
+        "close": 213.96,
+        "volume": 229124,
+        "vwap": 213.52,
+        "transactions": 2412
+      },
+      {
+        "time": 1790792700,
+        "open": 213.96,
+        "high": 214.65,
+        "low": 212.91,
+        "close": 213.66,
+        "volume": 433108,
+        "vwap": 213.74,
+        "transactions": 4559
+      },
+      {
+        "time": 1790793000,
+        "open": 213.66,
+        "high": 215.4,
+        "low": 212.26,
+        "close": 213.14,
+        "volume": 198194,
+        "vwap": 213.6,
+        "transactions": 2086
+      },
+      {
+        "time": 1790793300,
+        "open": 213.14,
+        "high": 214.11,
+        "low": 211.34,
+        "close": 213.66,
+        "volume": 374738,
+        "vwap": 213.04,
+        "transactions": 3945
+      },
+      {
+        "time": 1790793600,
+        "open": 213.66,
+        "high": 213.82,
+        "low": 211.67,
+        "close": 212.51,
+        "volume": 285897,
+        "vwap": 212.67,
+        "transactions": 3009
+      },
+      {
+        "time": 1790793900,
+        "open": 212.51,
+        "high": 214.08,
+        "low": 210.81,
+        "close": 212.24,
+        "volume": 304822,
+        "vwap": 212.38,
+        "transactions": 3209
+      },
+      {
+        "time": 1790794200,
+        "open": 212.24,
+        "high": 213.63,
+        "low": 211.06,
+        "close": 211.67,
+        "volume": 270382,
+        "vwap": 212.12,
+        "transactions": 2846
+      },
+      {
+        "time": 1790794500,
+        "open": 211.67,
+        "high": 213.3,
+        "low": 209.82,
+        "close": 211.74,
+        "volume": 176506,
+        "vwap": 211.62,
+        "transactions": 1858
+      },
+      {
+        "time": 1790794800,
+        "open": 211.74,
+        "high": 212.33,
+        "low": 208.58,
+        "close": 209.96,
+        "volume": 207559,
+        "vwap": 210.29,
+        "transactions": 2185
+      },
+      {
+        "time": 1790795100,
+        "open": 209.96,
+        "high": 211.67,
+        "low": 208.85,
+        "close": 209.75,
+        "volume": 265589,
+        "vwap": 210.09,
+        "transactions": 2796
+      },
+      {
+        "time": 1790795400,
+        "open": 209.75,
+        "high": 212.86,
+        "low": 207.94,
+        "close": 211.3,
+        "volume": 169917,
+        "vwap": 210.7,
+        "transactions": 1789
+      },
+      {
+        "time": 1790795700,
+        "open": 211.3,
+        "high": 214.58,
+        "low": 210.88,
+        "close": 213.08,
+        "volume": 190796,
+        "vwap": 212.85,
+        "transactions": 2008
+      },
+      {
+        "time": 1790796000,
+        "open": 213.08,
+        "high": 214.11,
+        "low": 212.08,
+        "close": 213.96,
+        "volume": 170617,
+        "vwap": 213.38,
+        "transactions": 1796
+      },
+      {
+        "time": 1790796300,
+        "open": 213.96,
+        "high": 214.75,
+        "low": 211.96,
+        "close": 213.05,
+        "volume": 286179,
+        "vwap": 213.26,
+        "transactions": 3012
+      },
+      {
+        "time": 1790796600,
+        "open": 213.05,
+        "high": 214.5,
+        "low": 213.01,
+        "close": 213.79,
+        "volume": 283437,
+        "vwap": 213.77,
+        "transactions": 2984
+      },
+      {
+        "time": 1790796900,
+        "open": 213.79,
+        "high": 214.98,
+        "low": 213.35,
+        "close": 214.77,
+        "volume": 185462,
+        "vwap": 214.37,
+        "transactions": 1952
+      },
+      {
+        "time": 1790797200,
+        "open": 214.77,
+        "high": 217.58,
+        "low": 214.43,
+        "close": 215.89,
+        "volume": 277079,
+        "vwap": 215.97,
+        "transactions": 2917
+      },
+      {
+        "time": 1790797500,
+        "open": 215.89,
+        "high": 219.45,
+        "low": 215.53,
+        "close": 217.8,
+        "volume": 277842,
+        "vwap": 217.59,
+        "transactions": 2925
+      },
+      {
+        "time": 1790797800,
+        "open": 217.8,
+        "high": 219.28,
+        "low": 217.78,
+        "close": 218.32,
+        "volume": 220876,
+        "vwap": 218.46,
+        "transactions": 2325
+      },
+      {
+        "time": 1790798100,
+        "open": 218.32,
+        "high": 221.37,
+        "low": 217.93,
+        "close": 220.23,
+        "volume": 224171,
+        "vwap": 219.84,
+        "transactions": 2360
+      }
+    ],
+    "truncated": false,
+    "cached": false
+  }
+}

@@ -1,0 +1,24 @@
+{
+  "ok": true,
+  "data": {
+    "query": "aapl",
+    "results": [
+      {
+        "symbol": "AAPL",
+        "name": "Apple Inc.",
+        "exchange": "XNAS",
+        "type": "CS",
+        "currency": "USD",
+        "active": true
+      },
+      {
+        "symbol": "AAPL.MX",
+        "name": "Apple Inc. (BMV)",
+        "exchange": null,
+        "type": "CS",
+        "currency": "MXN",
+        "active": true
+      }
+    ]
+  }
+}
