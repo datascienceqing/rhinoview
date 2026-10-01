@@ -1,0 +1,58 @@
+import { useEffect, useRef } from 'react';
+import type { Bar, ChartType } from '@shared/types';
+import { PriceChart } from './PriceChart';
+
+export interface ChartViewProps {
+  bars: Bar[];
+  chartType: ChartType;
+  /** Drives axis/crosshair time formatting (local time vs UTC date). */
+  intraday: boolean;
+  onCrosshairTime?: (time: number | null) => void;
+  onNearStart?: () => void;
+}
+
+/**
+ * React glue for `PriceChart`: owns create/dispose and forwards props. All chart
+ * logic lives in PriceChart so this stays a thin lifecycle adapter.
+ *
+ * Effect order matters: the first effect creates the chart; the ones below it
+ * configure it. React runs them in declaration order on mount and on StrictMode's
+ * simulated remount, so a recreated chart is always fully re-configured.
+ */
+export function ChartView({ bars, chartType, intraday, onCrosshairTime, onNearStart }: ChartViewProps) {
+  const containerRef = useRef<HTMLDivElement>(null);
+  const chartRef = useRef<PriceChart | null>(null);
+  // Callbacks are read through refs so changing them never recreates the chart.
+  const handlers = useRef({ onCrosshairTime, onNearStart });
+  useEffect(() => {
+    handlers.current = { onCrosshairTime, onNearStart };
+  });
+
+  useEffect(() => {
+    const container = containerRef.current;
+    if (!container) return;
+    const chart = new PriceChart(container, {
+      onCrosshairTime: (t) => handlers.current.onCrosshairTime?.(t),
+      onNearStart: () => handlers.current.onNearStart?.(),
+    });
+    chartRef.current = chart;
+    return () => {
+      chartRef.current = null;
+      chart.dispose();
+    };
+  }, []);
+
+  useEffect(() => {
+    chartRef.current?.setIntraday(intraday);
+  }, [intraday]);
+
+  useEffect(() => {
+    chartRef.current?.setChartType(chartType);
+  }, [chartType]);
+
+  useEffect(() => {
+    chartRef.current?.setBars(bars);
+  }, [bars]);
+
+  return <div ref={containerRef} className="chart-container" data-testid="chart-container" />;
+}
