@@ -79,6 +79,10 @@ export class PriceChart {
       localization: { timeFormatter: (time: Time) => formatCrosshairTime(time, this.intraday) },
       crosshair: { mode: CrosshairMode.Normal },
     });
+    // Pane 0 holds the price series, and `setChartType` removes that series before adding
+    // its replacement. With indicator panes below, the library would delete the "empty"
+    // pane 0 and the new series would land in an indicator's pane. Never let it.
+    this.chart.panes()[0]?.setPreserveEmptyPane(true);
     this.chart.subscribeCrosshairMove(this.onCrosshair);
     this.chart.timeScale().subscribeVisibleLogicalRangeChange(this.onRange);
   }
@@ -86,6 +90,11 @@ export class PriceChart {
   /** The underlying chart, for panes/indicators that add series at a pane index. Null once disposed. */
   get api(): IChartApi | null {
     return this.chart;
+  }
+
+  /** Resolved theme colours, for layers that draw on this chart (indicator panes). */
+  get colors(): ChartTheme {
+    return this.theme;
   }
 
   setIntraday(intraday: boolean): void {

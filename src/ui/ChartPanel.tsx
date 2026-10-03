@@ -1,8 +1,10 @@
-import { useState } from 'react';
-import { isIntraday } from '@shared/types';
+import { useCallback, useState } from 'react';
+import { INDICATOR_PLACEMENT, isIntraday } from '@shared/types';
 import type { ChartType, Timeframe } from '@shared/types';
 import { ChartView } from '../chart';
 import { useBarHistory } from '../data';
+import { IndicatorLegendRow, IndicatorMenu, useComputedIndicators, useIndicators } from '../panes';
+import type { PaneLayout } from '../panes';
 import { CrosshairLegend } from './CrosshairLegend';
 import { StatusMessage } from './StatusMessage';
 import { describeError } from './errorCopy';
@@ -17,6 +19,18 @@ export interface ChartPanelProps {
 export function ChartPanel({ symbol, timeframe, chartType }: ChartPanelProps) {
   const history = useBarHistory(symbol, timeframe);
   const [hoverTime, setHoverTime] = useState<number | null>(null);
+  const indicatorState = useIndicators(symbol);
+  const computed = useComputedIndicators(history.bars, indicatorState.indicators);
+  const [paneTops, setPaneTops] = useState<PaneLayout>({});
+  // Measured on every layout pass; only a real change may cause a render.
+  const onPaneLayout = useCallback((next: PaneLayout) => {
+    setPaneTops((prev) => {
+      const keys = Object.keys(next);
+      return keys.length === Object.keys(prev).length && keys.every((k) => prev[k] === next[k]) ? prev : next;
+    });
+  }, []);
+  const overlays = computed.filter((c) => INDICATOR_PLACEMENT[c.config.kind] === 'overlay');
+  const separate = computed.filter((c) => INDICATOR_PLACEMENT[c.config.kind] === 'separate');
 
   const retry = (onClick: () => void) => (
     <button type="button" className="button" onClick={onClick}>
@@ -33,6 +47,8 @@ export function ChartPanel({ symbol, timeframe, chartType }: ChartPanelProps) {
         intraday={isIntraday(timeframe)}
         onCrosshairTime={setHoverTime}
         onNearStart={history.loadOlder}
+        indicators={computed}
+        onPaneLayout={onPaneLayout}
       />
 
       {history.status === 'ready' && history.bars.length > 0 && (
@@ -41,8 +57,25 @@ export function ChartPanel({ symbol, timeframe, chartType }: ChartPanelProps) {
             {symbol} · {timeframe}
           </div>
           <CrosshairLegend bars={history.bars} hoverTime={hoverTime} />
+          {overlays.map((item) => (
+            <IndicatorLegendRow key={item.config.id} item={item} hoverTime={hoverTime} />
+          ))}
         </div>
       )}
+
+      {/* Each separate indicator's legend sits at the top of its own pane. */}
+      {history.status === 'ready' &&
+        history.bars.length > 0 &&
+        separate.map((item) => {
+          const top = paneTops[item.config.id];
+          return top === undefined ? null : (
+            <IndicatorLegendRow key={item.config.id} item={item} hoverTime={hoverTime} top={top} />
+          );
+        })}
+
+      <div className="chart-overlay-tools">
+        <IndicatorMenu items={computed} actions={indicatorState} />
+      </div>
 
       {history.status === 'loading' && (
         <div className="chart-overlay-center">

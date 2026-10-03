@@ -9,11 +9,45 @@ import { vi } from 'vitest';
 type CrosshairHandler = (param: { time?: number; seriesData: Map<unknown, unknown> }) => void;
 type RangeHandler = (range: { from: number; to: number } | null) => void;
 
+export interface FakePriceLine {
+  options: { price: number };
+}
+
+/**
+ * A pane, modelled on lightweight-charts v5.2.1's behaviour (verified in its source):
+ * a pane that loses its last series is removed unless `preserveEmptyPane` is set, and
+ * never when it is the only pane. `removePane` just drops the pane, orphaning its series.
+ */
+export class FakePane {
+  preserveEmpty = false;
+  stretchFactor = 1;
+  element = document.createElement('div');
+  constructor(private readonly chart: FakeChart) {}
+
+  paneIndex = (): number => this.chart.paneList.indexOf(this);
+  getSeries = (): FakeSeries[] => this.chart.series.filter((s) => !s.removed && s.pane === this);
+  setPreserveEmptyPane = (preserve: boolean): void => {
+    this.preserveEmpty = preserve;
+  };
+  setStretchFactor = (factor: number): void => {
+    this.stretchFactor = factor;
+  };
+  getHTMLElement = (): HTMLElement => this.element;
+  addSeries = (definition: unknown, options?: unknown): FakeSeries =>
+    this.chart.addSeries(definition, options, this.paneIndex());
+}
+
 export interface FakeSeries {
   definition: unknown;
   options: unknown;
+  /** The pane index asked for at creation (the pane may have moved since; see `pane`). */
   paneIndex: number | undefined;
+  pane: FakePane;
   setData: ReturnType<typeof vi.fn>;
+  applyOptions: ReturnType<typeof vi.fn>;
+  createPriceLine: ReturnType<typeof vi.fn>;
+  priceLines: FakePriceLine[];
+  getPane: () => FakePane;
   removed: boolean;
 }
 
@@ -26,29 +60,81 @@ export class FakeChart {
   options: unknown;
   applyOptions = vi.fn();
   fitContentCalls = 0;
+  paneList: FakePane[] = [];
+  element = document.createElement('div');
 
   constructor(
     public container: HTMLElement,
     options: unknown,
   ) {
     this.options = options;
+    this.paneList.push(new FakePane(this)); // the default pane 0
   }
 
   private assertLive(): void {
     if (this.removed) throw new Error('Object is disposed');
   }
 
-  addSeries = (definition: unknown, options?: unknown, paneIndex?: number): FakeSeries => {
+  addSeries = (definition: unknown, options?: unknown, paneIndex = 0): FakeSeries => {
     this.assertLive();
-    const s: FakeSeries = { definition, options, paneIndex, setData: vi.fn(), removed: false };
+    // Like the library: an index past the end appends exactly one new pane.
+    const index = Math.min(this.paneList.length, paneIndex);
+    let pane = this.paneList[index];
+    if (!pane) {
+      pane = new FakePane(this);
+      this.paneList.push(pane);
+    }
+    const priceLines: FakePriceLine[] = [];
+    const s: FakeSeries = {
+      definition,
+      options,
+      paneIndex,
+      pane,
+      setData: vi.fn(() => this.assertLive()),
+      applyOptions: vi.fn(() => this.assertLive()),
+      createPriceLine: vi.fn((o: { price: number }) => {
+        this.assertLive();
+        priceLines.push({ options: o });
+      }),
+      priceLines,
+      getPane: () => {
+        this.assertLive();
+        return s.pane;
+      },
+      removed: false,
+    };
     this.series.push(s);
     return s;
   };
 
   removeSeries = (s: FakeSeries): void => {
     this.assertLive();
+    if (s.removed) throw new Error('Series already removed');
     s.removed = true;
+    const pane = s.pane;
+    if (!pane.preserveEmpty && pane.getSeries().length === 0 && this.paneList.length > 1) {
+      this.paneList.splice(this.paneList.indexOf(pane), 1);
+    }
   };
+
+  panes = (): FakePane[] => {
+    this.assertLive();
+    return [...this.paneList];
+  };
+  addPane = (preserveEmpty = false): FakePane => {
+    this.assertLive();
+    const p = new FakePane(this);
+    p.preserveEmpty = preserveEmpty;
+    this.paneList.push(p);
+    return p;
+  };
+  removePane = (index: number): void => {
+    this.assertLive();
+    if (this.paneList.length === 1) return;
+    if (index < 0 || index >= this.paneList.length) throw new Error('Invalid pane index');
+    this.paneList.splice(index, 1);
+  };
+  chartElement = (): HTMLElement => this.element;
 
   subscribeCrosshairMove = (h: CrosshairHandler): void => {
     this.assertLive();
@@ -97,6 +183,10 @@ export class FakeChart {
   get liveSeries(): FakeSeries[] {
     return this.series.filter((s) => !s.removed);
   }
+  /** Series per pane, top to bottom, as the chart sees them now. */
+  get paneContents(): FakeSeries[][] {
+    return this.paneList.map((p) => p.getSeries());
+  }
 }
 
 /** Every chart created since the last `reset`, in creation order (StrictMode makes two per mount). */
@@ -121,6 +211,8 @@ export const fakeModule = {
   },
   CandlestickSeries: { tag: 'Candlestick' },
   LineSeries: { tag: 'Line' },
+  HistogramSeries: { tag: 'Histogram' },
+  LineStyle: { Solid: 0, Dotted: 1, Dashed: 2, LargeDashed: 3, SparseDotted: 4 },
   AreaSeries: { tag: 'Area' },
   ColorType: { Solid: 'solid' },
   CrosshairMode: { Normal: 0 },

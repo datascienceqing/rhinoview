@@ -1,0 +1,334 @@
+import type { IndicatorConfig } from '@shared/types';
+import { PriceChart } from '../chart/PriceChart';
+import { charts, fakeModule, lastChart, resetFakeCharts } from '../chart/testing/fakeLightweightCharts';
+import type { FakeSeries } from '../chart/testing/fakeLightweightCharts';
+import { IndicatorPanes } from './IndicatorPanes';
+import type { PaneLayout } from './IndicatorPanes';
+import { MACD_SIGNAL_COLOR } from './config';
+import { ComputeCache } from './computeCache';
+import { fakeComputeIndicator } from './testing/fakeCompute';
+import { indicator, makeBars } from './testing/testHelpers';
+
+vi.mock('lightweight-charts', async () => (await import('../chart/testing/fakeLightweightCharts')).fakeModule);
+
+const bars = makeBars(120);
+
+function setup(onLayout?: (l: PaneLayout) => void) {
+  const price = new PriceChart(document.createElement('div'));
+  price.setChartType('candlestick');
+  price.setBars(bars);
+  const panes = new IndicatorPanes(price, onLayout);
+  const chart = lastChart();
+  // One cache across syncs, as in the app: unchanged params keep their series object.
+  const cache = new ComputeCache(fakeComputeIndicator);
+  const sync = (configs: IndicatorConfig[]) => panes.sync(cache.resolve(bars, configs));
+  return { price, panes, chart, sync, cache };
+}
+
+const tags = (series: FakeSeries[]) => series.map((s) => (s.definition as { tag: string }).tag);
+
+beforeEach(resetFakeCharts);
+
+describe('overlay vs separate routing', () => {
+  it('draws SMA and EMA on the price pane without creating a pane', () => {
+    const { chart, sync } = setup();
+    sync([indicator('sma'), indicator('ema')]);
+    expect(chart.paneList).toHaveLength(1);
+    expect(tags(chart.paneContents[0] ?? [])).toEqual(['Candlestick', 'Line', 'Line']);
+  });
+
+  it('puts RSI and MACD in their own panes below, one pane each', () => {
+    const { chart, sync } = setup();
+    sync([indicator('rsi'), indicator('macd')]);
+    expect(chart.paneList).toHaveLength(3);
+    expect(tags(chart.paneContents[0] ?? [])).toEqual(['Candlestick']);
+    expect(tags(chart.paneContents[1] ?? [])).toEqual(['Line']);
+    expect(tags(chart.paneContents[2] ?? [])).toEqual(['Line', 'Line', 'Histogram']);
+  });
+
+  it('routes a mixed set correctly regardless of add order', () => {
+    const { chart, sync } = setup();
+    sync([indicator('rsi'), indicator('sma'), indicator('macd'), indicator('ema')]);
+    expect(chart.paneList).toHaveLength(3);
+    expect(tags(chart.paneContents[0] ?? [])).toEqual(['Candlestick', 'Line', 'Line']);
+  });
+
+  it('uses the v5 addSeries(definition, options, paneIndex) API on the one chart (no second chart)', () => {
+    const { chart, sync } = setup();
+    sync([indicator('rsi')]);
+    expect(charts).toHaveLength(1);
+    const rsi = chart.paneContents[1]?.[0];
+    expect(rsi?.definition).toBe(fakeModule.LineSeries);
+    expect(rsi?.paneIndex).toBe(1);
+  });
+});
+
+describe('adding and removing panes', () => {
+  it('creates a pane when the first separate indicator is added and removes it with the last', () => {
+    const { chart, sync } = setup();
+    expect(chart.paneList).toHaveLength(1);
+    const rsi = indicator('rsi');
+    sync([rsi]);
+    expect(chart.paneList).toHaveLength(2);
+    sync([]);
+    expect(chart.paneList).toHaveLength(1);
+    expect(chart.paneContents[0]).toHaveLength(1); // price series survives
+  });
+
+  it('removes every series of a removed MACD, leaving no orphans and no pane', () => {
+    const { chart, sync } = setup();
+    sync([indicator('macd')]);
+    const macdSeries = chart.liveSeries.filter((s) => s.pane.paneIndex() === 1);
+    expect(macdSeries).toHaveLength(3);
+    sync([]);
+    expect(macdSeries.every((s) => s.removed)).toBe(true);
+    expect(chart.paneList).toHaveLength(1);
+    expect(chart.liveSeries).toHaveLength(1);
+  });
+
+  it('removes only the targeted pane and keeps the rest bound to the right indicators', () => {
+    const { chart, sync } = setup();
+    const rsi = indicator('rsi');
+    const macd = indicator('macd');
+    sync([rsi, macd]);
+    // Remove the upper sub-pane: the MACD pane's index shifts from 2 to 1.
+    sync([macd]);
+    expect(chart.paneList).toHaveLength(2);
+    expect(tags(chart.paneContents[1] ?? [])).toEqual(['Line', 'Line', 'Histogram']);
+    // And a new RSI lands in a fresh pane at the bottom, not in MACD's.
+    sync([macd, rsi]);
+    expect(chart.paneList).toHaveLength(3);
+    expect(tags(chart.paneContents[1] ?? [])).toEqual(['Line', 'Line', 'Histogram']);
+    expect(tags(chart.paneContents[2] ?? [])).toEqual(['Line']);
+  });
+
+  it('never calls removePane: the library drops the empty pane itself, and a second removal would take an innocent one', () => {
+    const { chart, sync } = setup();
+    const removePane = vi.spyOn(chart, 'removePane');
+    const a = indicator('rsi');
+    const b = indicator('macd');
+    sync([a, b]);
+    sync([b]);
+    sync([]);
+    expect(removePane).not.toHaveBeenCalled();
+    expect(chart.paneList).toHaveLength(1);
+  });
+
+  it('removing an overlay removes its series and leaves panes alone', () => {
+    const { chart, sync } = setup();
+    const sma = indicator('sma');
+    const rsi = indicator('rsi');
+    sync([sma, rsi]);
+    sync([rsi]);
+    expect(chart.paneList).toHaveLength(2);
+    expect(tags(chart.paneContents[0] ?? [])).toEqual(['Candlestick']);
+  });
+
+  it('gives the price pane the larger share and each sub-pane an equal one', () => {
+    const { chart, sync } = setup();
+    sync([indicator('rsi'), indicator('macd')]);
+    const [price, a, b] = chart.paneList;
+    expect(price?.stretchFactor).toBeGreaterThan(a?.stretchFactor ?? Infinity);
+    expect(a?.stretchFactor).toBe(b?.stretchFactor);
+  });
+});
+
+describe('coexisting instances', () => {
+  it('keeps two SMAs with different periods as two series with their own data', () => {
+    const { chart, sync } = setup();
+    const a = indicator('sma');
+    const b = { ...indicator('sma', [a]), params: { period: 50, source: 'close' as const } };
+    sync([a, b]);
+    const lines = chart.paneContents[0]?.slice(1) ?? [];
+    expect(lines).toHaveLength(2);
+    const firstDefined = (s: FakeSeries) => {
+      const data = s.setData.mock.calls.at(-1)?.[0] as { value?: number }[];
+      return data.findIndex((d) => d.value !== undefined);
+    };
+    expect(lines.map(firstDefined)).toEqual([19, 49]);
+  });
+
+  it('removing one of two SMAs leaves the other drawing', () => {
+    const { chart, sync } = setup();
+    const a = indicator('sma');
+    const b = indicator('sma', [a]);
+    sync([a, b]);
+    const [sa, sb] = chart.paneContents[0]?.slice(1) ?? [];
+    sync([b]);
+    expect(sa?.removed).toBe(true);
+    expect(sb?.removed).toBe(false);
+  });
+
+  it('gives two RSIs a pane each', () => {
+    const { chart, sync } = setup();
+    const a = indicator('rsi');
+    sync([a, indicator('rsi', [a])]);
+    expect(chart.paneList).toHaveLength(3);
+  });
+});
+
+describe('what each indicator draws', () => {
+  it('draws MACD as macd and signal lines plus a sign-coloured histogram', () => {
+    const { chart, sync } = setup();
+    sync([indicator('macd')]);
+    const [macd, signal, hist] = chart.paneContents[1] ?? [];
+    expect(macd?.definition).toBe(fakeModule.LineSeries);
+    expect(signal?.definition).toBe(fakeModule.LineSeries);
+    expect(hist?.definition).toBe(fakeModule.HistogramSeries);
+    expect((signal?.options as { color?: string }).color).toBe(MACD_SIGNAL_COLOR);
+
+    const data = hist?.setData.mock.calls.at(-1)?.[0] as { value?: number; color?: string }[];
+    const defined = data.filter((d) => d.value !== undefined);
+    expect(defined.length).toBeGreaterThan(10);
+    const colours = new Set(defined.map((d) => d.color));
+    expect(colours.size).toBe(2); // both signs occur in the fixture
+    for (const d of defined) {
+      const isUp = (d.value ?? 0) >= 0;
+      expect(d.color === data.find((x) => x.value !== undefined && (x.value >= 0) === isUp)?.color).toBe(true);
+    }
+  });
+
+  it('shows RSI 30 and 70 reference lines and pins its scale to 0-100', () => {
+    const { chart, sync } = setup();
+    sync([indicator('rsi')]);
+    const rsi = chart.paneContents[1]?.[0];
+    expect(rsi?.priceLines.map((l) => l.options.price)).toEqual([30, 70]);
+    const opts = rsi?.options as { autoscaleInfoProvider: () => { priceRange: { minValue: number; maxValue: number } } };
+    expect(opts.autoscaleInfoProvider().priceRange).toEqual({ minValue: 0, maxValue: 100 });
+  });
+
+  it('puts no reference lines on other indicators', () => {
+    const { chart, sync } = setup();
+    sync([indicator('macd'), indicator('sma')]);
+    expect(chart.liveSeries.every((s) => s.priceLines.length === 0)).toBe(true);
+  });
+
+  it('writes warmup as whitespace, never as a value', () => {
+    const { chart, sync } = setup();
+    sync([indicator('sma'), indicator('rsi'), indicator('macd')]);
+    for (const s of chart.liveSeries.slice(1)) {
+      const data = s.setData.mock.calls.at(-1)?.[0] as { time: number; value?: number }[];
+      expect(data).toHaveLength(bars.length);
+      expect(data[0] && 'value' in data[0]).toBe(false);
+      expect(data.some((d) => d.value === 0)).toBe(false);
+      expect(data.map((d) => d.time)).toEqual(bars.map((b) => b.time));
+    }
+  });
+});
+
+describe('updating without rebuilding', () => {
+  it('writes new data only to the indicator whose params changed', () => {
+    const { chart, sync } = setup();
+    const a = indicator('sma');
+    const b = indicator('sma', [a]);
+    sync([a, b]);
+    const [sa, sb] = chart.paneContents[0]?.slice(1) ?? [];
+    sa?.setData.mockClear();
+    sb?.setData.mockClear();
+    sync([{ ...a, params: { period: 5, source: 'close' } }, b]);
+    expect(sa?.setData).toHaveBeenCalledTimes(1);
+    expect(sb?.setData).not.toHaveBeenCalled();
+    expect(charts).toHaveLength(1);
+    expect(chart.series.filter((s) => s.removed)).toHaveLength(0); // edited in place, not recreated
+  });
+
+  it('applies colour and visibility via options only, with no data rewrite', () => {
+    const { chart, sync } = setup();
+    const a = indicator('rsi');
+    sync([a]);
+    const s = chart.paneContents[1]?.[0];
+    s?.setData.mockClear();
+    sync([{ ...a, color: '#112233', visible: false }]);
+    expect(s?.setData).not.toHaveBeenCalled();
+    expect(s?.applyOptions).toHaveBeenLastCalledWith({ visible: false, color: '#112233' });
+  });
+
+  it('hides all three MACD lines but keeps the signal colour', () => {
+    const { chart, sync } = setup();
+    const m = indicator('macd');
+    sync([m]);
+    sync([{ ...m, visible: false, color: '#112233' }]);
+    const [macd, signal, hist] = chart.paneContents[1] ?? [];
+    expect(macd?.applyOptions).toHaveBeenLastCalledWith({ visible: false, color: '#112233' });
+    expect(signal?.applyOptions).toHaveBeenLastCalledWith({ visible: false });
+    expect(hist?.applyOptions).toHaveBeenLastCalledWith({ visible: false });
+  });
+
+  it('does nothing when synced again with identical input', () => {
+    const { chart, sync } = setup();
+    const configs = [indicator('sma'), indicator('macd')];
+    sync(configs);
+    chart.liveSeries.forEach((s) => s.setData.mockClear());
+    sync(configs);
+    expect(chart.liveSeries.every((s) => s.setData.mock.calls.length === 0)).toBe(true);
+  });
+
+  it('clears an indicator that loses its series (new symbol loading), keeping the pane', () => {
+    const { chart, sync, panes } = setup();
+    const rsi = indicator('rsi');
+    sync([rsi]);
+    panes.sync([{ config: rsi, series: null, error: null }]);
+    const s = chart.paneContents[1]?.[0];
+    expect(s?.setData).toHaveBeenLastCalledWith([]);
+    expect(chart.paneList).toHaveLength(2);
+  });
+});
+
+describe('price series and panes', () => {
+  it('keeps the price series in pane 0 when the chart type is switched with a sub-pane open', () => {
+    const { price, chart, sync } = setup();
+    sync([indicator('rsi')]);
+    price.setChartType('line');
+    price.setChartType('area');
+    expect(chart.paneList).toHaveLength(2);
+    expect(tags(chart.paneContents[0] ?? [])).toEqual(['Area']);
+    expect(tags(chart.paneContents[1] ?? [])).toEqual(['Line']);
+  });
+});
+
+describe('layout reporting', () => {
+  it('reports a top offset for each separate indicator and none for overlays', () => {
+    const onLayout = vi.fn<(l: PaneLayout) => void>();
+    const { sync } = setup(onLayout);
+    const rsi = indicator('rsi');
+    const sma = indicator('sma');
+    sync([sma, rsi]);
+    const layout = onLayout.mock.calls.at(-1)?.[0] ?? {};
+    expect(Object.keys(layout)).toEqual([rsi.id]);
+    expect(layout[rsi.id]).toEqual(expect.any(Number));
+  });
+});
+
+describe('disposal', () => {
+  it('turns sync and dispose into no-ops after the chart is removed (the fake throws on a removed chart)', () => {
+    const { price, panes, chart, sync } = setup();
+    sync([indicator('rsi'), indicator('sma')]);
+    price.dispose();
+    expect(chart.removed).toBe(true);
+    expect(() => {
+      sync([]);
+      sync([indicator('macd')]);
+      panes.dispose();
+      panes.dispose();
+    }).not.toThrow();
+  });
+
+  it('is inert after its own dispose, even with a live chart', () => {
+    const { chart, panes, sync } = setup();
+    sync([indicator('rsi')]);
+    const before = chart.series.length;
+    panes.dispose();
+    sync([indicator('macd')]);
+    expect(chart.series).toHaveLength(before);
+    expect(panes.size).toBe(0);
+  });
+
+  it('can be disposed before the chart without touching it', () => {
+    const { price, panes, chart, sync } = setup();
+    sync([indicator('macd')]);
+    const calls = chart.series.map((s) => s.setData.mock.calls.length);
+    panes.dispose();
+    price.dispose();
+    expect(chart.series.map((s) => s.setData.mock.calls.length)).toEqual(calls);
+  });
+});
