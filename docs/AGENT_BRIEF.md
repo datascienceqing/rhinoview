@@ -39,8 +39,10 @@ is worse than a blocked task: it lands in a tree someone else is editing concurr
 | `server/provider/**`, `server/routes/**`, `server/cache/**`, `server/index.ts` | Worker A2 — HTTP layer |
 | `src/chart/**`, `src/data/**`, `src/ui/**`, `mocks/**` | Worker B |
 | `src/App.tsx`, `src/styles.css`, `src/test-setup.ts` | Worker B (it builds the shell) |
-| `src/indicators/**` | Worker C |
-| `src/panes/**` | Worker D |
+| `src/indicators/types.ts` | **Orchestrator — frozen.** The C↔D seam and its conventions. |
+| `src/indicators/**` (except `types.ts`) | Worker C — indicator math |
+| `src/panes/**` | Worker D — indicator pane UI |
+| `src/chart/**`, `src/ui/ChartPanel.tsx` | Worker D may extend these to wire panes in (Worker B is finished) |
 | `src/main.tsx`, `index.html` | Orchestrator — request changes, don't make them |
 
 **Need a new dependency?** Stop and ask. Do not run `npm install` — concurrent
