@@ -18,6 +18,8 @@ export interface BuildServerOptions {
   engine: MarketEngine;
   /** Fault injection. Defaults to none — a caller-supplied engine is not the synthetic provider. */
   faults?: FaultConfig;
+  /** Provider label for `/api/capabilities`. Diagnostics only. */
+  provider?: string;
   cache?: BarsCache;
   now?: () => number;
   /** Cap on bars per response; tests shrink it to exercise truncation cheaply. */
@@ -40,6 +42,7 @@ export function buildServer(opts: BuildServerOptions): FastifyInstance {
 
   const service = new MarketService({
     engine: opts.engine,
+    ...(opts.provider ? { provider: opts.provider } : {}),
     faults: createFaultInjector(opts.faults ?? NO_FAULTS, opts.random, opts.sleep),
     ...(opts.cache ? { cache: opts.cache } : {}),
     ...(opts.now ? { now: opts.now } : {}),
@@ -56,7 +59,7 @@ export function buildServer(opts: BuildServerOptions): FastifyInstance {
 /** Production wiring: engine and fault injection both chosen from `env`. */
 export async function createServer(): Promise<FastifyInstance> {
   const engine = await selectEngine(); // throws for DATA_PROVIDER=massive — fail at boot, not per request
-  return buildServer({ engine, faults: faultsFromEnv() });
+  return buildServer({ engine, provider: env.DATA_PROVIDER, faults: faultsFromEnv() });
 }
 
 // Only listen when run directly, so tests can import buildServer() without binding a port.

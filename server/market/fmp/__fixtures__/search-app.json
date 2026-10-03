@@ -1,0 +1,5 @@
+{
+  "status": 200,
+  "contentType": "application/json; charset=utf-8",
+  "body": "[\n  {\n    \"symbol\": \"APP\",\n    \"name\": \"AppLovin Corporation\",\n    \"currency\": \"USD\",\n    \"exchangeFullName\": \"NASDAQ Global Select\",\n    \"exchange\": \"NASDAQ\"\n  },\n  {\n    \"symbol\": \"APPC\",\n    \"name\": \"Corgi ETF Trust I - Corgi APP 2x Daily ETF\",\n    \"currency\": \"USD\",\n    \"exchangeFullName\": \"Chicago Board Options Exchange\",\n    \"exchange\": \"CBOE\"\n  },\n  {\n    \"symbol\": \"APPB\",\n    \"name\": \"Applied Biosciences Corp.\",\n    \"currency\": \"USD\",\n    \"exchangeFullName\": \"Other OTC\",\n    \"exchange\": \"OTC\"\n  },\n  {\n    \"symbol\": \"APPM\",\n    \"name\": \"Apparel Manufacturing Associates, Inc.\",\n    \"currency\": \"USD\",\n    \"exchangeFullName\": \"Other OTC\",\n    \"exchange\": \"OTC\"\n  },\n  {\n    \"symbol\": \"APPN\",\n    \"name\": \"Appian Corporation\",\n    \"currency\": \"USD\",\n    \"exchangeFullName\": \"NASDAQ Global Market\",\n    \"exchange\": \"NASDAQ\"\n  }\n]"
+}

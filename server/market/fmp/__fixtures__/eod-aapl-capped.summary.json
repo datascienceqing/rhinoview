@@ -1,0 +1,42 @@
+{
+  "note": "Summary of one real capped response (GET historical-price-eod/full?symbol=AAPL&from=1980-01-01&to=2026-10-02). Full body is ~1.1 MB so only its shape is kept.",
+  "status": 200,
+  "rowCount": 5000,
+  "newest": {
+    "symbol": "AAPL",
+    "date": "2026-10-02",
+    "open": 333.26,
+    "high": 334.54,
+    "low": 330.61,
+    "close": 333.69,
+    "volume": 31829263,
+    "change": 0.43,
+    "changePercent": 0.12903,
+    "vwap": 333.025
+  },
+  "oldest": {
+    "symbol": "AAPL",
+    "date": "2006-11-15",
+    "open": 3.04,
+    "high": 3.07,
+    "low": 3,
+    "close": 3,
+    "volume": 658170448,
+    "change": -0.035892,
+    "changePercent": -1.32,
+    "vwap": 3.0275
+  },
+  "descending": true,
+  "keys": [
+    "symbol",
+    "date",
+    "open",
+    "high",
+    "low",
+    "close",
+    "volume",
+    "change",
+    "changePercent",
+    "vwap"
+  ]
+}

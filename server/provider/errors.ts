@@ -71,11 +71,25 @@ export class UpstreamUnauthorizedError extends Error {
   }
 }
 
+/**
+ * Engine-side refusal of a well-formed request the provider cannot honour for a reason
+ * that is not a plan tier, e.g. `adjusted=false` on a feed that only has the adjusted
+ * series. Maps to BAD_REQUEST: retrying unchanged cannot succeed, and no upgrade fixes it.
+ */
+export class UnsupportedRequestError extends Error {
+  constructor() {
+    super('Unsupported request');
+    this.name = 'UnsupportedRequestError';
+  }
+}
+
 export const MESSAGES = {
   rateLimited: 'Rate limit reached. Retry after the indicated delay.',
   upstream: 'The market data provider failed to serve this request. Try again shortly.',
   timeout: 'The market data provider timed out. Try again shortly.',
   unauthorized: 'The proxy is not authorized to read this market data.',
+  timeframeUnsupported: 'The active market data provider does not serve this timeframe.',
+  unsupportedRequest: 'The active market data provider cannot serve this request as specified.',
   internal: 'Internal error.',
 } as const;
 
@@ -95,5 +109,6 @@ export function mapEngineError(err: unknown): ApiFailure {
   }
   if (err instanceof UpstreamTimeoutError) return new ApiFailure('UPSTREAM_TIMEOUT', MESSAGES.timeout);
   if (err instanceof UpstreamUnauthorizedError) return new ApiFailure('UNAUTHORIZED', MESSAGES.unauthorized);
+  if (err instanceof UnsupportedRequestError) return new ApiFailure('BAD_REQUEST', MESSAGES.unsupportedRequest);
   return new ApiFailure('UPSTREAM_ERROR', MESSAGES.upstream);
 }

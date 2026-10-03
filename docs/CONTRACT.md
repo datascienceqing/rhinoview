@@ -73,6 +73,22 @@ Liveness only. Returns `{ ok: true, data: { status: "up" } }`. Already implement
 
 ---
 
+## `GET /api/capabilities`
+
+What the configured provider can actually do, so the client can present only what it
+can deliver.
+
+**Success:** `ApiResult<{ timeframes: Timeframe[]; delayed: boolean; provider: string }>`
+
+- `timeframes` — the subset of `TIMEFRAMES` this provider serves. The client disables
+  the rest rather than offering a control that will fail.
+- `delayed` — whether this provider's data is delayed; the UI badges it.
+- `provider` — the active provider's name, for diagnostics. **Never** any part of a key.
+
+Requesting an unsupported timeframe from `/api/bars` is `UNAUTHORIZED` (500), which this
+contract has always defined as covering a key that "lacks the plan tier for this data".
+That is the backstop for a stale client, not the intended path.
+
 ## `GET /api/search`
 
 Symbol search for the search box.

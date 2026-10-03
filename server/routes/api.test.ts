@@ -3,6 +3,7 @@
  */
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import type { FastifyInstance } from 'fastify';
+import { TIMEFRAMES } from '@shared/types';
 import type { ApiResult, Bar, BarsResponse, IndicatorSeries, SearchResponse, SearchResult, Snapshot, Timeframe } from '@shared/types';
 import { BarsCache, INTRADAY_TTL_MS, DAILY_TTL_MS } from '../cache/barsCache';
 import { buildServer } from '../index';
@@ -54,6 +55,7 @@ interface FakeEngine extends MarketEngine {
 
 function fakeEngine(overrides: { delayed?: boolean } = {}): FakeEngine {
   return {
+    supportedTimeframes: TIMEFRAMES,
     delayed: overrides.delayed ?? false,
     // Case-insensitive, like the real seam documents.
     resolveSymbol: vi.fn((s: string) => SYMBOLS.find((x) => x.symbol === s.toUpperCase())),

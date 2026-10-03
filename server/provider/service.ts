@@ -9,6 +9,7 @@
  * Fault injection sits behind the cache on purpose: a real upstream is only touched
  * (and can only rate-limit) on a miss, so a cache hit never fails.
  */
+import { TIMEFRAMES } from '@shared/types';
 import type {
   Bar,
   BarsResponse,
@@ -23,7 +24,7 @@ import type { BarsCacheKey } from '../cache/barsCache';
 import { redact } from '../env';
 import { UnknownSymbolError } from '../market/types';
 import type { MarketEngine } from '../market/types';
-import { ApiFailure, mapEngineError } from './errors';
+import { ApiFailure, MESSAGES, mapEngineError } from './errors';
 import { NO_FAULTS, createFaultInjector } from './faults';
 import type { FaultInjector } from './faults';
 import { computeIndicator } from './indicators';
@@ -93,6 +94,16 @@ const LIVE_EDGE_MINUTE_LIMIT = 10_000;
 /** The engine may return up to this many search hits before we filter and slice. */
 const SEARCH_OVERFETCH = 50;
 
+/**
+ * Payload of `GET /api/capabilities`. `shared/types.ts` (frozen) has no named type for it
+ * yet; the shape is exactly the one in docs/CONTRACT.md.
+ */
+export interface CapabilitiesPayload {
+  timeframes: Timeframe[];
+  delayed: boolean;
+  provider: string;
+}
+
 export interface ServiceLogger {
   warn(obj: Record<string, unknown>, msg: string): void;
 }
@@ -106,6 +117,8 @@ export interface MarketServiceDeps {
   log?: ServiceLogger;
   /** Overrides BAR_CAPS for every timeframe. Tests shrink it to exercise truncation cheaply. */
   maxBars?: number;
+  /** Provider name for `/api/capabilities`. A label for diagnostics: it must never be derived from a key. */
+  provider?: string;
 }
 
 /**
@@ -131,6 +144,7 @@ export class MarketService {
   private readonly now: () => UnixSeconds;
   private readonly log: ServiceLogger;
   private readonly maxBars: number | undefined;
+  private readonly provider: string;
 
   constructor(deps: MarketServiceDeps) {
     this.engine = deps.engine;
@@ -139,6 +153,13 @@ export class MarketService {
     this.now = deps.now ?? systemNowSeconds;
     this.log = deps.log ?? noopLog;
     this.maxBars = deps.maxBars;
+    this.provider = deps.provider ?? 'custom';
+  }
+
+  /** What the active engine can serve, so the client can disable what would fail. */
+  capabilities(): CapabilitiesPayload {
+    const served = new Set<Timeframe>(this.engine.supportedTimeframes);
+    return { timeframes: TIMEFRAMES.filter((tf) => served.has(tf)), delayed: this.engine.delayed, provider: this.provider };
   }
 
   async search(query: string, limit: number): Promise<SearchResponse> {
@@ -149,7 +170,8 @@ export class MarketService {
   }
 
   async bars(req: BarsRequest): Promise<BarsResponse> {
-    const symbol = this.resolve(req.symbol);
+    this.requireTimeframe(req.timeframe);
+    const symbol = await this.resolve(req.symbol);
     const now = this.now();
     const plan = this.plan(req, now);
     // Nothing in the requested range has happened (or completed) yet: a valid, successful, empty answer.
@@ -184,7 +206,7 @@ export class MarketService {
   }
 
   async snapshot(rawSymbol: string): Promise<Snapshot> {
-    const symbol = this.resolve(rawSymbol);
+    const symbol = await this.resolve(rawSymbol);
     const snap = await this.upstream(() => this.engine.getSnapshot(symbol, this.now()));
     // `delayed` comes from the engine's tier, never from a literal. `changePercent`
     // passes through untouched: it is a fraction, the client formats it.
@@ -195,7 +217,8 @@ export class MarketService {
   async indicator(
     req: Omit<BarsRequest, 'adjusted'> & { spec: IndicatorRequest },
   ): Promise<IndicatorSeries> {
-    const symbol = this.resolve(req.symbol);
+    this.requireTimeframe(req.timeframe);
+    const symbol = await this.resolve(req.symbol);
     const now = this.now();
     const full = { ...req, adjusted: true };
     const plan = this.plan(full, now);
@@ -218,15 +241,26 @@ export class MarketService {
     return { from, to, live };
   }
 
+  /**
+   * A timeframe outside the engine's list is UNAUTHORIZED: the contract defines that
+   * code as covering a key that lacks the plan tier for this data. Checked before the
+   * cache and before any upstream call, so a stale client costs nothing.
+   */
+  private requireTimeframe(tf: Timeframe): void {
+    if (!this.engine.supportedTimeframes.includes(tf)) {
+      throw new ApiFailure('UNAUTHORIZED', MESSAGES.timeframeUnsupported);
+    }
+  }
+
   private capFor(tf: Timeframe): number {
     return this.maxBars ?? BAR_CAPS[tf];
   }
 
   /** Resolve to the canonical symbol. The caller's string is passed through verbatim. */
-  private resolve(symbol: string): string {
+  private async resolve(symbol: string): Promise<string> {
     let resolved;
     try {
-      resolved = this.engine.resolveSymbol(symbol);
+      resolved = await this.engine.resolveSymbol(symbol);
     } catch (err) {
       throw this.fail(err);
     }
@@ -236,8 +270,8 @@ export class MarketService {
 
   /** `req.from`/`req.to` must already be planned: clamped to `now` and narrowed to the cap. */
   private async fetchBars(req: BarsRequest, now: UnixSeconds): Promise<BarsResponse> {
-    const result = await this.upstream(() => {
-      const r = this.engine.getBars({
+    const result = await this.upstream(async () => {
+      const r = await this.engine.getBars({
         symbol: req.symbol,
         timeframe: req.timeframe,
         from: req.from,
@@ -245,7 +279,7 @@ export class MarketService {
         adjusted: req.adjusted,
         limit: this.capFor(req.timeframe),
       });
-      return { bars: this.closeLiveEdge(normalizeBars(r.bars), req, now), truncated: r.truncated };
+      return { bars: await this.closeLiveEdge(normalizeBars(r.bars), req, now), truncated: r.truncated };
     });
     let bars = result.bars;
     let truncated = result.truncated;
@@ -283,7 +317,7 @@ export class MarketService {
    * the rest of that minute. That is also what the engine's snapshot does, so the last
    * bar and `/api/snapshot` agree. A 1m request therefore ends at the last finished minute.
    */
-  private closeLiveEdge(bars: Bar[], req: BarsRequest, now: UnixSeconds): Bar[] {
+  private async closeLiveEdge(bars: Bar[], req: BarsRequest, now: UnixSeconds): Promise<Bar[]> {
     // Last completed minute opens at or before now - 60. Defensive: the engine was already
     // given a clamped `to`, but nothing past the cutoff may ever leave this method.
     const cutoff = req.timeframe === '1m' ? now - 60 : now;
@@ -292,15 +326,20 @@ export class MarketService {
     const head = end === bars.length ? bars : bars.slice(0, end);
     const tail = head.at(-1);
     if (!tail || req.timeframe === '1m' || tail.time + TIMEFRAME_SPAN_SECONDS[req.timeframe] <= now) return head;
+    // A provider with no minute data (end-of-day feeds) cannot rebuild the forming bar;
+    // asking it would turn every request that touches today into an UNAUTHORIZED failure.
+    // Its newest bar is returned as the provider reports it, and it is the provider's
+    // own aggregate of sessions that have occurred, so it contains no future data.
+    if (!this.engine.supportedTimeframes.includes('1m')) return head;
 
-    const minutes = this.engine.getBars({
+    const minutes = (await this.engine.getBars({
       symbol: req.symbol,
       timeframe: '1m',
       from: tail.time,
       to: now - 60, // completed minutes only
       adjusted: req.adjusted,
       limit: LIVE_EDGE_MINUTE_LIMIT,
-    }).bars;
+    })).bars;
     const rebuilt = aggregateMinutes(tail.time, minutes);
     const settled = head.slice(0, -1);
     if (!rebuilt) return settled; // bucket has not begun trading
@@ -310,10 +349,10 @@ export class MarketService {
   }
 
   /** Run one upstream-bound engine call: fault gate, then call, with errors mapped. */
-  private async upstream<T>(call: () => T): Promise<T> {
+  private async upstream<T>(call: () => T | Promise<T>): Promise<T> {
     try {
       await this.faults.gate();
-      return call();
+      return await call();
     } catch (err) {
       throw this.fail(err);
     }

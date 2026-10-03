@@ -1,5 +1,5 @@
 /**
- * HTTP route registration for the four contract endpoints.
+ * HTTP route registration for the contract endpoints.
  *
  * Handlers are intentionally trivial: zod-parse the query, call the service, render
  * the envelope. Everything with logic lives in `server/provider/`.
@@ -26,6 +26,8 @@ export function registerApiRoutes(app: FastifyInstance, service: MarketService):
   app.setNotFoundHandler((_req, reply) =>
     sendFailure(reply, new ApiFailure('BAD_REQUEST', 'No such endpoint.'), 404),
   );
+
+  app.get('/api/capabilities', (_req, reply) => respond(reply, () => service.capabilities()));
 
   app.get('/api/search', (req, reply) =>
     respond(reply, () => {

@@ -8,11 +8,16 @@
 import type { MarketEngine } from '../market/types';
 import { env } from '../env';
 
-export async function selectEngine(provider: 'synthetic' | 'massive' = env.DATA_PROVIDER): Promise<MarketEngine> {
+export async function selectEngine(provider: 'synthetic' | 'massive' | 'fmp' = env.DATA_PROVIDER): Promise<MarketEngine> {
   switch (provider) {
     case 'synthetic': {
       const { createSyntheticEngine } = await import('../market');
       return createSyntheticEngine({ delayed: env.SYNTHETIC_DELAYED });
+    }
+    case 'fmp': {
+      if (!env.FMP_API_KEY) throw new Error('FMP_API_KEY is required when DATA_PROVIDER=fmp');
+      const { createFmpEngine } = await import('../market/fmp');
+      return createFmpEngine({ apiKey: env.FMP_API_KEY });
     }
     case 'massive':
       // Deliberately not a stub and not a fallback to synthetic: silently serving

@@ -71,7 +71,23 @@ export class UnknownSymbolError extends Error {
   }
 }
 
+/** A real provider does network I/O and cannot answer synchronously; the synthetic engine still can. */
+export type MaybePromise<T> = T | Promise<T>;
+
 export interface MarketEngine {
+  /**
+   * Which timeframes this engine can actually serve. The synthetic engine serves all
+   * six; a real provider may serve fewer, because intraday data is commonly a
+   * higher-priced tier than end-of-day.
+   *
+   * The proxy answers `UNAUTHORIZED` for a timeframe outside this list — the contract
+   * has always defined that code as covering a key that "lacks the plan tier for this
+   * data". But an error is the fallback, not the design: `GET /api/capabilities`
+   * publishes this list so the client can disable the timeframes it cannot fetch
+   * rather than letting someone click one and receive a failure.
+   */
+  readonly supportedTimeframes: readonly Timeframe[];
+
   /**
    * True when this engine's data is delayed rather than live. Surfaced as
    * `Snapshot.delayed` and badged in the UI. The synthetic engine reads this from
@@ -80,20 +96,20 @@ export interface MarketEngine {
   readonly delayed: boolean;
 
   /** Resolve a user-supplied ticker to its canonical form, or undefined if unknown. */
-  resolveSymbol(symbol: string): EngineSymbol | undefined;
+  resolveSymbol(symbol: string): MaybePromise<EngineSymbol | undefined>;
 
   /**
    * Relevance-ordered symbol search over ticker and name, case-insensitive.
    * An exact ticker match ranks first, then prefix matches, then substring matches.
    * No match is an empty array, never an error.
    */
-  searchSymbols(query: string, limit: number): SearchResult[];
+  searchSymbols(query: string, limit: number): MaybePromise<SearchResult[]>;
 
   /** @throws UnknownSymbolError */
-  getBars(req: EngineBarsRequest): EngineBarsResult;
+  getBars(req: EngineBarsRequest): MaybePromise<EngineBarsResult>;
 
   /** @throws UnknownSymbolError */
-  getSnapshot(symbol: string, asOf: UnixSeconds): Snapshot;
+  getSnapshot(symbol: string, asOf: UnixSeconds): MaybePromise<Snapshot>;
 }
 
 // ───────────────────────────────────────────────────────────────────────────────

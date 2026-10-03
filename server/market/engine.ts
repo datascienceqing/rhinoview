@@ -16,6 +16,7 @@
  * adjusted series is `raw / ratio` (volume the other way). Adjustment is monotonic, so
  * it commutes with max/min and the coherence invariant survives it.
  */
+import { TIMEFRAMES } from '@shared/types';
 import type { Bar, SearchResult, Snapshot, Timeframe, UnixSeconds } from '@shared/types';
 import {
   civilToDay,
@@ -273,6 +274,8 @@ function aggToBar(time: UnixSeconds, a: Agg): Bar {
 // ── engine ───────────────────────────────────────────────────────────────────
 
 export class SyntheticMarketEngine implements MarketEngine {
+  /** One minute-level path serves every timeframe, so all six are available. */
+  readonly supportedTimeframes: readonly Timeframe[] = TIMEFRAMES;
   readonly delayed: boolean;
   private readonly bySymbol = new Map<string, SymbolRuntime>();
   private readonly runtimes: readonly SymbolRuntime[];

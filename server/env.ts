@@ -21,7 +21,10 @@ const optional = <T extends z.ZodTypeAny>(inner: T) =>
 
 const schema = z
   .object({
-    DATA_PROVIDER: z.enum(['synthetic', 'massive']).default('synthetic'),
+    DATA_PROVIDER: z.enum(['synthetic', 'massive', 'fmp']).default('synthetic'),
+
+    /** Required only when DATA_PROVIDER=fmp. */
+    FMP_API_KEY: optional(z.string().min(1).optional()),
 
     /** Required only when DATA_PROVIDER=massive. */
     MASSIVE_API_KEY: optional(z.string().min(1).optional()),
@@ -47,6 +50,10 @@ const schema = z
   .refine((v) => v.DATA_PROVIDER !== 'massive' || Boolean(v.MASSIVE_API_KEY), {
     message: 'MASSIVE_API_KEY is required when DATA_PROVIDER=massive',
     path: ['MASSIVE_API_KEY'],
+  })
+  .refine((v) => v.DATA_PROVIDER !== 'fmp' || Boolean(v.FMP_API_KEY), {
+    message: 'FMP_API_KEY is required when DATA_PROVIDER=fmp',
+    path: ['FMP_API_KEY'],
   });
 
 const parsed = schema.safeParse(process.env);
@@ -74,7 +81,9 @@ export const env = parsed.data;
  * A no-op when no key is configured, which is the normal synthetic-provider case.
  */
 export function redact(text: string): string {
-  const key = env.MASSIVE_API_KEY;
-  if (!key) return text;
-  return text.split(key).join('[REDACTED]');
+  let out = text;
+  for (const key of [env.MASSIVE_API_KEY, env.FMP_API_KEY]) {
+    if (key) out = out.split(key).join('[REDACTED]');
+  }
+  return out;
 }

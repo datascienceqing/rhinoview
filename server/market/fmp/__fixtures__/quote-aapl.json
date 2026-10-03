@@ -1,0 +1,5 @@
+{
+  "status": 200,
+  "contentType": "application/json; charset=utf-8",
+  "body": "[\n  {\n    \"symbol\": \"AAPL\",\n    \"name\": \"Apple Inc.\",\n    \"price\": 333.69,\n    \"changePercentage\": 1.02022,\n    \"change\": 3.37,\n    \"volume\": 31878433,\n    \"dayLow\": 330.61,\n    \"dayHigh\": 334.54,\n    \"yearHigh\": 345.34,\n    \"yearLow\": 243.42,\n    \"marketCap\": 4901023823640,\n    \"priceAvg50\": 322.1756,\n    \"priceAvg200\": 288.8607,\n    \"exchange\": \"NASDAQ\",\n    \"open\": 333.205,\n    \"previousClose\": 330.32,\n    \"timestamp\": 1790971201\n  }\n]"
+}

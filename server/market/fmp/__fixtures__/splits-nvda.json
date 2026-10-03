@@ -1,0 +1,5 @@
+{
+  "status": 200,
+  "contentType": "application/json; charset=utf-8",
+  "body": "[\n  {\n    \"symbol\": \"NVDA\",\n    \"date\": \"2024-06-10\",\n    \"numerator\": 10,\n    \"denominator\": 1,\n    \"splitType\": \"stock-split\"\n  },\n  {\n    \"symbol\": \"NVDA\",\n    \"date\": \"2021-07-20\",\n    \"numerator\": 4,\n    \"denominator\": 1,\n    \"splitType\": \"stock-split\"\n  },\n  {\n    \"symbol\": \"NVDA\",\n    \"date\": \"2007-09-11\",\n    \"numerator\": 3,\n    \"denominator\": 2,\n    \"splitType\": \"stock-split\"\n  },\n  {\n    \"symbol\": \"NVDA\",\n    \"date\": \"2006-04-07\",\n    \"numerator\": 2,\n    \"denominator\": 1,\n    \"splitType\": \"stock-split\"\n  },\n  {\n    \"symbol\": \"NVDA\",\n    \"date\": \"2001-09-12\",\n    \"numerator\": 2,\n    \"denominator\": 1,\n    \"splitType\": \"stock-split\"\n  },\n  {\n    \"symbol\": \"NVDA\",\n    \"date\": \"2000-06-27\",\n    \"numerator\": 2,\n    \"denominator\": 1,\n    \"splitType\": \"stock-split\"\n  }\n]"
+}

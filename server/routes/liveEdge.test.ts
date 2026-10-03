@@ -5,6 +5,7 @@
  */
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import type { FastifyInstance } from 'fastify';
+import { TIMEFRAMES } from '@shared/types';
 import type { ApiResult, Bar, BarsResponse, IndicatorSeries, Timeframe } from '@shared/types';
 import { buildServer } from '../index';
 import { LIVE_SLACK_SECONDS, sliceForRequest } from '../provider/service';
@@ -74,6 +75,7 @@ function clocklessEngine() {
     return { bars, truncated: all.length > req.limit };
   });
   const engine: MarketEngine & { getBars: typeof getBars } = {
+    supportedTimeframes: TIMEFRAMES,
     delayed: false,
     resolveSymbol: (s) => (s === 'AAPL' ? { symbol: 'AAPL', name: 'Apple', exchange: 'XNAS', type: 'CS', currency: 'USD', listedAt: 0 } : undefined),
     searchSymbols: () => [],

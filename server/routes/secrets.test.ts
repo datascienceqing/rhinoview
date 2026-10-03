@@ -4,6 +4,7 @@
  */
 import { afterEach, beforeAll, describe, expect, it, vi } from 'vitest';
 import type { FastifyInstance } from 'fastify';
+import { TIMEFRAMES } from '@shared/types';
 import type { Bar, Snapshot } from '@shared/types';
 
 const API_KEY = vi.hoisted(() => {
@@ -34,6 +35,7 @@ function leakyEngine() {
     throw err;
   };
   return {
+    supportedTimeframes: TIMEFRAMES,
     delayed: false,
     resolveSymbol: (s: string) =>
       s === 'AAPL' ? { symbol: 'AAPL', name: 'Apple', exchange: 'XNAS', type: 'CS', currency: 'USD', listedAt: 0 } : undefined,
