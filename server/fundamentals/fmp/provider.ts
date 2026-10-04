@@ -2,9 +2,11 @@
  * FMP fundamentals provider: fetches `/stable` endpoints, validates, and hands the rows
  * to the pure mapper. Caching is NOT here; `CachedFundamentalsProvider` wraps this.
  *
- * Unknown symbol (invariant 7 and the plan): decided from `/profile` alone, by an EMPTY
- * ARRAY. FMP overloads HTTP 402 for restricted and for unknown symbols, so a 402 is never
- * read as "unknown": a 402 profile surfaces as UNAUTHORIZED.
+ * Unknown symbol: decided from `/profile` alone. Two signals mean unknown: an EMPTY ARRAY,
+ * and a 402 whose body says the SYMBOL is restricted (`scope === 'symbol'`), which is how
+ * FMP Starter answers a symbol it does not cover. This matches the market engine. A 402
+ * with endpoint scope is a plan-tier failure and surfaces as UNAUTHORIZED: a 402 alone is
+ * never read as "unknown", only its body's scope is.
  *
  * Partial success (invariant 7): after the profile, the five overview sections are
  * fetched together. A section that answers 402 or an empty array is listed as
@@ -117,9 +119,15 @@ export class FmpFundamentalsProvider implements FundamentalsProvider {
     return mapEarnings(sym, parseRows(earningsResponse, '/earnings', body));
   }
 
-  /** The unknown-symbol decision: an empty `profile` array, and nothing else. */
+  /** The unknown-symbol decision: an empty `profile` array, or a symbol-scope 402. */
   private async fetchProfile(symbol: string): Promise<FmpProfileRow> {
-    const body = await this.source.getJson('/profile', { symbol: symbol.trim().toUpperCase() });
+    let body: unknown;
+    try {
+      body = await this.source.getJson('/profile', { symbol: symbol.trim().toUpperCase() });
+    } catch (err) {
+      if (err instanceof FmpPaymentRequiredError && err.scope === 'symbol') throw new UnknownSymbolError(symbol);
+      throw err;
+    }
     const row = parseRows(profileResponse, '/profile', body)[0];
     if (!row) throw new UnknownSymbolError(symbol);
     return row;

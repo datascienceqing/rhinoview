@@ -58,8 +58,10 @@ export function mapProfile(row: FmpProfileRow): CompanyProfile {
  * Either source may be absent (plan tier). A missing source nulls only its own fields;
  * the caller reports `metrics` as unavailable when BOTH are absent.
  *
- * `epsDiluted` reads `netIncomePerShareTTM`: FMP supplies no TTM diluted EPS field, and
- * this is its own per-share earnings figure in the reporting currency (TSM: TWD).
+ * `epsDiluted` is FMP's `netIncomePerShareTTM` (ratios-ttm), passed through. It is net income
+ * per share over the trailing twelve months, in the reporting currency (TSM: TWD). It is NOT
+ * the sum of the four quarterly diluted EPS (AAPL: 8.775 versus 8.73), and FMP has no TTM
+ * diluted EPS field.
  */
 export function mapMetrics(ratios: FmpRatiosTtm | null, keyMetrics: FmpKeyMetricsTtm | null): KeyMetricsTTM {
   return {

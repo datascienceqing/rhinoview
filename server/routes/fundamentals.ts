@@ -21,14 +21,14 @@ export interface FundamentalsRouteDeps {
   fundamentals: FundamentalsProvider;
 }
 
-// Tickers: letters, digits, dot and dash ("BRK.B", "BRK-B"). Anything else cannot be a
-// symbol, and keeping it out of the upstream query string is cheap insurance.
+// MUST match SYMBOL_RE in server/workspace/store.ts: any symbol a layout can hold (index
+// symbols such as "^GSPC" included) must be accepted here, or the Financials drawer and the
+// earnings markers fail with BAD_REQUEST for a chart the workspace allows. A symbol that
+// passes but has no fundamentals answers UNKNOWN_SYMBOL from the provider.
 const symbol = z
   .string()
   .trim()
-  .min(1)
-  .max(16)
-  .regex(/^[A-Za-z0-9.-]+$/, 'must contain only letters, digits, "." and "-"');
+  .regex(/^[A-Za-z0-9.^=-]{1,16}$/, 'must be 1-16 characters: letters, digits, ".", "^", "=" or "-"');
 
 const enumOf = <const T extends string>(values: readonly [T, ...T[]]) =>
   z.enum(values, { errorMap: () => ({ message: `must be one of ${values.join(', ')}` }) });

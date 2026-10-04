@@ -104,6 +104,8 @@ describe('validation — BAD_REQUEST, and the provider is not called', () => {
     '/api/fundamentals/overview?symbol=%20%20',
     `/api/fundamentals/overview?symbol=${'A'.repeat(17)}`,
     '/api/fundamentals/overview?symbol=AA%20PL',
+    '/api/fundamentals/overview?symbol=AA%2FPL',
+    `/api/fundamentals/overview?symbol=%5E${'A'.repeat(16)}`,
     '/api/fundamentals/overview?symbol=AAPL&symbol=MSFT',
     '/api/fundamentals/earnings',
     '/api/fundamentals/statements?symbol=AAPL',
@@ -129,6 +131,20 @@ describe('validation — BAD_REQUEST, and the provider is not called', () => {
     serve(fake());
     const { body } = await get('/api/fundamentals/statements?symbol=AAPL&statement=ratios&period=annual');
     expect(!body.ok && body.error.message).toContain('"statement"');
+  });
+
+  it('accepts every symbol the workspace store accepts, including indexes, and answers UNKNOWN_SYMBOL when there are no fundamentals', async () => {
+    serve(new SyntheticFundamentalsProvider());
+    for (const sym of ['%5EGSPC', 'EURUSD%3DX', 'BRK-B']) {
+      const { status, body } = await get(`/api/fundamentals/earnings?symbol=${sym}`);
+      expect(status).toBe(404);
+      expect(!body.ok && body.error.code).toBe('UNKNOWN_SYMBOL');
+    }
+    await app?.close();
+    serve(createFixtureFundamentals()); // FMP path: empty profile
+    const { status, body } = await get('/api/fundamentals/overview?symbol=%5EGSPC');
+    expect(status).toBe(404);
+    expect(!body.ok && body.error.code).toBe('UNKNOWN_SYMBOL');
   });
 
   it('accepts class-share tickers', async () => {

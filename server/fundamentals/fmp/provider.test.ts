@@ -12,6 +12,9 @@ import { fixtureFetch, fixtureRows, json, providerOver, readFixture, TEST_KEY } 
 
 const PAYMENT_BODY = "Restricted Endpoint: This endpoint is not available under your current subscription";
 const gated = () => json(PAYMENT_BODY, 402);
+// The measured body of a restricted SYMBOL (the client reads its scope from the text).
+const SYMBOL_BODY = "Premium Query Parameter: 'symbol' is not available under your current subscription";
+const symbolGated = () => json(SYMBOL_BODY, 402);
 
 type Row = Record<string, unknown>;
 const ttm = (symbol: string, name: string): Row => fixtureRows(symbol, name)[0] as Row;
@@ -31,7 +34,16 @@ describe('invariant 1 — null, never zero; pass through what FMP supplies', () 
     await expect(providerOver(fixtureFetch()).getOverview('zzzz')).rejects.toMatchObject({ symbol: 'zzzz' });
   });
 
-  it('does NOT treat HTTP 402 on the profile as an unknown symbol', async () => {
+  it('treats a symbol-scope 402 on the profile as an unknown symbol, on all three methods', async () => {
+    const fetch = fixtureFetch({ '/profile': symbolGated });
+    const provider = providerOver(fetch);
+    await expect(provider.getOverview('BRK-B')).rejects.toBeInstanceOf(UnknownSymbolError);
+    await expect(provider.getStatements('BRK-B', 'income', 'annual')).rejects.toBeInstanceOf(UnknownSymbolError);
+    await expect(provider.getEarnings('BRK-B')).rejects.toBeInstanceOf(UnknownSymbolError);
+    expect(fetch.paths()).toEqual(['/profile', '/profile', '/profile']);
+  });
+
+  it('does NOT treat an endpoint-scope HTTP 402 on the profile as an unknown symbol', async () => {
     const provider = providerOver(fixtureFetch({ '/profile': gated }));
     const err = await provider.getOverview('AAPL').catch((e: unknown) => e);
     expect(err).not.toBeInstanceOf(UnknownSymbolError);
