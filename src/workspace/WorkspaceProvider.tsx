@@ -74,6 +74,8 @@ export function WorkspaceProvider({ children }: { children: ReactNode }) {
   const timers = useRef(new Map<EntityId, ReturnType<typeof setTimeout>>());
   const chains = useRef(new Map<EntityId, Promise<unknown>>());
   const failed = useRef(new Set<EntityId>());
+  // Layouts whose refused edit is still on screen because refetching the server version failed.
+  const needsAdopt = useRef(new Set<EntityId>());
   const inflight = useRef(0);
   const loadSeq = useRef(0);
   const migrationStarted = useRef(false);
@@ -123,13 +125,16 @@ export function WorkspaceProvider({ children }: { children: ReactNode }) {
         setLayoutList(next);
         if (!next.some((l) => l.id === activeIdRef.current)) setActive(fresh.activeLayoutId);
         failed.current.delete(id);
+        needsAdopt.current.delete(id);
         setNotice(message);
       } catch (e) {
         failed.current.add(id);
+        needsAdopt.current.add(id);
         setNotice(`${message} Could not load the saved version: ${messageOf(e)}`);
       }
+      refreshSaveState();
     },
-    [clearTimer, setActive, setLayoutList],
+    [clearTimer, refreshSaveState, setActive, setLayoutList],
   );
 
   /** Send the pending edit of `id`, if any. Runs inside the layout's chain; never throws. */
@@ -236,6 +241,31 @@ export function WorkspaceProvider({ children }: { children: ReactNode }) {
     [edit, flush],
   );
 
+  /**
+   * Replace the layout list from the server WITHOUT leaving the 'ready' state, so the chart
+   * is not remounted. Edits still waiting to be saved are laid back over their layouts: the
+   * screen and the debounced PUT that follows must agree.
+   */
+  const refresh = useCallback(
+    async (message: string) => {
+      try {
+        const fresh = await apiRequest<LayoutsResponse>('/layouts');
+        const next = fresh.layouts.map((l) => {
+          const patch = pending.current.get(l.id);
+          return patch ? { ...l, ...patch } : l;
+        });
+        for (const id of [...pending.current.keys()]) if (!next.some((l) => l.id === id)) pending.current.delete(id);
+        setLayoutList(next);
+        if (!next.some((l) => l.id === activeIdRef.current)) setActive(fresh.activeLayoutId);
+        refreshSaveState();
+        setNotice(message);
+      } catch (e) {
+        setNotice(`${message} Could not refresh the list: ${messageOf(e)}`);
+      }
+    },
+    [refreshSaveState, setActive, setLayoutList],
+  );
+
   const load = useCallback(() => {
     const seq = (loadSeq.current += 1);
     statusRef.current = 'loading';
@@ -308,11 +338,11 @@ export function WorkspaceProvider({ children }: { children: ReactNode }) {
         if (activeIdRef.current === id) setActive(prev);
         const message = `Could not switch layout: ${messageOf(e)}`;
         setNotice(message);
-        if (err.code === 'NOT_FOUND') load();
+        if (err.code === 'NOT_FOUND') void refresh('That layout no longer exists. The list is refreshed.');
         return { ok: false, message };
       }
     },
-    [flush, load, setActive],
+    [flush, refresh, setActive],
   );
 
   const addAndSwitch = useCallback(
@@ -421,23 +451,27 @@ export function WorkspaceProvider({ children }: { children: ReactNode }) {
         if (toDataError(e).code === 'NOT_FOUND') {
           // Already deleted elsewhere: refetch so the stale entry goes away.
           const message = 'That layout was already deleted elsewhere. The list is refreshed.';
-          setNotice(message);
-          load();
+          void refresh(message);
           return { ok: false, message };
         }
         return { ok: false, message: messageOf(e) };
       }
     },
-    [clearTimer, load, refreshSaveState, setActive, setLayoutList],
+    [clearTimer, refresh, refreshSaveState, setActive, setLayoutList],
   );
 
   const retrySave = useCallback(() => {
     for (const id of [...failed.current]) {
-      failed.current.delete(id);
-      void flush(id);
+      if (needsAdopt.current.has(id)) {
+        // The server's answer to the refused edit never arrived: fetch it, do not "save" nothing.
+        void adoptServer(id, 'Reloaded the latest saved version; your last edit was not saved.');
+      } else {
+        failed.current.delete(id);
+        void flush(id);
+      }
     }
     refreshSaveState();
-  }, [flush, refreshSaveState]);
+  }, [adoptServer, flush, refreshSaveState]);
 
   // ───────────────────────────── context values ─────────────────────────────
 

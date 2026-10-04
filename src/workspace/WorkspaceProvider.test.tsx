@@ -12,11 +12,13 @@ import { MIGRATED_FLAG_KEY, storageKey } from '../panes/storage';
 
 let api: ActiveChartApi;
 let layoutsApi: LayoutsApi | null;
+let seenStatuses: string[] = [];
 
 function Capture() {
   api = useActiveChart();
   layoutsApi = useLayouts();
   const { chart } = api;
+  if (layoutsApi) seenStatuses.push(layoutsApi.status);
   return (
     <div>
       <span data-testid="layout-id">{chart.layoutId ?? 'none'}</span>
@@ -70,6 +72,7 @@ const layout0 = (): ChartLayout => {
 const rsi: IndicatorConfig = { id: 'r1', kind: 'rsi', params: { period: 14 }, color: '#2962ff', visible: true };
 
 beforeEach(() => {
+  seenStatuses = [];
   resetMockWorkspace();
   localStorage.clear();
 });
@@ -336,6 +339,7 @@ describe('flush on page close', () => {
     const flags = spyKeepalive();
     act(() => api.setSymbol('MSFT'));
     await waitFor(() => expect(layout0().symbol).toBe('MSFT'), { timeout: 3000 });
+    expect(flags).toHaveLength(1); // exactly one PUT happened (an empty list would pass `every`)
     expect(flags.every((f) => !f)).toBe(true);
   });
 });
@@ -383,5 +387,52 @@ describe('edits made while the workspace loads', () => {
     await sleep(SAVE_DEBOUNCE_MS + 200);
     expect(seen).toHaveLength(0);
     expect(layout0().symbol).toBe('AAPL');
+  });
+});
+
+describe('refreshing after a NOT_FOUND', () => {
+  it('keeps the workspace ready and the pending edit on screen when remove() hits an already-deleted layout', async () => {
+    const second = await apiRequest<ChartLayout>('/layouts', { method: 'POST', body: { name: 'Second' } });
+    const seen = recordWrites();
+    renderProvider();
+    await waitFor(() => expect(layoutsApi?.status).toBe('ready'));
+    await apiRequest(`/layouts/${second.id}`, { method: 'DELETE' }); // another tab
+    seen.length = 0;
+    const readyAt = seenStatuses.length;
+
+    act(() => api.setSymbol('MSFT')); // pending, not yet saved
+    let result: Awaited<ReturnType<LayoutsApi['remove']>> | undefined;
+    await act(async () => {
+      result = await layoutsApi?.remove(second.id);
+    });
+    expect(result?.ok).toBe(false);
+    await waitFor(() => expect(layoutsApi?.layouts.map((l) => l.id)).toEqual([layout0().id]));
+    expect(screen.getByTestId('symbol')).toHaveTextContent('MSFT');
+    expect(seenStatuses.slice(readyAt)).not.toContain('loading'); // the chart was never remounted
+    expect(screen.getByTestId('notice')).toHaveTextContent(/already deleted elsewhere/);
+    await waitFor(() => expect(layout0().symbol).toBe('MSFT'), { timeout: 3000 }); // screen and server agree
+    expect(screen.getByTestId('symbol')).toHaveTextContent('MSFT');
+  });
+});
+
+describe('Retry after a failed adopt', () => {
+  it('refetches the server version instead of reporting Saved', async () => {
+    const seen = recordWrites();
+    renderProvider();
+    await waitFor(() => expect(layoutsApi?.status).toBe('ready'));
+    await apiRequest(`/layouts/${layout0().id}`, { method: 'PUT', body: { revision: 1, timeframe: '1W' } });
+    seen.length = 0;
+    server.use(http.get('*/api/layouts', () => fail({ code: 'UPSTREAM_ERROR', message: 'down' })));
+
+    act(() => api.setSymbol('MSFT')); // stale revision -> CONFLICT -> the adopt refetch fails
+    await waitFor(() => expect(screen.getByTestId('save-state')).toHaveTextContent('error'), { timeout: 3000 });
+    expect(screen.getByTestId('symbol')).toHaveTextContent('MSFT'); // the refused edit is still shown
+
+    server.resetHandlers();
+    act(() => layoutsApi?.retrySave());
+    await waitFor(() => expect(screen.getByTestId('timeframe')).toHaveTextContent('1W'), { timeout: 3000 });
+    expect(screen.getByTestId('symbol')).toHaveTextContent('AAPL'); // server version adopted
+    await waitFor(() => expect(screen.getByTestId('save-state')).toHaveTextContent('saved'));
+    expect(puts(seen)).toHaveLength(1); // Retry refetched; it did not resend the refused write
   });
 });
