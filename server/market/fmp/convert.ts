@@ -3,8 +3,8 @@
  */
 import type { Bar, Snapshot, UnixSeconds } from '@shared/types';
 import { dayStartUnix, mondayOf, nyDayOf } from '../calendar';
-import type { EodRow, QuoteRow } from './schemas';
-import { dateToNySeconds } from './time';
+import type { EodRow, IntradayRow, QuoteRow } from './schemas';
+import { dateTimeToNySeconds, dateToNySeconds } from './time';
 
 /**
  * FMP returns at most this many rows per request (measured: 1980 -> now returned exactly
@@ -37,6 +37,22 @@ export function eodRowsToBars(rows: readonly EodRow[]): Bar[] {
       // FMP's EOD feed has no trade count. Null, never 0 (CONTRACT guarantee 3).
       transactions: null,
     });
+  }
+  return [...byTime.values()].sort((a, b) => a.time - b.time);
+}
+
+/**
+ * FMP intraday rows -> bars: ascending, strictly increasing, no duplicates. Rows arrive
+ * newest-first; sorting makes the guarantee independent of that. `time` is the bar's OPEN
+ * (FMP's `date` is the open: 09:30 is the first 5min bar, 15:55 the last).
+ * FMP has no VWAP or trade count on these rows: null, never 0.
+ */
+export function intradayRowsToBars(rows: readonly IntradayRow[]): Bar[] {
+  const byTime = new Map<UnixSeconds, Bar>();
+  for (const r of rows) {
+    const time = dateTimeToNySeconds(r.date);
+    if (time === undefined) continue;
+    byTime.set(time, { time, open: r.open, high: r.high, low: r.low, close: r.close, volume: r.volume, vwap: null, transactions: null });
   }
   return [...byTime.values()].sort((a, b) => a.time - b.time);
 }

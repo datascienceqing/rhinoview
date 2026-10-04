@@ -8,7 +8,7 @@
  * UTC offset anywhere in this file, because the offset is -5 or -4 depending on DST.
  */
 import type { UnixSeconds } from '@shared/types';
-import { civilToDay, dayStartUnix, dayToCivil } from '../calendar';
+import { civilToDay, dayStartUnix, dayToCivil, nyWallToUnix } from '../calendar';
 
 const DATE_RE = /^(\d{4})-(\d{2})-(\d{2})$/;
 
@@ -34,4 +34,22 @@ export function dateToNySeconds(date: string): UnixSeconds | undefined {
 export function dayNumberToDate(dayNumber: number): string {
   const { year, month, day } = dayToCivil(dayNumber);
   return `${String(year).padStart(4, '0')}-${String(month).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
+}
+
+const DATETIME_RE = /^(\d{4}-\d{2}-\d{2})[ T](\d{2}):(\d{2}):(\d{2})$/;
+
+/**
+ * An intraday `"YYYY-MM-DD HH:MM:SS"` New York wall-clock string -> Unix seconds, or undefined
+ * when malformed. Read as UTC every bar would be 4-5 hours wrong, so the zone work is
+ * `nyWallToUnix`'s (Intl-based, DST-aware); no offset is hardcoded here.
+ */
+export function dateTimeToNySeconds(value: string): UnixSeconds | undefined {
+  const m = DATETIME_RE.exec(value);
+  if (!m) return undefined;
+  const dayNumber = parseCivilDate(m[1] ?? '');
+  const h = Number(m[2]);
+  const min = Number(m[3]);
+  const sec = Number(m[4]);
+  if (dayNumber === undefined || h > 23 || min > 59 || sec > 59) return undefined;
+  return nyWallToUnix(dayNumber, h * 3600 + min * 60 + sec);
 }
