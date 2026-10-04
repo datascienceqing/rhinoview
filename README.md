@@ -1,9 +1,24 @@
-# charting-app
+# RhinoView
 
-A TradingView-style charting application. React + TypeScript on TradingView's
-open-source [lightweight-charts](https://github.com/tradingview/lightweight-charts),
-backed by a thin Fastify proxy that holds the [massive.com](https://massive.com/docs)
-API key and normalizes upstream market data.
+A financial charting application. React + TypeScript on
+[Lightweight Charts](https://github.com/tradingview/lightweight-charts), backed by a
+thin Fastify proxy that holds the market-data API key and normalizes upstream data.
+
+Market data comes from a `MarketEngine` provider chosen by `DATA_PROVIDER`:
+
+| Provider | Needs a key | Serves |
+|---|---|---|
+| `synthetic` (default) | no | All six timeframes, deterministic — used for development and tests |
+| `fmp` | `FMP_API_KEY` | Real `1D` and `1W`. Intraday is a paid tier; the free tier returns HTTP 402 |
+| `massive` | — | Not implemented |
+
+`GET /api/capabilities` reports what the active provider actually serves.
+
+## Attribution
+
+Charts are rendered with TradingView Lightweight Charts™. The library's on-chart
+logo is disabled; the licence's linking requirement is met by the credit in the
+application footer. See [NOTICE](NOTICE) before changing either.
 
 ## Setup
 

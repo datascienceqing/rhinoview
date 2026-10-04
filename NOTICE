@@ -1,0 +1,18 @@
+This product includes software developed by TradingView, Inc.
+
+TradingView Lightweight Charts™
+Copyright (с) 2025 TradingView, Inc.
+https://www.tradingview.com/
+
+---
+
+The Lightweight Charts licence requires that this attribution notice appear in the
+code, and that a link to https://www.tradingview.com/ appear on a page of the
+application that is available to users.
+
+The library's own on-chart attribution logo is disabled
+(`layout.attributionLogo: false` in src/chart/PriceChart.ts), which the licence
+permits only when that linking requirement is satisfied another way. It is satisfied
+here by the credit link rendered in the application footer (src/ui/Attribution.tsx).
+
+If you remove that footer link, re-enable the on-chart logo.

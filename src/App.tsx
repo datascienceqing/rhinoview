@@ -3,7 +3,7 @@ import type { ReactNode } from 'react';
 import type { ChartType, SearchResult, Timeframe } from '@shared/types';
 import { DataSourceProvider, HttpDataSource } from './data';
 import type { DataSource } from './data';
-import { ChartPanel, ChartTypeSelector, SnapshotReadout, SymbolSearch, TimeframeSelector } from './ui';
+import { Attribution, ChartPanel, ChartTypeSelector, SnapshotReadout, SymbolSearch, TimeframeSelector } from './ui';
 
 interface Selection {
   symbol: string;
@@ -90,6 +90,7 @@ function Shell() {
       <main className="workspace">
         <ChartPanel symbol={selection.symbol} timeframe={timeframe} chartType={chartType} />
       </main>
+      <Attribution />
     </div>
   );
 }

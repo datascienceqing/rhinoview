@@ -368,3 +368,25 @@ button:focus-visible {
 .chip-error {
   color: var(--down);
 }
+
+/* Licence-required credit for Lightweight Charts; see NOTICE. Unobtrusive, but it
+   must stay visible to users — the on-chart logo is disabled on its account. */
+.attribution {
+  flex: 0 0 auto;
+  padding: 4px 10px;
+  border-top: 1px solid var(--border);
+  background: var(--bg);
+  color: var(--text-dim);
+  font-size: 11px;
+  text-align: right;
+}
+
+.attribution a {
+  color: var(--text-dim);
+  text-decoration: none;
+}
+
+.attribution a:hover {
+  color: var(--text);
+  text-decoration: underline;
+}

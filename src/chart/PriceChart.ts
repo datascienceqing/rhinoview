@@ -68,6 +68,11 @@ export class PriceChart {
       layout: {
         background: { type: ColorType.Solid, color: t.background },
         textColor: t.text,
+        // The on-chart logo is OFF, which the library permits only when the attribution
+        // requirement is met another way. It is: see NOTICE at the repo root, and the
+        // user-visible credit link rendered in the app footer. Do not remove either of
+        // those — together they are what makes turning this off licence-compliant.
+        attributionLogo: false,
       },
       grid: { vertLines: { color: t.grid }, horzLines: { color: t.grid } },
       rightPriceScale: { borderColor: t.border },
