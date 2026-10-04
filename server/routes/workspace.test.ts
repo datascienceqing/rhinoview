@@ -196,16 +196,9 @@ describe('server and mock answer the same way', () => {
   };
 
   /** Run one scenario on both and compare status, ok, error code. Ids differ, so a step may use `ctx`. */
-  interface Step { m: string; p: (ctx: Ctx) => string; b?: (ctx: Ctx) => unknown; save?: string }
+  interface Step { m: string; p: (ctx: Ctx) => string; b?: (ctx: Ctx) => unknown; save?: string; probe?: boolean }
   type Ctx = Record<string, string>;
-  // KNOWN DIFFERENCE: the contract says POST answers 201; the mock answers 200 (mocks/workspace.ts
-  // `handle` always returns ok()). A 201 is treated as 200 here so the rest of the comparison
-  // still runs. Remove the normalization when the mock is fixed.
-  const shape = (r: Reply) => ({
-    status: r.status === 201 ? 200 : r.status,
-    ok: r.body.ok,
-    code: r.body.ok ? null : r.body.error.code,
-  });
+  const shape = (r: Reply) => ({ status: r.status, ok: r.body.ok, code: r.body.ok ? null : r.body.error.code });
 
   async function run(c: Call, steps: Step[]) {
     const ctx: Ctx = {};
@@ -215,7 +208,9 @@ describe('server and mock answer the same way', () => {
     const out = [];
     for (const s of steps) {
       const r = await c(s.m, s.p(ctx), s.b?.(ctx));
-      out.push(shape(r));
+      out.push(s.probe && r.body.ok
+        ? { ...shape(r), activeIsLay0: (r.body.data as Workspace).activeLayoutId === ctx.lay0 }
+        : shape(r));
       if (s.save && r.body.ok) ctx[s.save] = (r.body.data as { id: string }).id;
     }
     return out;
@@ -259,6 +254,33 @@ describe('server and mock answer the same way', () => {
     { m: 'DELETE', p: (c) => `/watchlists/${c.wl0}` },
     { m: 'DELETE', p: (c) => `/watchlists/${c.wl0}` }, // 404 now
     { m: 'PUT', p: () => '/workspace/active', b: () => ({ activeWatchlistId: 'nope' }) },
+  ]);
+
+  const ind = (over: object) => ({ id: 'a', kind: 'sma', params: { period: 5 }, color: '#fff', visible: true, ...over });
+  scenario('strict bodies, indicators, atomic active, bad revisions, body before id', [
+    { m: 'POST', p: () => '/layouts', b: () => ({ name: 'Two' }), save: 'lay1' },
+    { m: 'POST', p: () => '/watchlists', b: () => ({ name: 'Wl2' }), save: 'wl1' },
+    { m: 'POST', p: () => '/layouts', b: () => ({ name: 'X', extra: 1 }) },
+    { m: 'POST', p: () => '/watchlists', b: () => ({ name: 'X', extra: 1 }) },
+    { m: 'PUT', p: (c) => `/layouts/${c.lay1}`, b: () => ({ revision: 1, extra: 1 }) },
+    { m: 'PUT', p: (c) => `/watchlists/${c.wl1}`, b: () => ({ revision: 1, extra: 1 }) },
+    { m: 'POST', p: () => '/layouts', b: () => ({ name: 'I', indicators: [ind({ params: { period: 0 } })] }) },
+    { m: 'POST', p: () => '/layouts', b: () => ({ name: 'I', indicators: [ind({ params: { period: 501 } })] }) },
+    { m: 'POST', p: () => '/layouts', b: () => ({ name: 'I', indicators: [ind({ kind: 'macd', params: { fastPeriod: 26, slowPeriod: 12, signalPeriod: 9 } })] }) },
+    { m: 'POST', p: () => '/layouts', b: () => ({ name: 'I', indicators: [ind({ params: 'nope' })] }) },
+    { m: 'POST', p: () => '/layouts', b: () => ({ name: 'I', indicators: [ind({}), ind({})] }) },
+    { m: 'PUT', p: (c) => `/layouts/${c.lay1}`, b: () => ({ revision: 1, indicators: [ind({}), ind({})] }) },
+    { m: 'PUT', p: (c) => `/layouts/${c.lay1}`, b: () => ({ revision: 1, indicators: [ind({})] }) },
+    { m: 'PUT', p: () => '/workspace/active', b: (c) => ({ activeLayoutId: c.lay1, activeWatchlistId: 'nope' }) },
+    { m: 'GET', p: () => '/workspace', probe: true },
+    { m: 'PUT', p: () => '/workspace/active', b: () => ({ activeLayoutId: null }) },
+    { m: 'GET', p: () => '/workspace', probe: true },
+    { m: 'PUT', p: (c) => `/layouts/${c.lay1}`, b: () => ({ revision: 1.5 }) },
+    { m: 'PUT', p: (c) => `/watchlists/${c.wl1}`, b: () => ({ revision: 1.5 }) },
+    { m: 'PUT', p: () => '/layouts/nope', b: () => ({ revision: 'x' }) },
+    { m: 'PUT', p: () => '/layouts/nope', b: () => ({ name: 5 }) },
+    { m: 'PUT', p: () => '/watchlists/nope', b: () => ({ extra: 1 }) },
+    { m: 'PUT', p: () => '/layouts/nope', b: () => ({ revision: 1 }) },
   ]);
 
   it('agree on the final workspace shape after a mixed sequence (ids and times aside)', async () => {
