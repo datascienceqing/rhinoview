@@ -15,9 +15,9 @@ export const STATUS: Record<ApiError['code'], number> = {
   INTERNAL: 500,
 };
 
-export function ok<T>(data: T): Response {
+export function ok<T>(data: T, status = 200): Response {
   const body: ApiResult<T> = { ok: true, data };
-  return HttpResponse.json(body);
+  return HttpResponse.json(body, { status });
 }
 
 /** Contract-valid failure envelope with the status code the contract maps it to. */

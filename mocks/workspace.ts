@@ -6,8 +6,13 @@
  * uniqueness, revision conflicts, not-found, "at least one layout", and active-id
  * reassignment on delete. A mock that accepts more than the server does hid the Gate 1
  * blocker; this one must not repeat that.
+ *
+ * Gate 5 (F6): the mock now parses bodies with the server's own strict zod schemas and
+ * checks indicators with the same `checkIndicatorParams`, so the two cannot drift.
+ * Like the server, it validates the body BEFORE it looks up the id.
  */
 import { http } from 'msw';
+import type { ZodType } from 'zod';
 import type {
   ApiErrorCode,
   ChartLayout,
@@ -20,6 +25,14 @@ import type {
   Workspace,
 } from '@shared/types';
 import { MAX_LAYOUTS, MAX_NAME_LENGTH, MAX_QUOTE_SYMBOLS, MAX_WATCHLISTS, TIMEFRAMES } from '@shared/types';
+import {
+  createLayoutBodySchema,
+  createWatchlistBodySchema,
+  setActiveBodySchema,
+  updateLayoutBodySchema,
+  updateWatchlistBodySchema,
+} from '../server/workspace/schemas';
+import { checkIndicatorParams } from '../src/indicators/params';
 import { fail, ok } from './envelope';
 
 const CHART_TYPES = ['candlestick', 'line', 'area'] as const;
@@ -97,7 +110,13 @@ function layoutFields(b: Partial<CreateLayoutBody>, into: ChartLayout): void {
     into.chartType = b.chartType;
   }
   if (b.indicators !== undefined) {
-    if (!Array.isArray(b.indicators)) throw new Reject('BAD_REQUEST', 'indicators must be an array.');
+    const ids = new Set<string>();
+    for (const ind of b.indicators) {
+      const message = checkIndicatorParams(ind.kind, ind.params);
+      if (message !== null) throw new Reject('BAD_REQUEST', `Invalid indicator: ${message}`);
+      if (ids.has(ind.id)) throw new Reject('BAD_REQUEST', `Duplicate indicator id: ${ind.id}`);
+      ids.add(ind.id);
+    }
     into.indicators = structuredClone(b.indicators);
   }
 }
@@ -108,28 +127,32 @@ function find<T extends { id: string }>(list: T[], id: string, kind: 'layout' | 
   return e;
 }
 
-function checkRevision(entity: ChartLayout | Watchlist, revision: unknown): void {
-  if (typeof revision !== 'number') throw new Reject('BAD_REQUEST', 'revision is required.');
+function checkRevision(entity: ChartLayout | Watchlist, revision: number): void {
   if (revision !== entity.revision) throw new Reject('CONFLICT', 'This was changed elsewhere.', structuredClone(entity));
 }
 
 const newest = <T extends { updatedAt: number }>(l: T[]) => [...l].sort((a, b) => b.updatedAt - a.updatedAt)[0];
 
-async function handle<T>(fn: () => T | Promise<T>) {
+async function handle<T>(fn: () => T | Promise<T>, status = 200) {
   try {
-    return ok(await fn());
+    return ok(await fn(), status);
   } catch (e) {
     if (e instanceof Reject) return fail({ code: e.code, message: e.message });
     throw e;
   }
 }
 
-const body = async <T>(request: Request): Promise<T> => {
+/** Parses the JSON body with the server's strict schema: unknown fields are BAD_REQUEST. */
+const body = async <T>(request: Request, schema: ZodType<T>): Promise<T> => {
+  let raw: unknown;
   try {
-    return (await request.json()) as T;
+    raw = await request.json();
   } catch {
     throw new Reject('BAD_REQUEST', 'Malformed JSON body.');
   }
+  const parsed = schema.safeParse(raw ?? {});
+  if (!parsed.success) throw new Reject('BAD_REQUEST', `Invalid request body. ${parsed.error.issues[0]?.message ?? ''}`.trim());
+  return parsed.data;
 };
 
 export function createWorkspaceHandlers() {
@@ -142,7 +165,7 @@ export function createWorkspaceHandlers() {
 
     http.post('*/api/layouts', ({ request }) =>
       handle(async () => {
-        const b = await body<CreateLayoutBody>(request);
+        const b: CreateLayoutBody = await body(request, createLayoutBodySchema);
         if (ws.layouts.length >= MAX_LAYOUTS) throw new Reject('BAD_REQUEST', `At most ${MAX_LAYOUTS} layouts.`);
         const t = now();
         const l: ChartLayout = {
@@ -152,12 +175,12 @@ export function createWorkspaceHandlers() {
         layoutFields(b, l);
         ws.layouts.push(l);
         return structuredClone(l);
-      }),
+      }, 201),
     ),
 
     http.put('*/api/layouts/:id', ({ request, params }) =>
       handle(async () => {
-        const b = await body<UpdateLayoutBody>(request);
+        const b: UpdateLayoutBody = await body(request, updateLayoutBodySchema);
         const l = find(ws.layouts, String(params.id), 'layout');
         checkRevision(l, b.revision);
         const next = structuredClone(l);
@@ -182,7 +205,7 @@ export function createWorkspaceHandlers() {
 
     http.post('*/api/watchlists', ({ request }) =>
       handle(async () => {
-        const b = await body<CreateWatchlistBody>(request);
+        const b: CreateWatchlistBody = await body(request, createWatchlistBodySchema);
         if (ws.watchlists.length >= MAX_WATCHLISTS) throw new Reject('BAD_REQUEST', `At most ${MAX_WATCHLISTS} watchlists.`);
         const t = now();
         const w: Watchlist = {
@@ -192,12 +215,12 @@ export function createWorkspaceHandlers() {
         ws.watchlists.push(w);
         if (ws.activeWatchlistId === null) ws.activeWatchlistId = w.id;
         return structuredClone(w);
-      }),
+      }, 201),
     ),
 
     http.put('*/api/watchlists/:id', ({ request, params }) =>
       handle(async () => {
-        const b = await body<UpdateWatchlistBody>(request);
+        const b: UpdateWatchlistBody = await body(request, updateWatchlistBodySchema);
         const w = find(ws.watchlists, String(params.id), 'watchlist');
         checkRevision(w, b.revision);
         const next = structuredClone(w);
@@ -221,11 +244,15 @@ export function createWorkspaceHandlers() {
 
     http.put('*/api/workspace/active', ({ request }) =>
       handle(async () => {
-        const b = await body<SetActiveBody>(request);
-        if (b.activeLayoutId !== undefined) ws.activeLayoutId = find(ws.layouts, b.activeLayoutId, 'layout').id;
-        if (b.activeWatchlistId !== undefined) {
-          ws.activeWatchlistId = b.activeWatchlistId === null ? null : find(ws.watchlists, b.activeWatchlistId, 'watchlist').id;
-        }
+        const b: SetActiveBody = await body(request, setActiveBodySchema);
+        // All or nothing, like the server: check both ids before changing either.
+        const layoutId = b.activeLayoutId === undefined ? undefined : find(ws.layouts, b.activeLayoutId, 'layout').id;
+        const watchlistId =
+          b.activeWatchlistId === undefined || b.activeWatchlistId === null
+            ? b.activeWatchlistId
+            : find(ws.watchlists, b.activeWatchlistId, 'watchlist').id;
+        if (layoutId !== undefined) ws.activeLayoutId = layoutId;
+        if (watchlistId !== undefined) ws.activeWatchlistId = watchlistId;
         return structuredClone(ws);
       }),
     ),
