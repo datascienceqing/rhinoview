@@ -1,4 +1,5 @@
 import type { Snapshot } from '@shared/types';
+import { normKey } from './format';
 
 export type SortKey = 'symbol' | 'price' | 'change' | 'changePercent' | 'dayVolume' | 'range';
 export type SortDir = 'asc' | 'desc';
@@ -38,8 +39,8 @@ export function sortSymbols(symbols: string[], quotes: ReadonlyMap<string, Snaps
   const { key } = sort;
   return [...symbols].sort((a, b) => {
     if (key === 'symbol') return sign * a.localeCompare(b);
-    const x = numeric(quotes.get(a), key);
-    const y = numeric(quotes.get(b), key);
+    const x = numeric(quotes.get(normKey(a)), key);
+    const y = numeric(quotes.get(normKey(b)), key);
     if (x === null && y === null) return 0;
     if (x === null) return 1;
     if (y === null) return -1;

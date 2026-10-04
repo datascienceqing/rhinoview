@@ -40,7 +40,7 @@ const CONFLICT_TEXT =
  * Each queued write reads the latest revision when it runs.
  *
  * On any failed write the client refetches and adopts the server's state, then raises
- * the epoch so writes queued behind the failure are dropped. On CONFLICT in particular
+ * the list's epoch so writes queued behind the failure for that list are dropped. On CONFLICT in particular
  * the contract forbids a blind retry: the user sees the current list and decides again.
  */
 export function useWatchlists(): WatchlistsApi {
@@ -51,7 +51,8 @@ export function useWatchlists(): WatchlistsApi {
 
   const listsRef = useRef<Watchlist[]>([]);
   const chain = useRef<Promise<unknown>>(Promise.resolve());
-  const epoch = useRef(0);
+  /** Per-list epochs: a failed write drops queued writes for THAT list only. */
+  const epochs = useRef(new Map<string, number>());
   const pending = useRef(0);
 
   const commit = useCallback((next: Watchlist[]) => {
@@ -87,17 +88,21 @@ export function useWatchlists(): WatchlistsApi {
     return () => c.abort();
   }, [load]);
 
-  /** Runs `task` after every earlier write. Resolves false when it was dropped or failed. */
+  /**
+   * Runs `task` after every earlier write. Resolves false when it was dropped or failed.
+   * `scope` is the list id the write belongs to, or null for a write that belongs to none
+   * (create). A failure drops only queued writes with the same scope.
+   */
   const enqueue = useCallback(
-    (task: () => Promise<boolean>): Promise<boolean> => {
-      const mine = epoch.current;
+    (scope: EntityId | null, task: () => Promise<boolean>): Promise<boolean> => {
+      const mine = scope === null ? 0 : (epochs.current.get(scope) ?? 0);
       pending.current += 1;
       const run = chain.current.then(async () => {
         try {
-          if (epoch.current !== mine) return false;
+          if (scope !== null && (epochs.current.get(scope) ?? 0) !== mine) return false;
           return await task();
         } catch (e) {
-          epoch.current += 1;
+          if (scope !== null) epochs.current.set(scope, (epochs.current.get(scope) ?? 0) + 1);
           const err = toDataError(e);
           setNotice({
             kind: 'error',
@@ -118,7 +123,7 @@ export function useWatchlists(): WatchlistsApi {
 
   const save = useCallback(
     (id: EntityId, patch: { name?: string; symbols?: string[] }) =>
-      enqueue(async () => {
+      enqueue(id, async () => {
         const current = listsRef.current.find((w) => w.id === id);
         if (!current) return false;
         const saved = await updateWatchlist(id, { revision: current.revision, ...patch });
@@ -147,7 +152,7 @@ export function useWatchlists(): WatchlistsApi {
   const select = useCallback(
     (id: EntityId) => {
       setActiveId(id);
-      void enqueue(async () => {
+      void enqueue(id, async () => {
         await setActiveWatchlist(id);
         return true;
       });
@@ -157,7 +162,7 @@ export function useWatchlists(): WatchlistsApi {
 
   const create = useCallback(
     (name: string) =>
-      enqueue(async () => {
+      enqueue(null, async () => {
         const created = await createWatchlist(name);
         commit([...listsRef.current, created]);
         setActiveId(created.id);
@@ -169,13 +174,23 @@ export function useWatchlists(): WatchlistsApi {
 
   const remove = useCallback(
     (id: EntityId) =>
-      enqueue(async () => {
+      enqueue(id, async () => {
         await deleteWatchlist(id);
-        // The server picks the next active list; take its answer rather than guess.
-        await adopt();
+        // The list is gone: writes still queued for it must not run.
+        epochs.current.set(id, (epochs.current.get(id) ?? 0) + 1);
+        // The server picks the next active list; take its answer rather than guess. A
+        // failed refetch is not a failed write: the delete happened.
+        try {
+          await adopt();
+        } catch {
+          const rest = listsRef.current.filter((w) => w.id !== id);
+          commit(rest);
+          setActiveId((cur) => (cur === id ? (rest[0]?.id ?? null) : cur));
+          setNotice({ kind: 'info', text: 'The list was deleted. The panel could not refresh from the server. Reload to confirm.' });
+        }
         return true;
       }),
-    [adopt, enqueue],
+    [adopt, commit, enqueue],
   );
 
   return {

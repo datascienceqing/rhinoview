@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import type { Snapshot } from '@shared/types';
 import { isAbortError, toDataError } from '../data';
 import { fetchQuotes } from './api';
+import { normKey } from './format';
 
 /** The rate budget in docs/CONTRACT.md is computed for a 30 s poll. Do not shorten it. */
 export const QUOTE_POLL_MS = 30_000;
@@ -12,7 +13,7 @@ export interface QuotesState {
   missing: ReadonlySet<string>;
   /** Upper-case symbols whose fetch failed; retry on the next poll. */
   failed: ReadonlySet<string>;
-  /** True once a response has arrived for the current symbol set. */
+  /** True once a response (or an error) has arrived for the current symbol set. */
   loaded: boolean;
   /** Message of the latest failed request, or null. Older data stays on screen. */
   error: string | null;
@@ -31,14 +32,14 @@ const visible = () => typeof document === 'undefined' || document.visibilityStat
  */
 export function useQuotes(symbols: string[]): QuotesState {
   const key = useMemo(() => [...new Set(symbols.map((s) => s.toUpperCase()))].sort().join(','), [symbols]);
-  const [state, setState] = useState<Omit<QuotesState, 'refresh'>>({
-    quotes: EMPTY_MAP, missing: EMPTY_SET, failed: EMPTY_SET, loaded: false, error: null,
+  const [state, setState] = useState<Omit<QuotesState, 'refresh' | 'loaded'> & { loadedKey: string | null }>({
+    quotes: EMPTY_MAP, missing: EMPTY_SET, failed: EMPTY_SET, loadedKey: null, error: null,
   });
   const loadRef = useRef<() => void>(() => undefined);
 
   useEffect(() => {
     if (key === '') {
-      setState({ quotes: EMPTY_MAP, missing: EMPTY_SET, failed: EMPTY_SET, loaded: false, error: null });
+      setState({ quotes: EMPTY_MAP, missing: EMPTY_SET, failed: EMPTY_SET, loadedKey: null, error: null });
       loadRef.current = () => undefined;
       return;
     }
@@ -55,17 +56,17 @@ export function useQuotes(symbols: string[]): QuotesState {
         (res) => {
           if (disposed || c.signal.aborted) return;
           setState({
-            quotes: new Map(res.quotes.map((q) => [q.symbol.toUpperCase(), q])),
-            missing: new Set(res.missing.map((s) => s.toUpperCase())),
-            failed: new Set(res.failed.map((s) => s.toUpperCase())),
-            loaded: true,
+            quotes: new Map(res.quotes.map((q) => [normKey(q.symbol), q])),
+            missing: new Set(res.missing.map(normKey)),
+            failed: new Set(res.failed.map(normKey)),
+            loadedKey: key,
             error: null,
           });
         },
         (e: unknown) => {
           if (disposed || isAbortError(e)) return;
           // Keep the last good data: a failed poll must not blank the list.
-          setState((s) => ({ ...s, loaded: true, error: toDataError(e).message }));
+          setState((s) => ({ ...s, loadedKey: key, error: toDataError(e).message }));
         },
       );
     };
@@ -101,5 +102,6 @@ export function useQuotes(symbols: string[]): QuotesState {
   }, [key]);
 
   const refresh = useCallback(() => loadRef.current(), []);
-  return { ...state, refresh };
+  const { loadedKey, ...rest } = state;
+  return { ...rest, loaded: loadedKey === key, refresh };
 }

@@ -14,3 +14,10 @@ export function direction(v: number | null): 'up' | 'down' | 'flat' {
   if (v === null || v === 0) return 'flat';
   return v > 0 ? 'up' : 'down';
 }
+
+/**
+ * Key for matching a stored symbol to a quote. The server answers under the engine's
+ * canonical spelling, which can differ from what is stored: case, and `.` against `-`
+ * (BRK.B and BRK-B). Compare through this key on both sides.
+ */
+export const normKey = (symbol: string) => symbol.toUpperCase().replace(/\./g, '-');

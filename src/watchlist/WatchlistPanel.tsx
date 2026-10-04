@@ -4,7 +4,7 @@ import type { SearchResult, Snapshot, Watchlist } from '@shared/types';
 import { MAX_NAME_LENGTH, MAX_QUOTE_SYMBOLS } from '@shared/types';
 import { SymbolSearch } from '../ui/SymbolSearch';
 import { useActiveChart } from '../workspace';
-import { direction, fmtChange, fmtPercent, fmtPrice, fmtRange, fmtVolume } from './format';
+import { direction, fmtChange, fmtPercent, fmtPrice, fmtRange, fmtVolume, normKey } from './format';
 import { moveItem, nextSort, sortSymbols } from './sort';
 import type { SortKey, SortState } from './sort';
 import { useQuotes } from './useQuotes';
@@ -245,10 +245,10 @@ export function WatchlistPanel() {
                           key={symbol}
                           symbol={symbol}
                           index={i}
-                          quote={q.quotes.get(symbol.toUpperCase())}
-                          missing={q.missing.has(symbol.toUpperCase())}
-                          failed={q.failed.has(symbol.toUpperCase())}
-                          unavailable={q.error !== null && q.quotes.size === 0}
+                          quote={q.quotes.get(normKey(symbol))}
+                          missing={q.missing.has(normKey(symbol))}
+                          failed={q.failed.has(normKey(symbol))}
+                          unavailable={q.loaded}
                           isActive={chart.symbol.toUpperCase() === symbol.toUpperCase()}
                           canReorder={!sorted}
                           isDropTarget={dropTarget === symbol && dragging !== symbol}

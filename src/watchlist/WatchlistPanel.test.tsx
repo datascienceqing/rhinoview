@@ -4,6 +4,9 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 import type { ReactNode } from 'react';
 import type { Watchlist, Workspace } from '@shared/types';
 import { DataSourceProvider, HttpDataSource, apiRequest } from '../data';
+import { http, HttpResponse } from 'msw';
+import { server } from '../../mocks/server';
+import { ok } from '../../mocks/envelope';
 import { mockWorkspace, resetMockWorkspace } from '../../mocks/workspace';
 import { mockSnapshot, resetMockQuotes, setMockQuotesDelayed } from '../../mocks/quotes';
 import { ActiveChartContext } from '../workspace/ActiveChartContext';
@@ -106,6 +109,35 @@ describe('WatchlistPanel rows', () => {
     expect(rowOf('AAPL')).not.toHaveAttribute('aria-current');
     await userEvent.click(screen.getByRole('button', { name: 'NVDA' }));
     expect(setSymbol).toHaveBeenCalledWith('NVDA');
+  });
+});
+
+describe('WatchlistPanel symbol matching', () => {
+  it('matches a stored BRK.B to the engine canonical BRK-B', async () => {
+    resetMockWorkspace(wlWith(['BRK.B']));
+    server.use(
+      http.get('*/api/quotes', () => ok({ quotes: [mockSnapshot('BRK-B')], missing: [], failed: [] })),
+    );
+    renderPanel();
+    await screen.findByRole('button', { name: 'BRK.B' });
+    expect(await within(rowOf('BRK.B')).findByText(mockSnapshot('BRK-B').price?.toFixed(2) ?? '')).toBeInTheDocument();
+  });
+
+  it('says "unavailable" once the response arrived and a symbol is in none of quotes, missing, failed', async () => {
+    resetMockWorkspace(wlWith(['AAPL', 'WEIRD']));
+    server.use(http.get('*/api/quotes', () => ok({ quotes: [mockSnapshot('AAPL')], missing: [], failed: [] })));
+    renderPanel();
+    await screen.findByRole('button', { name: 'WEIRD' });
+    expect(await within(rowOf('WEIRD')).findByText('unavailable')).toBeInTheDocument();
+    expect(screen.queryByText('loading…')).toBeNull();
+  });
+
+  it('shows "loading…" before the first response', async () => {
+    resetMockWorkspace(wlWith(['AAPL']));
+    server.use(http.get('*/api/quotes', async () => { await new Promise(() => undefined); return HttpResponse.json({}); }));
+    renderPanel();
+    await screen.findByRole('button', { name: 'AAPL' });
+    expect(within(rowOf('AAPL')).getByText('loading…')).toBeInTheDocument();
   });
 });
 
