@@ -109,6 +109,28 @@ describe('WatchlistPanel rows', () => {
   });
 });
 
+describe('WatchlistPanel row click', () => {
+  it('selects the symbol when any cell of the row is clicked, once', async () => {
+    const { setSymbol } = renderPanel('AAPL');
+    await screen.findByRole('button', { name: 'MSFT' });
+    await waitFor(() => expect(within(rowOf('MSFT')).queryByText('loading…')).toBeNull());
+    await userEvent.click(within(rowOf('MSFT')).getByText(mockSnapshot('MSFT').price?.toFixed(2) ?? ''));
+    expect(setSymbol).toHaveBeenCalledTimes(1);
+    expect(setSymbol).toHaveBeenCalledWith('MSFT');
+    await userEvent.click(screen.getByRole('button', { name: 'NVDA' }));
+    expect(setSymbol).toHaveBeenCalledTimes(2);
+  });
+
+  it('removes with × without selecting the row', async () => {
+    const { setSymbol } = renderPanel('AAPL');
+    await screen.findByRole('button', { name: 'MSFT' });
+    await userEvent.click(screen.getByRole('button', { name: 'Remove MSFT' }));
+    expect(setSymbol).not.toHaveBeenCalled();
+    expect(order()).not.toContain('MSFT');
+    await waitFor(() => expect(savedSymbols()).not.toContain('MSFT'));
+  });
+});
+
 describe('WatchlistPanel sort', () => {
   it('cycles ascending, descending, off and really reorders the rows', async () => {
     renderPanel();

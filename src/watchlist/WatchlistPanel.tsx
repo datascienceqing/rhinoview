@@ -252,7 +252,9 @@ export function WatchlistPanel() {
                           isActive={chart.symbol.toUpperCase() === symbol.toUpperCase()}
                           canReorder={!sorted}
                           isDropTarget={dropTarget === symbol && dragging !== symbol}
-                          onSelect={() => setSymbol(symbol)}
+                          onSelect={() => {
+                            if (!dragging) setSymbol(symbol);
+                          }}
                           onRemove={() => removeSymbol(symbol)}
                           onKey={(e) => onRowKey(e, symbol, i)}
                           onDragStart={() => setDragging(symbol)}
@@ -320,6 +322,9 @@ function Row(p: RowProps) {
       aria-current={p.isActive ? 'true' : undefined}
       title={quote ? detail(quote) : undefined}
       draggable={p.canReorder}
+      // A click anywhere on the row selects it. The symbol button stays the keyboard and
+      // screen-reader target: its click bubbles here, so it needs no handler of its own.
+      onClick={p.onSelect}
       onDragStart={p.onDragStart}
       onDragOver={p.onDragOver}
       onDrop={p.onDrop}
@@ -333,7 +338,6 @@ function Row(p: RowProps) {
           aria-describedby="wl-reorder-hint"
           aria-keyshortcuts={p.canReorder ? 'Alt+ArrowUp Alt+ArrowDown' : undefined}
           title={`Show ${p.symbol} on the chart`}
-          onClick={p.onSelect}
           onKeyDown={p.onKey}
         >
           {p.symbol}
@@ -353,7 +357,12 @@ function Row(p: RowProps) {
         </td>
       )}
       <td className="right">
-        <button type="button" className="wl-remove" aria-label={`Remove ${p.symbol}`} onClick={p.onRemove}>×</button>
+        <button type="button" className="wl-remove" aria-label={`Remove ${p.symbol}`} onClick={(e) => {
+            e.stopPropagation();
+            p.onRemove();
+          }}
+        >
+          ×</button>
       </td>
     </tr>
   );
