@@ -1,17 +1,32 @@
 import { act, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { StrictMode } from 'react';
+import type { ReactElement } from 'react';
+import type { IndicatorConfig } from '@shared/types';
 import { DataSourceProvider, HttpDataSource } from '../data';
 import { charts, lastChart, resetFakeCharts } from '../chart/testing/fakeLightweightCharts';
 import type { FakeChart, FakeSeries } from '../chart/testing/fakeLightweightCharts';
-import { storageKey } from '../panes/storage';
+import { DEFAULT_ACTIVE_CHART, InMemoryWorkspaceProvider, WorkspaceProvider, useActiveChart } from '../workspace';
+import { resetMockWorkspace, mockWorkspace } from '../../mocks/workspace';
 import { ChartPanel } from './ChartPanel';
 import type { ChartPanelProps } from './ChartPanel';
 import { renderWithDataSource } from './testUtils';
 
 vi.mock('lightweight-charts', async () => (await import('../chart/testing/fakeLightweightCharts')).fakeModule);
 
+/** ChartPanel reads indicators from the active chart, so it needs a workspace provider. */
+function inMemory(ui: ReactElement, initial?: IndicatorConfig[]) {
+  return initial ? (
+    <InMemoryWorkspaceProvider initial={{ ...DEFAULT_ACTIVE_CHART, indicators: initial }}>
+      {ui}
+    </InMemoryWorkspaceProvider>
+  ) : (
+    <InMemoryWorkspaceProvider>{ui}</InMemoryWorkspaceProvider>
+  );
+}
+
 beforeEach(() => {
+  resetMockWorkspace();
   resetFakeCharts();
   localStorage.clear();
   vi.useFakeTimers({ toFake: ['Date'] });
@@ -23,10 +38,14 @@ afterEach(() => {
   localStorage.clear();
 });
 
-const props: ChartPanelProps = { symbol: 'AAPL', timeframe: '1D', chartType: 'candlestick' };
+const props: ChartPanelProps = {
+  symbol: 'AAPL',
+  timeframe: '1D',
+  chartType: 'candlestick',
+};
 
 async function renderPanel(p: Partial<ChartPanelProps> = {}) {
-  const view = renderWithDataSource(<ChartPanel {...props} {...p} />);
+  const view = renderWithDataSource(inMemory(<ChartPanel {...props} {...p} />));
   await screen.findByTestId('crosshair-legend');
   return view;
 }
@@ -76,7 +95,9 @@ describe('adding and removing indicators', () => {
     await renderPanel();
     await add(user, 'SMA');
     await add(user, 'SMA');
-    const periods = screen.getAllByLabelText('Period', { selector: 'input[type="number"]' });
+    const periods = screen.getAllByLabelText('Period', {
+      selector: 'input[type="number"]',
+    });
     expect(periods).toHaveLength(2);
     const second = periods[1];
     if (!second) throw new Error('missing second editor');
@@ -87,7 +108,10 @@ describe('adding and removing indicators', () => {
     expect(screen.getByRole('button', { name: 'Remove SMA (20)' })).toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'Remove SMA (50)' })).toBeInTheDocument();
     const rows = screen.getAllByTestId(/^indicator-legend-/);
-    expect(rows.map((r) => r.textContent)).toEqual([expect.stringContaining('SMA (20)'), expect.stringContaining('SMA (50)')]);
+    expect(rows.map((r) => r.textContent)).toEqual([
+      expect.stringContaining('SMA (20)'),
+      expect.stringContaining('SMA (50)'),
+    ]);
   });
 
   it('toggles visibility and colour through series options, without rewriting data', async () => {
@@ -98,7 +122,9 @@ describe('adding and removing indicators', () => {
     rsi?.setData.mockClear();
     await user.click(screen.getByRole('checkbox', { name: 'Show RSI (14)' }));
     expect(rsi?.applyOptions).toHaveBeenLastCalledWith(expect.objectContaining({ visible: false }));
-    fireEvent.change(screen.getByLabelText('Colour of RSI (14)'), { target: { value: '#123456' } });
+    fireEvent.change(screen.getByLabelText('Colour of RSI (14)'), {
+      target: { value: '#123456' },
+    });
     expect(rsi?.applyOptions).toHaveBeenLastCalledWith(expect.objectContaining({ color: '#123456' }));
     expect(rsi?.setData).not.toHaveBeenCalled();
   });
@@ -111,7 +137,9 @@ describe('parameter editor', () => {
     await add(user, 'RSI');
     const rsi = lastChart().paneContents[1]?.[0];
     rsi?.setData.mockClear();
-    const input = screen.getByLabelText('Period', { selector: 'input[type="number"]' });
+    const input = screen.getByLabelText('Period', {
+      selector: 'input[type="number"]',
+    });
 
     fireEvent.change(input, { target: { value: '0' } });
     expect(screen.getByRole('alert')).toHaveTextContent(/between 1 and 500/);
@@ -129,7 +157,9 @@ describe('parameter editor', () => {
     const user = userEvent.setup();
     await renderPanel();
     await add(user, 'RSI');
-    const input = screen.getByLabelText('Period', { selector: 'input[type="number"]' });
+    const input = screen.getByLabelText('Period', {
+      selector: 'input[type="number"]',
+    });
     fireEvent.change(input, { target: { value: '0' } });
     fireEvent.change(input, { target: { value: '9' } });
     expect(screen.queryByRole('alert')).toBeNull();
@@ -143,12 +173,19 @@ describe('parameter editor', () => {
     const [macd, signal] = lastChart().paneContents[1] ?? [];
     macd?.setData.mockClear();
     signal?.setData.mockClear();
-    const fast = screen.getByLabelText('Fast', { selector: 'input[type="number"]' });
-    const slow = screen.getByLabelText('Slow', { selector: 'input[type="number"]' });
+    const fast = screen.getByLabelText('Fast', {
+      selector: 'input[type="number"]',
+    });
+    const slow = screen.getByLabelText('Slow', {
+      selector: 'input[type="number"]',
+    });
 
     fireEvent.change(fast, { target: { value: '30' } });
     const alerts = screen.getAllByRole('alert').map((a) => a.textContent);
-    expect(alerts).toEqual([expect.stringMatching(/Fast period must be less than slow/), expect.stringMatching(/Slow period must be greater than fast/)]);
+    expect(alerts).toEqual([
+      expect.stringMatching(/Fast period must be less than slow/),
+      expect.stringMatching(/Slow period must be greater than fast/),
+    ]);
     expect(macd?.setData).not.toHaveBeenCalled();
 
     fireEvent.change(slow, { target: { value: '40' } });
@@ -207,7 +244,10 @@ describe('per-pane crosshair legend', () => {
     const rsi = chart.paneContents[1]?.[0] as FakeSeries;
     const sma = chart.paneContents[0]?.[1] as FakeSeries;
     const data = lastData(rsi);
-    const rsiId = screen.getAllByTestId(/^indicator-legend-/).find((e) => e.textContent?.includes('RSI'))?.dataset['testid']?.replace('indicator-legend-', '');
+    const rsiId = screen
+      .getAllByTestId(/^indicator-legend-/)
+      .find((e) => e.textContent?.includes('RSI'))
+      ?.dataset['testid']?.replace('indicator-legend-', '');
     if (!rsiId) throw new Error('no RSI legend');
     const rsiText = () => screen.getByTestId(`indicator-value-${rsiId}-value`).textContent;
 
@@ -247,9 +287,7 @@ describe('recompute on bars change', () => {
     const user = userEvent.setup();
     const ds = new HttpDataSource();
     const ui = (p: ChartPanelProps) => (
-      <DataSourceProvider value={ds}>
-        <ChartPanel {...p} />
-      </DataSourceProvider>
+      <DataSourceProvider value={ds}>{inMemory(<ChartPanel {...p} />)}</DataSourceProvider>
     );
     const { rerender } = render(ui(props));
     await screen.findByTestId('crosshair-legend');
@@ -269,30 +307,25 @@ describe('recompute on bars change', () => {
   });
 });
 
-describe('persistence', () => {
-  it('restores indicators for a symbol after a remount, with their edited params and colours', async () => {
-    const user = userEvent.setup();
-    const first = await renderPanel();
-    await add(user, 'RSI');
-    fireEvent.change(screen.getByLabelText('Period', { selector: 'input[type="number"]' }), { target: { value: '7' } });
-    fireEvent.change(screen.getByLabelText('Colour of RSI (7)'), { target: { value: '#abcdef' } });
-    first.unmount();
+/** The app's own wiring: the chart's props come from the active layout. */
+function Connected() {
+  const { chart } = useActiveChart();
+  return <ChartPanel symbol={chart.symbol} timeframe={chart.timeframe} chartType={chart.chartType} />;
+}
+const connected = (ds = new HttpDataSource()) => (
+  <DataSourceProvider value={ds}>
+    <WorkspaceProvider>
+      <Connected />
+    </WorkspaceProvider>
+  </DataSourceProvider>
+);
 
-    resetFakeCharts();
-    await renderPanel();
-    expect(paneTags(lastChart())).toEqual([['Candlestick'], ['Line']]);
-    expect(lastChart().paneContents[1]?.[0]?.applyOptions).toHaveBeenCalledWith(expect.objectContaining({ color: '#abcdef' }));
-    await openMenu(user);
-    expect(screen.getByRole('button', { name: 'Remove RSI (7)' })).toBeInTheDocument();
-  });
-
-  it('keeps indicators per symbol', async () => {
+describe('indicators belong to the layout', () => {
+  it('keeps the indicators when the symbol changes', async () => {
     const user = userEvent.setup();
     const ds = new HttpDataSource();
     const ui = (symbol: string) => (
-      <DataSourceProvider value={ds}>
-        <ChartPanel {...props} symbol={symbol} />
-      </DataSourceProvider>
+      <DataSourceProvider value={ds}>{inMemory(<ChartPanel {...props} symbol={symbol} />)}</DataSourceProvider>
     );
     const { rerender } = render(ui('AAPL'));
     await screen.findByTestId('crosshair-legend');
@@ -300,18 +333,38 @@ describe('persistence', () => {
     expect(lastChart().paneList).toHaveLength(2);
 
     rerender(ui('MSFT'));
-    await waitFor(() => expect(lastChart().paneList).toHaveLength(1));
-    expect(screen.queryByRole('button', { name: 'Remove RSI (14)' })).toBeNull();
-
-    rerender(ui('AAPL'));
-    await waitFor(() => expect(lastChart().paneList).toHaveLength(2));
+    // The mock proxy has bars for AAPL only; the new symbol's own state does not matter here.
+    await screen.findByText('Symbol not found');
+    expect(lastChart().paneList).toHaveLength(2);
+    expect(screen.getByRole('button', { name: 'Remove RSI (14)' })).toBeInTheDocument();
   });
 
-  it('renders the chart with defaults when stored JSON is corrupt', async () => {
-    localStorage.setItem(storageKey('AAPL'), '{"indicators":[{"id":');
-    await renderPanel();
-    expect(lastChart().paneList).toHaveLength(1);
-    expect(lastChart().liveSeries).toHaveLength(1);
+  it('saves them in the layout on the server and restores them, with edited params and colours, after a remount', async () => {
+    const user = userEvent.setup();
+    const first = render(connected());
+    await screen.findByTestId('crosshair-legend');
+    await add(user, 'RSI');
+    fireEvent.change(screen.getByLabelText('Period', { selector: 'input[type="number"]' }), { target: { value: '7' } });
+    fireEvent.change(screen.getByLabelText('Colour of RSI (7)'), {
+      target: { value: '#abcdef' },
+    });
+    await waitFor(() => expect(mockWorkspace().layouts[0]?.indicators).toHaveLength(1), { timeout: 3000 });
+    expect(mockWorkspace().layouts[0]?.indicators[0]).toMatchObject({
+      kind: 'rsi',
+      params: { period: 7 },
+      color: '#abcdef',
+    });
+    first.unmount();
+
+    resetFakeCharts();
+    render(connected());
+    await screen.findByTestId('crosshair-legend');
+    expect(paneTags(lastChart())).toEqual([['Candlestick'], ['Line']]);
+    expect(lastChart().paneContents[1]?.[0]?.applyOptions).toHaveBeenCalledWith(
+      expect.objectContaining({ color: '#abcdef' }),
+    );
+    await openMenu(user);
+    expect(screen.getByRole('button', { name: 'Remove RSI (7)' })).toBeInTheDocument();
   });
 
   it('renders the chart, and still lets indicators be added, when storage throws on every access', async () => {
@@ -328,33 +381,43 @@ describe('persistence', () => {
     expect(lastChart().paneList).toHaveLength(2);
   });
 
-  it('writes to localStorage under a per-symbol key', async () => {
+  it('no longer writes indicators to localStorage', async () => {
     const user = userEvent.setup();
     await renderPanel();
     await add(user, 'EMA');
-    const saved = JSON.parse(localStorage.getItem(storageKey('AAPL')) ?? 'null') as { indicators: { kind: string }[] };
-    expect(saved.indicators.map((i) => i.kind)).toEqual(['ema']);
-    expect(localStorage.getItem(storageKey('MSFT'))).toBeNull();
+    expect(localStorage.length).toBe(0);
   });
 });
 
 describe('disposal under StrictMode', () => {
   it('leaves exactly one live chart whose indicator series are all live, and removes everything on unmount', async () => {
-    localStorage.setItem(
-      storageKey('AAPL'),
-      JSON.stringify({
-        version: 1,
-        indicators: [
-          { id: 'r', kind: 'rsi', params: { period: 14 }, color: '#2962ff', visible: true },
-          { id: 'm', kind: 'macd', params: { fastPeriod: 12, slowPeriod: 26, signalPeriod: 9 }, color: '#e91e63', visible: true },
-          { id: 's', kind: 'sma', params: { period: 20, source: 'close' }, color: '#00bcd4', visible: true },
-        ],
-      }),
-    );
+    const seeded: IndicatorConfig[] = [
+      {
+        id: 'r',
+        kind: 'rsi',
+        params: { period: 14 },
+        color: '#2962ff',
+        visible: true,
+      },
+      {
+        id: 'm',
+        kind: 'macd',
+        params: { fastPeriod: 12, slowPeriod: 26, signalPeriod: 9 },
+        color: '#e91e63',
+        visible: true,
+      },
+      {
+        id: 's',
+        kind: 'sma',
+        params: { period: 20, source: 'close' },
+        color: '#00bcd4',
+        visible: true,
+      },
+    ];
     const { unmount } = render(
       <StrictMode>
         <DataSourceProvider value={new HttpDataSource()}>
-          <ChartPanel {...props} />
+          {inMemory(<ChartPanel {...props} />, seeded)}
         </DataSourceProvider>
       </StrictMode>,
     );

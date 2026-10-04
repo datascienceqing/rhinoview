@@ -1,15 +1,13 @@
-import { useCallback, useMemo, useRef, useState } from 'react';
+import { useCallback, useMemo, useRef } from 'react';
 import type { Bar, IndicatorConfig, IndicatorKind, IndicatorParams } from '@shared/types';
 import type { ComputeIndicator } from '../indicators/types';
 import { ComputeCache } from './computeCache';
 import type { ComputedIndicator } from './computeCache';
 import { computeIndicator } from './computeSource';
 import { createIndicator } from './config';
-import { loadIndicators, saveIndicators } from './storage';
-import type { StorageLike } from './storage';
 
 export interface IndicatorActions {
-  indicators: IndicatorConfig[];
+  indicators: readonly IndicatorConfig[];
   add(kind: IndicatorKind): void;
   remove(id: string): void;
   setParams(id: string, params: IndicatorParams): void;
@@ -17,37 +15,26 @@ export interface IndicatorActions {
   setVisible(id: string, visible: boolean): void;
 }
 
-interface Held {
-  symbol: string;
-  items: IndicatorConfig[];
-}
-
 /**
- * The user's indicators for `symbol`, persisted per symbol. Persistence is best effort
- * (see storage.ts): a failure leaves the in-memory state, and the chart, untouched.
+ * Editing actions over a CONTROLLED list of indicators. The list belongs to the active
+ * layout (see src/workspace), which also persists it; this hook only turns user actions
+ * into new lists.
  */
-export function useIndicators(symbol: string, storage?: StorageLike): IndicatorActions {
-  const [held, setHeld] = useState<Held>(() => ({ symbol, items: loadIndicators(symbol, storage) }));
-  // Latest state for the action callbacks, so a burst of slider events composes instead of racing.
-  const latest = useRef(held);
-
-  let current = held;
-  if (held.symbol !== symbol) {
-    // Symbol changed: swap in that symbol's saved list during render (React's
-    // "adjust state when a prop changes" pattern), so no frame draws the old symbol's indicators.
-    current = { symbol, items: loadIndicators(symbol, storage) };
-    latest.current = current;
-    setHeld(current);
-  }
+export function useIndicators(
+  indicators: readonly IndicatorConfig[],
+  setIndicators: (next: IndicatorConfig[]) => void,
+): IndicatorActions {
+  // Latest list for the action callbacks, so a burst of slider events composes instead of racing.
+  const latest = useRef<readonly IndicatorConfig[]>(indicators);
+  latest.current = indicators;
 
   const commit = useCallback(
-    (change: (items: IndicatorConfig[]) => IndicatorConfig[]) => {
-      const next = { symbol: latest.current.symbol, items: change(latest.current.items) };
+    (change: (items: readonly IndicatorConfig[]) => IndicatorConfig[]) => {
+      const next = change(latest.current);
       latest.current = next;
-      setHeld(next);
-      saveIndicators(next.symbol, next.items, storage);
+      setIndicators(next);
     },
-    [storage],
+    [setIndicators],
   );
 
   const patch = useCallback(
@@ -58,14 +45,14 @@ export function useIndicators(symbol: string, storage?: StorageLike): IndicatorA
 
   return useMemo(
     () => ({
-      indicators: current.items,
+      indicators,
       add: (kind) => commit((items) => [...items, createIndicator(kind, items)]),
       remove: (id) => commit((items) => items.filter((c) => c.id !== id)),
       setParams: (id, params) => patch(id, { params }),
       setColor: (id, color) => patch(id, { color }),
       setVisible: (id, visible) => patch(id, { visible }),
     }),
-    [current.items, commit, patch],
+    [indicators, commit, patch],
   );
 }
 

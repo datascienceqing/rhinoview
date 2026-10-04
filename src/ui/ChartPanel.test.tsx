@@ -1,14 +1,23 @@
 import { act, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { http, HttpResponse } from 'msw';
+import type { ReactElement } from 'react';
 import { MOCK_SYMBOLS, sliceBars } from '../../mocks/data';
 import { MAX_UNIX_SECONDS, parseBarsQuery } from '../../mocks/handlers';
+import { ok } from '../../mocks/envelope';
 import { server } from '../../mocks/server';
+import { resetCapabilitiesCache } from '../data';
 import { lastChart, resetFakeCharts } from '../chart/testing/fakeLightweightCharts';
 import { ChartPanel } from './ChartPanel';
-import { renderWithDataSource } from './testUtils';
+import { InMemoryWorkspaceProvider } from '../workspace';
+import { renderWithDataSource as renderWithData } from './testUtils';
 
 vi.mock('lightweight-charts', async () => (await import('../chart/testing/fakeLightweightCharts')).fakeModule);
+
+/** ChartPanel reads indicators from the active chart, so it needs a workspace provider. */
+function renderWithDataSource(ui: ReactElement) {
+  return renderWithData(<InMemoryWorkspaceProvider>{ui}</InMemoryWorkspaceProvider>);
+}
 
 // Computed per test, under the faked clock (mock bars are generated relative to "now").
 const allDaily = () => sliceBars('1D', 0, MAX_UNIX_SECONDS);
@@ -18,7 +27,10 @@ beforeEach(() => {
   vi.useFakeTimers({ toFake: ['Date'] });
   vi.setSystemTime(new Date('2026-10-01T12:00:00Z'));
 });
-afterEach(() => vi.useRealTimers());
+afterEach(() => {
+  vi.useRealTimers();
+  resetCapabilitiesCache(); // a test may have cached non-default capabilities
+});
 
 function value(testId: string) {
   return within(screen.getByTestId('crosshair-legend')).getByTestId(testId);
@@ -64,6 +76,26 @@ describe('ChartPanel crosshair legend', () => {
   });
 });
 
+describe('ChartPanel timeframe fallback', () => {
+  it('draws the nearest supported timeframe when the saved one is not served, and fetches that one', async () => {
+    resetCapabilitiesCache();
+    server.use(
+      http.get('*/api/capabilities', () =>
+        ok({ timeframes: ['5m', '15m', '1h', '1D', '1W'], delayed: true, provider: 'test', fundamentals: true }),
+      ),
+    );
+    const seen: string[] = [];
+    server.events.on('request:start', ({ request }) => {
+      const url = new URL(request.url);
+      if (url.pathname === '/api/bars') seen.push(url.searchParams.get('timeframe') ?? '');
+    });
+    renderWithDataSource(<ChartPanel symbol="AAPL" timeframe="1m" chartType="candlestick" />);
+    expect(await screen.findByText('AAPL · 5m')).toBeInTheDocument();
+    expect(seen.at(-1)).toBe('5m');
+    server.events.removeAllListeners();
+  });
+});
+
 describe('ChartPanel states', () => {
   it('shows loading, then hides it once bars arrive', async () => {
     renderWithDataSource(<ChartPanel symbol="AAPL" timeframe="1D" chartType="line" />);
@@ -90,7 +122,17 @@ describe('ChartPanel states', () => {
 
     server.use(
       http.get('*/api/bars', () =>
-        HttpResponse.json({ ok: true, data: { symbol: 'LIMIT', timeframe: '1D', adjusted: true, bars: allDaily(), truncated: false, cached: false } }),
+        HttpResponse.json({
+          ok: true,
+          data: {
+            symbol: 'LIMIT',
+            timeframe: '1D',
+            adjusted: true,
+            bars: allDaily(),
+            truncated: false,
+            cached: false,
+          },
+        }),
       ),
     );
     await userEvent.setup().click(screen.getByRole('button', { name: 'Retry' }));
@@ -119,7 +161,14 @@ describe('ChartPanel states', () => {
         const bars = sliceBars(query.timeframe, query.from, query.to);
         return HttpResponse.json({
           ok: true,
-          data: { symbol: 'AAPL', timeframe: query.timeframe, adjusted: true, bars, truncated: call++ === 0, cached: false },
+          data: {
+            symbol: 'AAPL',
+            timeframe: query.timeframe,
+            adjusted: true,
+            bars,
+            truncated: call++ === 0,
+            cached: false,
+          },
         });
       }),
     );
@@ -137,7 +186,13 @@ describe('ChartPanel states', () => {
     await screen.findByTestId('crosshair-legend');
     server.use(
       http.get('*/api/bars', () =>
-        HttpResponse.json({ ok: false, error: { code: 'RATE_LIMITED', message: 'x', retryAfterSeconds: 3 } }, { status: 429 }),
+        HttpResponse.json(
+          {
+            ok: false,
+            error: { code: 'RATE_LIMITED', message: 'x', retryAfterSeconds: 3 },
+          },
+          { status: 429 },
+        ),
       ),
     );
     act(() => lastChart().scrollTo({ from: -5, to: 95 }));
