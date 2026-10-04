@@ -193,6 +193,21 @@ describe('LayoutSwitcher', () => {
       expect(mockWorkspace().layouts.map((l) => l.id)).toEqual([swing.id]);
     });
 
+    it('refreshes the list and says so when the layout was already deleted in another tab', async () => {
+      const swing = await seedTwoLayouts();
+      const user = userEvent.setup();
+      renderApp();
+      await ready();
+      const panel = await openPanel(user);
+      await user.click(within(panel).getByRole('button', { name: 'Delete…' }));
+      const main = mockWorkspace().layouts[0];
+      await apiRequest(`/layouts/${main?.id}`, { method: 'DELETE' }); // "another tab" removes Main first
+      await user.click(within(panel).getByRole('button', { name: 'Delete' }));
+      expect(await screen.findByTestId('layout-notice')).toHaveTextContent(/already deleted elsewhere/);
+      await waitFor(() => expect(screen.getByTestId('chart')).toHaveTextContent('Swing|NVDA|'));
+      expect(mockWorkspace().layouts.map((l) => l.id)).toEqual([swing.id]);
+    });
+
     it('shows the server refusal when deleting the last layout, and keeps it', async () => {
       const user = userEvent.setup();
       renderApp();

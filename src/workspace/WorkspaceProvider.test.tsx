@@ -2,7 +2,7 @@ import { act, render, screen, waitFor } from '@testing-library/react';
 import { StrictMode } from 'react';
 import { http } from 'msw';
 import type { ChartLayout, IndicatorConfig } from '@shared/types';
-import { fail } from '../../mocks/envelope';
+import { fail, ok } from '../../mocks/envelope';
 import { mockWorkspace, resetMockWorkspace } from '../../mocks/workspace';
 import { server } from '../../mocks/server';
 import { apiRequest } from '../data';
@@ -296,5 +296,92 @@ describe('migration of per-symbol localStorage indicators', () => {
     await waitFor(() => expect(layout0().indicators).toEqual([rsi]), { timeout: 3000 });
     await waitFor(() => expect(localStorage.getItem(MIGRATED_FLAG_KEY)).toBe('1'));
     expect(puts(seen)).toHaveLength(1);
+  });
+});
+
+describe('flush on page close', () => {
+  /** Records the `keepalive` flag of every layout PUT, as the browser would receive it. */
+  function spyKeepalive(): (boolean | undefined)[] {
+    const flags: (boolean | undefined)[] = [];
+    const real = globalThis.fetch;
+    vi.spyOn(globalThis, 'fetch').mockImplementation((input, init) => {
+      if (init?.method === 'PUT') flags.push(init.keepalive);
+      return real(input, init);
+    });
+    return flags;
+  }
+
+  it.each([
+    ['pagehide', () => window.dispatchEvent(new Event('pagehide'))],
+    [
+      'visibilitychange to hidden',
+      () => {
+        vi.spyOn(document, 'visibilityState', 'get').mockReturnValue('hidden');
+        document.dispatchEvent(new Event('visibilitychange'));
+      },
+    ],
+  ])('sends the pending edit at once with keepalive on %s', async (_name, fire) => {
+    renderProvider();
+    await waitFor(() => expect(screen.getByTestId('layout-id')).not.toHaveTextContent('none'));
+    const flags = spyKeepalive();
+    act(() => api.setSymbol('MSFT'));
+    fire(); // well inside the debounce window
+    await waitFor(() => expect(layout0().symbol).toBe('MSFT'), { timeout: 400 });
+    expect(flags).toEqual([true]);
+  });
+
+  it('uses no keepalive for the ordinary debounced save', async () => {
+    renderProvider();
+    await waitFor(() => expect(screen.getByTestId('layout-id')).not.toHaveTextContent('none'));
+    const flags = spyKeepalive();
+    act(() => api.setSymbol('MSFT'));
+    await waitFor(() => expect(layout0().symbol).toBe('MSFT'), { timeout: 3000 });
+    expect(flags.every((f) => !f)).toBe(true);
+  });
+});
+
+describe('edits made while the workspace loads', () => {
+  const slowLayouts = () => {
+    let release: () => void = () => undefined;
+    const gate = new Promise<void>((r) => (release = r));
+    server.use(
+      http.get('*/api/layouts', async () => {
+        await gate;
+        return ok({ layouts: mockWorkspace().layouts, activeLayoutId: mockWorkspace().activeLayoutId });
+      }),
+    );
+    return release;
+  };
+
+  it('applies them to the loaded layout and saves them, newest edit winning per field', async () => {
+    const release = slowLayouts();
+    const seen = recordWrites();
+    renderProvider();
+    act(() => api.setSymbol('MSFT'));
+    act(() => api.setSymbol('NVDA'));
+    act(() => api.setTimeframe('1W'));
+    release();
+    await waitFor(() => expect(layout0().symbol).toBe('NVDA'), { timeout: 3000 });
+    expect(layout0().timeframe).toBe('1W');
+    expect(screen.getByTestId('symbol')).toHaveTextContent('NVDA');
+    expect(puts(seen).map((p) => p.body)).toEqual([{ revision: 1, symbol: 'NVDA', timeframe: '1W' }]);
+  });
+
+  it('drops them when the load fails: the chart keeps working unsaved', async () => {
+    server.use(
+      http.get('*/api/layouts', async () => {
+        await new Promise((r) => setTimeout(r, 50));
+        return fail({ code: 'UPSTREAM_ERROR', message: 'down' });
+      }),
+    );
+    const seen = recordWrites();
+    renderProvider();
+    act(() => api.setSymbol('MSFT'));
+    await waitFor(() => expect(layoutsApi?.status).toBe('error'));
+    expect(screen.getByTestId('symbol')).toHaveTextContent('MSFT');
+    server.resetHandlers();
+    await sleep(SAVE_DEBOUNCE_MS + 200);
+    expect(seen).toHaveLength(0);
+    expect(layout0().symbol).toBe('AAPL');
   });
 });

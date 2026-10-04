@@ -77,6 +77,9 @@ export function WorkspaceProvider({ children }: { children: ReactNode }) {
   const inflight = useRef(0);
   const loadSeq = useRef(0);
   const migrationStarted = useRef(false);
+  const statusRef = useRef<WorkspaceStatus>('loading');
+  // Edits made while the workspace is still loading; applied to the active layout once it arrives.
+  const loadingEdits = useRef<Patch>({});
 
   const setLayoutList = useCallback((next: ChartLayout[]) => {
     layoutsRef.current = next;
@@ -131,7 +134,7 @@ export function WorkspaceProvider({ children }: { children: ReactNode }) {
 
   /** Send the pending edit of `id`, if any. Runs inside the layout's chain; never throws. */
   const writePending = useCallback(
-    async (id: EntityId): Promise<void> => {
+    async (id: EntityId, keepalive = false): Promise<void> => {
       const patch = pending.current.get(id);
       if (!patch) return;
       const layout = layoutsRef.current.find((l) => l.id === id);
@@ -149,6 +152,7 @@ export function WorkspaceProvider({ children }: { children: ReactNode }) {
             revision: layout.revision,
             ...patch,
           } satisfies UpdateLayoutBody,
+          keepalive,
         });
         // Keep our fields: the user may have edited again while this was in flight.
         setLayoutList(
@@ -175,9 +179,9 @@ export function WorkspaceProvider({ children }: { children: ReactNode }) {
   );
 
   const flush = useCallback(
-    (id: EntityId): Promise<void> => {
+    (id: EntityId, keepalive = false): Promise<void> => {
       clearTimer(id);
-      return enqueue(id, () => writePending(id));
+      return enqueue(id, () => writePending(id, keepalive));
     },
     [clearTimer, enqueue, writePending],
   );
@@ -188,6 +192,7 @@ export function WorkspaceProvider({ children }: { children: ReactNode }) {
       const id = activeIdRef.current;
       if (id === null || !layoutsRef.current.some((l) => l.id === id)) {
         setLocal((c) => ({ ...c, ...patch }));
+        if (statusRef.current === 'loading') loadingEdits.current = { ...loadingEdits.current, ...patch };
         return;
       }
       setLayoutList(layoutsRef.current.map((l) => (l.id === id ? { ...l, ...patch } : l)));
@@ -233,36 +238,49 @@ export function WorkspaceProvider({ children }: { children: ReactNode }) {
 
   const load = useCallback(() => {
     const seq = (loadSeq.current += 1);
+    statusRef.current = 'loading';
     setStatus('loading');
     apiRequest<LayoutsResponse>('/layouts').then(
       (res) => {
         if (seq !== loadSeq.current) return; // a newer load (StrictMode remount, Retry) owns the state
         setLayoutList(res.layouts);
         setActive(res.activeLayoutId);
+        statusRef.current = 'ready';
         setStatus('ready');
         setLoadError(null);
         migrate(res.layouts, res.activeLayoutId);
+        // What the user picked during "Loading layout…" wins over the stored values, per field.
+        const early = loadingEdits.current;
+        loadingEdits.current = {};
+        if (Object.keys(early).length > 0) edit(early);
       },
       (e: unknown) => {
         if (seq !== loadSeq.current) return;
+        statusRef.current = 'error';
+        loadingEdits.current = {}; // the chart keeps working unsaved
         setStatus('error');
         setLoadError(messageOf(e));
       },
     );
-  }, [migrate, setActive, setLayoutList]);
+  }, [edit, migrate, setActive, setLayoutList]);
 
   useEffect(() => {
     load();
     const timerMap = timers.current;
-    const flushAll = () => {
-      for (const id of [...pending.current.keys()]) void flush(id);
+    // keepalive lets the request outlive the page, so an edit made just before closing still lands.
+    // (An edit queued behind a PUT that is still in flight waits for it: the revision must be current.)
+    const flushAll = (keepalive = false) => {
+      for (const id of [...pending.current.keys()]) void flush(id, keepalive);
     };
     const onHidden = () => {
-      if (document.visibilityState === 'hidden') flushAll();
+      if (document.visibilityState === 'hidden') flushAll(true);
     };
+    const onPageHide = () => flushAll(true);
     document.addEventListener('visibilitychange', onHidden);
+    window.addEventListener('pagehide', onPageHide);
     return () => {
       document.removeEventListener('visibilitychange', onHidden);
+      window.removeEventListener('pagehide', onPageHide);
       loadSeq.current += 1;
       for (const t of timerMap.values()) clearTimeout(t);
       timerMap.clear();
@@ -400,10 +418,17 @@ export function WorkspaceProvider({ children }: { children: ReactNode }) {
         refreshSaveState();
         return { ok: true };
       } catch (e) {
+        if (toDataError(e).code === 'NOT_FOUND') {
+          // Already deleted elsewhere: refetch so the stale entry goes away.
+          const message = 'That layout was already deleted elsewhere. The list is refreshed.';
+          setNotice(message);
+          load();
+          return { ok: false, message };
+        }
         return { ok: false, message: messageOf(e) };
       }
     },
-    [clearTimer, refreshSaveState, setActive, setLayoutList],
+    [clearTimer, load, refreshSaveState, setActive, setLayoutList],
   );
 
   const retrySave = useCallback(() => {
