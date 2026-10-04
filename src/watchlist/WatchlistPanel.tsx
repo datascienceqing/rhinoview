@@ -195,7 +195,7 @@ export function WatchlistPanel() {
           {active ? (
             <>
               <div className="wl-add">
-                <SymbolSearch onSelect={addSymbol} />
+                <SymbolSearch onSelect={addSymbol} label="Add symbol to watchlist" />
               </div>
               {localNotice && <p className="wl-note" role="status">{localNotice}</p>}
 

@@ -228,7 +228,7 @@ describe('WatchlistPanel add and remove', () => {
     resetMockWorkspace(wlWith(['MSFT']));
     renderPanel();
     await screen.findByRole('button', { name: 'MSFT' });
-    await userEvent.type(screen.getByRole('combobox', { name: 'Search symbol' }), 'AAPL');
+    await userEvent.type(screen.getByRole('combobox', { name: 'Add symbol to watchlist' }), 'AAPL');
     await userEvent.click(await screen.findByText('Apple Inc.'));
     expect(await screen.findByRole('button', { name: 'AAPL' })).toBeInTheDocument();
     await waitFor(() => expect(savedSymbols()).toEqual(['MSFT', 'AAPL']));
@@ -238,7 +238,7 @@ describe('WatchlistPanel add and remove', () => {
     resetMockWorkspace(wlWith(['AAPL']));
     renderPanel();
     await screen.findByRole('button', { name: 'AAPL' });
-    await userEvent.type(screen.getByRole('combobox', { name: 'Search symbol' }), 'AAPL');
+    await userEvent.type(screen.getByRole('combobox', { name: 'Add symbol to watchlist' }), 'AAPL');
     await userEvent.click(await screen.findByText('Apple Inc.'));
     expect(await screen.findByText('AAPL is already in this list.')).toBeInTheDocument();
     expect(savedRevision()).toBe(1);
