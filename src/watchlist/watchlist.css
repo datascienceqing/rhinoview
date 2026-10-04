@@ -1,4 +1,4 @@
-.wl { display: flex; flex-direction: column; height: 100%; min-height: 0; font-size: 12px; }
+.wl { container-type: inline-size; display: flex; flex-direction: column; height: 100%; min-height: 0; font-size: 12px; }
 .wl .panel-header { gap: 8px; }
 .wl-badge { padding: 1px 6px; border: 1px solid var(--border); border-radius: 3px; color: var(--text-dim); font-size: 11px; font-weight: 500; }
 .wl-toolbar, .wl-form, .wl-add { display: flex; flex-wrap: wrap; gap: 4px; padding: 6px 8px; align-items: center; }
@@ -10,7 +10,7 @@
 .wl-note, .wl-hint, .wl-error { margin: 0; padding: 4px 8px; color: var(--text-dim); }
 .wl-error { color: var(--down); }
 .wl-scroll { flex: 1 1 auto; min-height: 0; overflow: auto; }
-.wl-table { width: 100%; min-width: 440px; border-collapse: collapse; font-variant-numeric: tabular-nums; }
+.wl-table { width: 100%; border-collapse: collapse; font-variant-numeric: tabular-nums; }
 .wl-table th, .wl-table td { padding: 3px 6px; white-space: nowrap; font-weight: 400; }
 .wl-table thead th { position: sticky; top: 0; background: var(--bg-elevated); border-bottom: 1px solid var(--border); color: var(--text-dim); }
 .wl-table thead button, .wl-table .wl-symbol, .wl-table .wl-remove { border: 0; background: transparent; padding: 0; }
@@ -27,3 +27,10 @@
 .wl-table tbody tr.active { background: rgba(41, 98, 255, 0.18); }
 .wl-table tbody tr.drop { box-shadow: inset 0 2px 0 var(--accent); }
 .sr-only { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+
+/* Narrow panel (the 300px sidebar): keep symbol, last, change % and remove on screen.
+   Change, volume and day range are hidden here; the row's tooltip still carries them. */
+@container (max-width: 420px) {
+  .wl-extra { display: none; }
+  .wl-table .wl-reason { white-space: normal; }
+}

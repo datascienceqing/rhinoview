@@ -71,6 +71,30 @@ describe('quotes mock', () => {
     expect(await code(get('A'.repeat(16)))).toBe('ok');
   });
 
+  it('trims entries and returns the canonical symbol', async () => {
+    const r = await get(' AAPL , zzx ');
+    expect(r.quotes.map((q) => q.symbol)).toEqual(['AAPL']);
+    expect(r.missing).toEqual(['zzx']);
+  });
+
+  it('accepts index and class symbols such as ^GSPC and BRK.B', async () => {
+    const r = await get('AAPL,^GSPC,BRK.B');
+    expect(r.quotes.map((q) => q.symbol)).toEqual(['AAPL', '^GSPC', 'BRK.B']);
+  });
+
+  it('rejects a whitespace-only entry and characters outside the symbol format', async () => {
+    expect(await code(get('AAPL, ,MSFT'))).toBe('BAD_REQUEST');
+    expect(await code(get('   '))).toBe('BAD_REQUEST');
+    expect(await code(get('AA PL'))).toBe('BAD_REQUEST');
+    expect(await code(get('AAPL;MSFT'))).toBe('BAD_REQUEST');
+    expect(await code(get('<b>'))).toBe('BAD_REQUEST');
+  });
+
+  it('counts the 50-entry cap before de-duplication', async () => {
+    const dup = Array.from({ length: MAX_QUOTE_SYMBOLS + 1 }, () => 'AAPL').join(',');
+    expect(await code(get(dup))).toBe('BAD_REQUEST');
+  });
+
   it('accepts 50 symbols and rejects 51', async () => {
     const list = (n: number) => Array.from({ length: n }, (_, i) => `S${i}`).join(',');
     expect((await get(list(MAX_QUOTE_SYMBOLS))).quotes).toHaveLength(MAX_QUOTE_SYMBOLS);

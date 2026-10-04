@@ -13,13 +13,14 @@ import './watchlist.css';
 
 type Editor = 'none' | 'create' | 'rename' | 'delete';
 
-const COLUMNS: { key: SortKey; label: string; title: string; align: 'left' | 'right' }[] = [
+/** `extra` columns collapse when the panel is narrow (see watchlist.css). */
+const COLUMNS: { key: SortKey; label: string; title: string; align: 'left' | 'right'; extra?: true }[] = [
   { key: 'symbol', label: 'Symbol', title: 'Symbol', align: 'left' },
   { key: 'price', label: 'Last', title: 'Last price', align: 'right' },
-  { key: 'change', label: 'Chg', title: 'Change', align: 'right' },
+  { key: 'change', label: 'Chg', title: 'Change', align: 'right', extra: true },
   { key: 'changePercent', label: 'Chg %', title: 'Change percent', align: 'right' },
-  { key: 'dayVolume', label: 'Vol', title: 'Volume', align: 'right' },
-  { key: 'range', label: 'Day range', title: 'Day range (sorts by width)', align: 'right' },
+  { key: 'dayVolume', label: 'Vol', title: 'Volume', align: 'right', extra: true },
+  { key: 'range', label: 'Day range', title: 'Day range (sorts by width)', align: 'right', extra: true },
 ];
 
 const ariaSort = (sort: SortState | null, key: SortKey): 'ascending' | 'descending' | 'none' =>
@@ -223,7 +224,7 @@ export function WatchlistPanel() {
                     <thead>
                       <tr>
                         {COLUMNS.map((c) => (
-                          <th key={c.key} scope="col" aria-sort={ariaSort(sort, c.key)} className={c.align}>
+                          <th key={c.key} scope="col" aria-sort={ariaSort(sort, c.key)} className={c.extra ? `${c.align} wl-extra` : c.align}>
                             <button
                               type="button"
                               title={c.title}
@@ -301,6 +302,11 @@ interface RowProps {
   onDragEnd: () => void;
 }
 
+/** Every value, for the row tooltip: the narrow layout hides some columns but never the data. */
+function detail(q: Snapshot): string {
+  return `${q.symbol}: last ${fmtPrice(q.price)}, change ${fmtChange(q.change)} (${fmtPercent(q.changePercent)}), volume ${fmtVolume(q.dayVolume)}, day range ${fmtRange(q.dayLow, q.dayHigh)}`;
+}
+
 function Row(p: RowProps) {
   const { quote } = p;
   const dir = quote ? direction(quote.change) : 'flat';
@@ -312,6 +318,7 @@ function Row(p: RowProps) {
       className={cls}
       data-symbol={p.symbol}
       aria-current={p.isActive ? 'true' : undefined}
+      title={quote ? detail(quote) : undefined}
       draggable={p.canReorder}
       onDragStart={p.onDragStart}
       onDragOver={p.onDragOver}
@@ -335,10 +342,10 @@ function Row(p: RowProps) {
       {quote ? (
         <>
           <td className="right">{fmtPrice(quote.price)}</td>
-          <td className={`right ${dir}`}>{fmtChange(quote.change)}</td>
+          <td className={`right wl-extra ${dir}`}>{fmtChange(quote.change)}</td>
           <td className={`right ${dir}`}>{fmtPercent(quote.changePercent)}</td>
-          <td className="right">{fmtVolume(quote.dayVolume)}</td>
-          <td className="right">{fmtRange(quote.dayLow, quote.dayHigh)}</td>
+          <td className="right wl-extra">{fmtVolume(quote.dayVolume)}</td>
+          <td className="right wl-extra">{fmtRange(quote.dayLow, quote.dayHigh)}</td>
         </>
       ) : (
         <td colSpan={5} className={`right wl-reason${reason ? ` ${reason === 'not found' ? 'missing' : 'failed'}` : ''}`}>

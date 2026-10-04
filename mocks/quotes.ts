@@ -19,6 +19,7 @@ import { MAX_QUOTE_SYMBOLS } from '@shared/types';
 import { fail, ok } from './envelope';
 
 const MAX_SYMBOL_LENGTH = 16;
+const SYMBOL_RE = /^[A-Za-z0-9.^=-]{1,16}$/;
 const MISSING_PREFIX = 'ZZ';
 const FAILED_PREFIX = 'FAIL';
 
@@ -87,13 +88,14 @@ export function createQuotesHandlers() {
     http.get('*/api/quotes', ({ request }) => {
       const raw = new URL(request.url).searchParams.get('symbols');
       requestLog.push(raw ?? '');
-      if (raw === null || raw.trim() === '') return fail({ code: 'BAD_REQUEST', message: 'symbols is required.' });
-      const entries = raw.split(',');
+      if (raw === null) return fail({ code: 'BAD_REQUEST', message: 'symbols is required.' });
+      // Same rules as the real route: trim, then count BEFORE de-duplication, then validate format.
+      const entries = raw.split(',').map((e) => e.trim());
       if (entries.length > MAX_QUOTE_SYMBOLS) {
         return fail({ code: 'BAD_REQUEST', message: `At most ${MAX_QUOTE_SYMBOLS} symbols per request.` });
       }
-      if (entries.some((e) => e.length < 1 || e.length > MAX_SYMBOL_LENGTH)) {
-        return fail({ code: 'BAD_REQUEST', message: `Each symbol must be 1-${MAX_SYMBOL_LENGTH} characters.` });
+      if (entries.some((e) => !SYMBOL_RE.test(e))) {
+        return fail({ code: 'BAD_REQUEST', message: `Each symbol must be 1-${MAX_SYMBOL_LENGTH} characters of A-Z, 0-9, . ^ = -.` });
       }
 
       const seen = new Set<string>();
