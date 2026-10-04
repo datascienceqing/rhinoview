@@ -15,7 +15,7 @@
  * the seam to allow `T | Promise<T>`; see the report that accompanies this change.
  */
 import type { SearchResult, Snapshot, Timeframe, UnixSeconds } from '@shared/types';
-import { isTradingDay, mondayOf, nyDayOf } from '../calendar';
+import { SESSION_OPEN_SECOND, mondayOf, nyDayOf, nyWallToUnix, sessionMinutes } from '../calendar';
 import { UnknownSymbolError } from '../types';
 import type { EngineBarsRequest, EngineBarsResult, EngineSymbol, MarketEngine } from '../types';
 import { UnsupportedRequestError, UpstreamUnauthorizedError } from '../../provider/errors';
@@ -223,8 +223,12 @@ export class FmpEngine implements AsyncMarketEngine {
   /**
    * Intraday bars. FMP keeps the NEWEST rows when it clips (5min: 624 rows per request,
    * measured), so a clipped answer is missing its OLD end. Row caps for 15min and 1hour are
-   * not measured, so one rule covers all three: if the oldest bar we got starts more than
-   * one session after `from`, report `truncated` and let the client continue from that bar.
+   * not measured, so one rule covers all three: report `truncated` when ANY trading session
+   * that ends after `from` lies entirely before the oldest bar's NY day, i.e. a session we
+   * should have data for and got none. A session that closed at or before `from` does not
+   * count; weekends, holidays and early closes follow `../calendar`. The client then
+   * continues from the oldest bar. (A "more than one session" rule lost exactly one whole
+   * session silently.)
    */
   private async getIntradayBars(req: EngineBarsRequest, from: number, to: number, limit: number): Promise<EngineBarsResult> {
     const timeframe = req.timeframe as keyof typeof INTRADAY_PATH;
@@ -242,9 +246,11 @@ export class FmpEngine implements AsyncMarketEngine {
     let truncated = false;
     const oldest = bars[0];
     if (oldest) {
-      let sessionsBefore = 0;
-      for (let d = fromDay; d < nyDayOf(oldest.time) && sessionsBefore <= 1; d++) if (isTradingDay(d)) sessionsBefore++;
-      truncated = sessionsBefore > 1;
+      const oldestDay = nyDayOf(oldest.time);
+      for (let d = fromDay; d < oldestDay && !truncated; d++) {
+        const minutes = sessionMinutes(d);
+        if (minutes > 0 && nyWallToUnix(d, SESSION_OPEN_SECOND + minutes * 60) > from) truncated = true;
+      }
     }
     if (bars.length > limit) {
       bars = bars.slice(bars.length - limit); // keep the NEWEST `limit` bars

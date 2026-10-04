@@ -37,8 +37,8 @@ describe('parseSymbolsParam', () => {
     expect(parseSymbolsParam(n(50))).toHaveLength(50);
   });
 
-  it('accepts class shares and trims whitespace', () => {
-    expect(parseSymbolsParam(' brk.b , BF-B,BRK.B')).toEqual(['brk.b', 'BF-B', 'BRK.B']);
+  it('accepts class shares, indexes and "=" symbols, and trims whitespace', () => {
+    expect(parseSymbolsParam(' brk.b , BF-B,^GSPC,EURUSD=X')).toEqual(['brk.b', 'BF-B', '^GSPC', 'EURUSD=X']);
   });
 });
 

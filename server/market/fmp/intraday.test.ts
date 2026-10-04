@@ -3,7 +3,6 @@ import { fileURLToPath } from 'node:url';
 import { describe, expect, it } from 'vitest';
 import type { Timeframe } from '@shared/types';
 import { UpstreamUnauthorizedError, mapEngineError } from '../../provider/errors';
-import { civilToDay, nyDayOf } from '../calendar';
 import { FmpPaymentRequiredError } from './client';
 import { createFmpEngine } from './index';
 import { TEST_KEY, fakeFetch, responseOf } from './testing';
@@ -92,8 +91,8 @@ describe('getBars intraday', () => {
     expect(bars.at(-1)?.time).toBe(at('2026-10-01 15:55:00'));
   });
 
-  describe('truncated rule: oldest bar more than one session after `from`', () => {
-    it('is true for the 624-row page when `from` reaches far further back', async () => {
+  describe('truncated rule: a session ending after `from` has no data before the oldest bar', () => {
+    it('is true for the 624-row page when `from` reaches further back', async () => {
       const e = engineWith(fakeFetch(() => serve('chart-5min-AAPL-2025-06-02_06-13')));
       const { bars, truncated } = await ask(e, '5m', NY('2025-06-02'), at('2025-06-13 16:00:00'));
       expect(bars).toHaveLength(624);
@@ -106,19 +105,39 @@ describe('getBars intraday', () => {
       expect((await ask(e, '5m', NY('2026-09-30'), at('2026-10-01 16:00:00'))).truncated).toBe(false);
     });
 
-    it('is false when `from` is a weekend and the oldest bar is the next Monday (no session was skipped)', async () => {
-      // 2026-10-03 is a Saturday. Serve one Monday bar only.
-      const row = { date: '2026-10-05 09:30:00', open: 1, high: 2, low: 1, close: 2, volume: 5 };
-      const e = engineWith(fakeFetch(() => responseOf({ status: 200, body: JSON.stringify([row]) })));
-      expect((await ask(e, '5m', NY('2026-10-03'), at('2026-10-05 16:00:00'))).truncated).toBe(false);
+    const oneRow = (date: string) => engineWith(fakeFetch(() => responseOf({ status: 200, body: JSON.stringify([{ date, open: 1, high: 2, low: 1, close: 2, volume: 5 }]) })));
+
+    it('is true when exactly ONE whole session is missing before the oldest bar', async () => {
+      // Mon 5th has no rows although it is a session after `from`; the oldest bar is Tue 6th.
+      expect((await ask(oneRow('2026-10-06 09:30:00'), '5m', NY('2026-10-05'), at('2026-10-06 16:00:00'))).truncated).toBe(true);
     });
 
-    it('is true when two sessions before the oldest bar had no data in range', async () => {
-      const row = { date: '2026-10-07 09:30:00', open: 1, high: 2, low: 1, close: 2, volume: 5 };
-      const e = engineWith(fakeFetch(() => responseOf({ status: 200, body: JSON.stringify([row]) })));
-      // Mon 5th and Tue 6th have no rows although they are sessions: FMP clipped the old end.
-      expect(nyDayOf(NY('2026-10-05'))).toBe(civilToDay(2026, 10, 5));
-      expect((await ask(e, '5m', NY('2026-10-05'), at('2026-10-07 16:00:00'))).truncated).toBe(true);
+    it('is false when `from` is after the missing session closed (Monday 20:00 NY does not flag Monday)', async () => {
+      expect((await ask(oneRow('2026-10-06 09:30:00'), '5m', at('2026-10-05 20:00:00'), at('2026-10-06 16:00:00'))).truncated).toBe(false);
+    });
+
+    it('is true when `from` is inside the missing session, before its close', async () => {
+      expect((await ask(oneRow('2026-10-06 09:30:00'), '5m', at('2026-10-05 15:00:00'), at('2026-10-06 16:00:00'))).truncated).toBe(true);
+    });
+
+    it('is false when `from` is a weekend and the oldest bar is the next Monday (no session was skipped)', async () => {
+      expect((await ask(oneRow('2026-10-05 09:30:00'), '5m', NY('2026-10-03'), at('2026-10-05 16:00:00'))).truncated).toBe(false);
+    });
+
+    it('is false when the only earlier day is a holiday (Columbus Day is a trading day; Thanksgiving is not)', async () => {
+      // Thu 2026-11-26 is Thanksgiving: closed. Oldest bar is Fri 27th (early close day).
+      expect((await ask(oneRow('2026-11-27 09:30:00'), '5m', NY('2026-11-26'), at('2026-11-27 13:00:00'))).truncated).toBe(false);
+    });
+
+    it('is false across a weekend plus the weekday before it closed before `from`', async () => {
+      // Friday 20:00 NY -> next bar Monday: Friday already closed, weekend has no session.
+      expect((await ask(oneRow('2026-10-05 09:30:00'), '5m', at('2026-10-02 20:00:00'), at('2026-10-05 16:00:00'))).truncated).toBe(false);
+    });
+
+    it('uses the early-close time: from after a 13:00 close does not flag that day', async () => {
+      // Fri 2026-11-27 closes at 13:00; from = 13:30 same day, oldest bar Mon 30th.
+      expect((await ask(oneRow('2026-11-30 09:30:00'), '5m', at('2026-11-27 13:30:00'), at('2026-11-30 16:00:00'))).truncated).toBe(false);
+      expect((await ask(oneRow('2026-11-30 09:30:00'), '5m', at('2026-11-27 12:30:00'), at('2026-11-30 16:00:00'))).truncated).toBe(true);
     });
 
     it('is false for an empty answer', async () => {

@@ -112,6 +112,23 @@ describe('GET /api/quotes', () => {
     expect(snapshot).not.toHaveBeenCalled();
   });
 
+  it('AAPL,^GSPC returns the AAPL quote and lists the unresolvable index in missing, not a 400', async () => {
+    const { status, body } = await get(engine().e, '?symbols=AAPL,%5EGSPC,BRK.B');
+    expect(status).toBe(200);
+    expect(body).toMatchObject({ ok: true, data: { missing: ['^GSPC', 'BRK.B'] } });
+    expect(body.ok && body.data.quotes.map((q) => q.symbol)).toEqual(['AAPL']);
+  });
+
+  it('resolves a ^ symbol when the engine knows it', async () => {
+    KNOWN.add('^GSPC');
+    try {
+      const { body } = await get(engine().e, '?symbols=%5Egspc');
+      expect(body.ok && body.data.quotes.map((q) => q.symbol)).toEqual(['^GSPC']);
+    } finally {
+      KNOWN.delete('^GSPC');
+    }
+  });
+
   it('accepts exactly 50 symbols', async () => {
     const { status, body } = await get(engine().e, `?symbols=${fifty(50)}`);
     expect(status).toBe(200);

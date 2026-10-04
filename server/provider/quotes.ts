@@ -15,7 +15,10 @@ import type { MarketService } from './service';
 
 export const QUOTE_CONCURRENCY = 5;
 const MAX_SYMBOL_LENGTH = 16;
-const SYMBOL_RE = /^[A-Za-z0-9][A-Za-z0-9.-]*$/;
+// MUST match the symbol rule in server/workspace/store.ts, or a symbol the watchlist accepts
+// (e.g. ^GSPC) would fail the whole request here. Existence is NOT checked here: an entry the
+// engine cannot resolve goes to `missing`.
+const SYMBOL_RE = /^[A-Za-z0-9.^=-]{1,16}$/;
 
 /** `symbols` query value -> trimmed entries in request order (not yet de-duplicated). */
 export function parseSymbolsParam(raw: unknown): string[] {
@@ -28,7 +31,7 @@ export function parseSymbolsParam(raw: unknown): string[] {
   }
   for (const e of entries) {
     if (e.length < 1 || e.length > MAX_SYMBOL_LENGTH || !SYMBOL_RE.test(e)) {
-      throw new ApiFailure('BAD_REQUEST', `Invalid query parameter "symbols": each symbol must be 1-${MAX_SYMBOL_LENGTH} letters, digits, "." or "-"`);
+      throw new ApiFailure('BAD_REQUEST', `Invalid query parameter "symbols": each symbol must be 1-${MAX_SYMBOL_LENGTH} letters, digits, ".", "^", "=" or "-"`);
     }
   }
   return entries;
