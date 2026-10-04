@@ -140,6 +140,50 @@ describe('getBars intraday', () => {
       expect((await ask(oneRow('2026-11-30 09:30:00'), '5m', at('2026-11-27 12:30:00'), at('2026-11-30 16:00:00'))).truncated).toBe(true);
     });
 
+    describe('clipped inside the oldest bar\'s day', () => {
+      const row = (date: string) => ({ date, open: 1, high: 2, low: 1, close: 2, volume: 5 });
+      const serveRows = (dates: string[]) => engineWith(fakeFetch(() => responseOf({ status: 200, body: JSON.stringify(dates.map(row)) })));
+
+      it('is true when from is the previous day and the day\'s morning bars are missing', async () => {
+        const e = serveRows(['2026-10-06 11:00:00', '2026-10-06 11:05:00']);
+        expect((await ask(e, '5m', at('2026-10-05 20:00:00'), at('2026-10-06 16:00:00'))).truncated).toBe(true);
+      });
+
+      it('is true when from is the same day before the open and the first bar is missing', async () => {
+        const e = serveRows(['2026-10-06 09:35:00', '2026-10-06 09:40:00']);
+        expect((await ask(e, '5m', at('2026-10-06 08:00:00'), at('2026-10-06 16:00:00'))).truncated).toBe(true);
+      });
+
+      it('is false when from is mid-session and the oldest bar is the first bar after from', async () => {
+        const e = serveRows(['2026-10-06 10:05:00', '2026-10-06 10:10:00']);
+        expect((await ask(e, '5m', at('2026-10-06 10:02:00'), at('2026-10-06 16:00:00'))).truncated).toBe(false);
+      });
+
+      it('is true when from is mid-session and bars after it are missing', async () => {
+        const e = serveRows(['2026-10-06 11:00:00']);
+        expect((await ask(e, '5m', at('2026-10-06 10:02:00'), at('2026-10-06 16:00:00'))).truncated).toBe(true);
+      });
+
+      it('is false for a full day starting at 09:30', async () => {
+        const e = serveRows(['2026-10-06 09:30:00', '2026-10-06 09:35:00']);
+        expect((await ask(e, '5m', at('2026-10-05 20:00:00'), at('2026-10-06 16:00:00'))).truncated).toBe(false);
+      });
+
+      it('is false for 1h bars starting at 09:30, and true when the 09:30 hour is missing', async () => {
+        const from = at('2026-10-05 20:00:00');
+        const to = at('2026-10-06 16:00:00');
+        expect((await ask(serveRows(['2026-10-06 09:30:00', '2026-10-06 10:30:00']), '1h', from, to)).truncated).toBe(false);
+        expect((await ask(serveRows(['2026-10-06 10:30:00']), '1h', from, to)).truncated).toBe(true);
+      });
+
+      it('15m: a first bar at 09:45 is a gap, 09:30 is not', async () => {
+        const from = at('2026-10-05 20:00:00');
+        const to = at('2026-10-06 16:00:00');
+        expect((await ask(serveRows(['2026-10-06 09:30:00']), '15m', from, to)).truncated).toBe(false);
+        expect((await ask(serveRows(['2026-10-06 09:45:00']), '15m', from, to)).truncated).toBe(true);
+      });
+    });
+
     it('is false for an empty answer', async () => {
       const e = engineWith(fakeFetch(() => responseOf({ status: 200, body: '[]' })));
       expect(await ask(e, '5m', NY('2026-10-05'), at('2026-10-07 16:00:00'))).toEqual({ bars: [], truncated: false });

@@ -15,7 +15,7 @@
  * the seam to allow `T | Promise<T>`; see the report that accompanies this change.
  */
 import type { SearchResult, Snapshot, Timeframe, UnixSeconds } from '@shared/types';
-import { SESSION_OPEN_SECOND, mondayOf, nyDayOf, nyWallToUnix, sessionMinutes } from '../calendar';
+import { SESSION_OPEN_SECOND, mondayOf, nyDayOf, nyWallToUnix, sessionMinutes, sessionOpenUnix } from '../calendar';
 import { UnknownSymbolError } from '../types';
 import type { EngineBarsRequest, EngineBarsResult, EngineSymbol, MarketEngine } from '../types';
 import { UnsupportedRequestError, UpstreamUnauthorizedError } from '../../provider/errors';
@@ -45,6 +45,7 @@ export interface FmpEngineOptions extends Omit<FmpClientOptions, 'apiKey'> {
 /** 1min is HTTP 402 on FMP Starter (measured), so it is not served. */
 const SUPPORTED: readonly Timeframe[] = ['5m', '15m', '1h', '1D', '1W'];
 const INTRADAY_PATH = { '5m': '5min', '15m': '15min', '1h': '1hour' } as const;
+const INTRADAY_SPAN_SECONDS = { '5m': 300, '15m': 900, '1h': 3600 } as const;
 /** Largest Unix time we will turn into a date string (2100-01-01); the proxy clamps to now long before. */
 const MAX_UNIX = 4_102_444_800;
 /** Tickers we are willing to send upstream. Anything else cannot be a listed symbol. */
@@ -229,6 +230,11 @@ export class FmpEngine implements AsyncMarketEngine {
    * count; weekends, holidays and early closes follow `../calendar`. The client then
    * continues from the oldest bar. (A "more than one session" rule lost exactly one whole
    * session silently.)
+   *
+   * Also `truncated` when FMP clipped INSIDE the oldest bar's day: the first expected bar of
+   * that day (the later of `from` and the session open) is missing, i.e. the oldest bar
+   * starts a whole bar or more after it. A bar that merely starts after `from` within its own
+   * span (from = 10:02, first 5m bar 10:05) is not a gap.
    */
   private async getIntradayBars(req: EngineBarsRequest, from: number, to: number, limit: number): Promise<EngineBarsResult> {
     const timeframe = req.timeframe as keyof typeof INTRADAY_PATH;
@@ -250,6 +256,10 @@ export class FmpEngine implements AsyncMarketEngine {
       for (let d = fromDay; d < oldestDay && !truncated; d++) {
         const minutes = sessionMinutes(d);
         if (minutes > 0 && nyWallToUnix(d, SESSION_OPEN_SECOND + minutes * 60) > from) truncated = true;
+      }
+      if (!truncated && sessionMinutes(oldestDay) > 0) {
+        const firstExpected = Math.max(from, sessionOpenUnix(oldestDay));
+        truncated = oldest.time >= firstExpected + INTRADAY_SPAN_SECONDS[timeframe];
       }
     }
     if (bars.length > limit) {
