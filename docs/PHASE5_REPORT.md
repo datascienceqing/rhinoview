@@ -16,8 +16,8 @@ were not done, because `FMP_API_KEY` was not set.
 | Node | 22.22.0 | 22.22.0 |
 | `npm run typecheck` | clean | clean |
 | `npm run lint` | clean | clean |
-| Test files | 40 passed, 1 skipped | 66 passed, 1 skipped |
-| Tests | 1467 passed, 5 skipped | 2036 passed, 5 skipped |
+| Test files | 40 passed, 1 skipped | 67 passed, 1 skipped |
+| Tests | 1467 passed, 5 skipped | 2051 passed, 5 skipped |
 
 The orchestrator ran the full suite on an idle machine two times in a row. Both runs passed.
 
@@ -42,7 +42,7 @@ The orchestrator ran the full suite on an idle machine two times in a row. Both 
 ## 4. Orchestrator verification
 
 1. **Mutation checks.** For one core rule of each worker, the orchestrator broke the rule, saw the
-   tests fail, and restored the file. All ten mutations failed tests.
+   tests fail, and restored the file. All fourteen mutations failed tests.
 
    | Rule | Tests that failed |
    |---|---|
@@ -56,6 +56,10 @@ The orchestrator ran the full suite on an idle machine two times in a row. Both 
    | W5 poll only while the page is visible | 2 |
    | W6 New York midnight across DST | 4 |
    | W1 session close after `from` (F12) | 3 |
+   | W1 clip inside the oldest day (G6-5) | 5 |
+   | W4 refresh keeps pending edits (G6-1) | 1 |
+   | W5 `BRK.B` matches `BRK-B` (G6-3) | 1 |
+   | W5 "unavailable" after the first response (G6-3) | 1 |
 
 2. **End-to-end against the real server (plan 5.2).** `node scripts/e2e-phase5.mjs` starts a
    server with synthetic data and a temporary workspace file. Result: 34 passed, 0 failed.
@@ -94,7 +98,22 @@ the browser check.
 
 ## 6. Gate 6 findings
 
-GATE6_PLACEHOLDER
+The final reviewer found no blocking finding. Its own full test run passed. The orchestrator
+sent the clear defects to their owners in one round.
+
+| ID | Severity | Owner | Finding | Result |
+|---|---|---|---|---|
+| G6-1 | non-blocking | W4 | A refresh after `NOT_FOUND` removed pending edits from the screen and remounted the chart. | Repaired. |
+| G6-2 | non-blocking | W4 | After a failed refetch, Retry showed "Saved" for an edit that the server refused. | Repaired. |
+| G6-3 | non-blocking | W5 | A row for `BRK.B` showed "loading…" forever when the server returned `BRK-B`. | Repaired. |
+| G6-4 | non-blocking | W1/CONTRACT | The FMP engine refuses `^` and `=` symbols, so they are always `missing` under FMP. | Open. It needs a live check of FMP symbols. |
+| G6-5 | non-blocking | W1 | FMP can clip the morning of the oldest day without a signal. | Repaired. |
+| G6-6 | non-blocking | W5 | One failed watchlist write dropped all queued writes. | Repaired. |
+| G6-7 | non-blocking | W4 | One keepalive test passed with no request. | Repaired. |
+| G6-8 | non-blocking | W1 | The limit of 5 is for each request, not for the server. | Open. The rate budget still holds. |
+
+The W4 repair for G6-2 also repaired a related defect: the save state stayed "error" after a
+successful adopt.
 
 ## 7. CONTRACT findings (changes to frozen files)
 
@@ -117,11 +136,14 @@ GATE6_PLACEHOLDER
    from the sum of four quarters of diluted EPS (AAPL 8.775 against 8.73).
 3. **All-unknown quotes request.** A request with only unknown symbols succeeds, with all symbols
    in `missing`. Only a request where every symbol failed is an error.
-4. **Several open tabs.** Each tab polls quotes. The rate budget assumes one tab.
+4. **Several open tabs.** Each tab polls quotes. The rate budget assumes one tab. The limit of 5
+   is for each request (G6-8).
 5. **Two implementations of Phase 5.** The `phase-5` branch holds a separate implementation from
    another session. Choose one branch for the merge.
 6. **Layout details.** The watchlist is 300 px. The Financials drawer is below the chart. The
    layout switcher is at the left of the toolbar.
+7. **Index symbols under FMP (G6-4).** A watchlist can hold `^GSPC`, but the FMP engine refuses
+   it, so the row shows "not found". A live check must show the FMP spelling of index symbols.
 
 ## 9. Not verified
 
