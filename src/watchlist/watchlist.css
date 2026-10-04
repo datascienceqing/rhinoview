@@ -1,0 +1,29 @@
+.wl { display: flex; flex-direction: column; height: 100%; min-height: 0; font-size: 12px; }
+.wl .panel-header { gap: 8px; }
+.wl-badge { padding: 1px 6px; border: 1px solid var(--border); border-radius: 3px; color: var(--text-dim); font-size: 11px; font-weight: 500; }
+.wl-toolbar, .wl-form, .wl-add { display: flex; flex-wrap: wrap; gap: 4px; padding: 6px 8px; align-items: center; }
+.wl-form p { flex: 1 0 100%; margin: 0; }
+.wl select, .wl input, .wl button { font: inherit; color: var(--text); background: var(--bg); border: 1px solid var(--border); border-radius: 3px; padding: 2px 6px; }
+.wl button { cursor: pointer; }
+.wl button:disabled { opacity: 0.5; cursor: default; }
+.wl button:focus-visible, .wl select:focus-visible, .wl input:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
+.wl-note, .wl-hint, .wl-error { margin: 0; padding: 4px 8px; color: var(--text-dim); }
+.wl-error { color: var(--down); }
+.wl-scroll { flex: 1 1 auto; min-height: 0; overflow: auto; }
+.wl-table { width: 100%; min-width: 440px; border-collapse: collapse; font-variant-numeric: tabular-nums; }
+.wl-table th, .wl-table td { padding: 3px 6px; white-space: nowrap; font-weight: 400; }
+.wl-table thead th { position: sticky; top: 0; background: var(--bg-elevated); border-bottom: 1px solid var(--border); color: var(--text-dim); }
+.wl-table thead button, .wl-table .wl-symbol, .wl-table .wl-remove { border: 0; background: transparent; padding: 0; }
+.wl-table .wl-symbol { color: var(--text); font-weight: 600; }
+.wl-table .wl-remove { color: var(--text-dim); font-size: 14px; }
+.wl-table .left { text-align: left; }
+.wl-table .right { text-align: right; }
+.wl-table .up { color: var(--up); }
+.wl-table .down { color: var(--down); }
+.wl-table .wl-reason { color: var(--text-dim); font-style: italic; }
+.wl-table .wl-reason.failed, .wl-table .wl-reason.missing { color: var(--down); }
+.wl-table tbody tr { border-bottom: 1px solid var(--border); }
+.wl-table tbody tr.movable { cursor: grab; }
+.wl-table tbody tr.active { background: rgba(41, 98, 255, 0.18); }
+.wl-table tbody tr.drop { box-shadow: inset 0 2px 0 var(--accent); }
+.sr-only { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
