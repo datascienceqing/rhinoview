@@ -25,6 +25,15 @@ export function PeriodToggle({ value, onChange }: { value: StatementPeriod; onCh
 
 /** Per-share and count lines are not money in the B/M sense. */
 const isPerShare = (key: string) => /^eps/i.test(key);
+/** Share counts are quantities, not money: they get a "shares" unit and no currency. */
+const isShareCount = (key: string) => /shsout|shares/i.test(key);
+
+function formatCell(key: string, v: number | null): string {
+  if (v === null) return DASH;
+  if (isPerShare(key)) return formatNumber(v);
+  if (isShareCount(key)) return `${formatLarge(v)} shares`;
+  return formatLarge(v);
+}
 
 export function StatementsTab({ symbol }: { symbol: string }) {
   const [kind, setKind] = useState<StatementKind>('income');
@@ -80,7 +89,7 @@ function StatementTable({ data }: { data: StatementsResponse }) {
                   const v = r.lines[li.key] ?? null;
                   return (
                     <td key={`${r.fiscalYear}-${r.fiscalPeriod}`} title={v === null ? undefined : String(v)}>
-                      {v === null ? DASH : isPerShare(li.key) ? formatNumber(v) : formatLarge(v)}
+                      {formatCell(li.key, v)}
                     </td>
                   );
                 })}

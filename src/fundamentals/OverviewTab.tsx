@@ -16,6 +16,8 @@ import type { Cell } from './format';
 type Kind = 'multiple' | 'margin' | 'fraction' | 'ratio' | 'perShare';
 interface MetricRow {
   label: string;
+  /** Tooltip on the label, for metrics whose name could be confused with another figure. */
+  hint?: string;
   key: keyof KeyMetricsTTM;
   kind: Kind;
 }
@@ -57,7 +59,7 @@ const GROUPS: Group[] = [
   {
     title: 'Per share',
     rows: [
-      { label: 'EPS (diluted)', key: 'epsDiluted', kind: 'perShare' },
+      { label: 'EPS (TTM)', key: 'epsDiluted', kind: 'perShare', hint: 'Net income per share, trailing twelve months' },
       { label: 'Revenue / share', key: 'revenuePerShare', kind: 'perShare' },
       { label: 'Free cash flow / share', key: 'freeCashFlowPerShare', kind: 'perShare' },
       { label: 'Book value / share', key: 'bookValuePerShare', kind: 'perShare' },
@@ -140,7 +142,7 @@ function OverviewBody({ overview: o }: { overview: FundamentalsOverview }) {
                     const cell = metricCell(row, o.metrics[row.key], financial);
                     return (
                       <div key={row.key} className="fund-fact">
-                        <dt>{row.label}</dt>
+                        <dt title={row.hint}>{row.label}</dt>
                         <dd title={cell.title} data-testid={`metric-${row.key}`}>
                           {cell.text}
                         </dd>

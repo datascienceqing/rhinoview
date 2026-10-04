@@ -50,6 +50,13 @@ describe('Overview tab', () => {
     expect(screen.getByText('Reports in').nextSibling).toHaveTextContent('TWD');
   });
 
+  it('labels the TTM per-share earnings as EPS (TTM), not diluted EPS', async () => {
+    drawer('AAPL');
+    await metric('epsDiluted');
+    expect(screen.getByText('EPS (TTM)')).toHaveAttribute('title', 'Net income per share, trailing twelve months');
+    expect(screen.queryByText('EPS (diluted)')).toBeNull();
+  });
+
   it('shows null as a dash', async () => {
     const o: FundamentalsOverview = overviewFor('AAPL');
     o.metrics.pegRatio = null;
@@ -111,6 +118,41 @@ describe('Statements tab', () => {
     const q1 = await screen.findByRole('columnheader', { name: 'Q1 FY2026' });
     expect(q1).toHaveAttribute('title', 'Period ends 2025-09-30');
     expect(screen.getByRole('columnheader', { name: 'Q4 FY2026' })).toBeInTheDocument();
+  });
+
+  it('shows share counts with a shares unit and EPS per share, not as money', async () => {
+    const user = userEvent.setup();
+    server.use(
+      http.get('*/api/fundamentals/statements', () =>
+        ok({
+          symbol: 'AAPL',
+          statement: 'income',
+          period: 'annual',
+          lineItems: [
+            { key: 'revenue', label: 'Revenue' },
+            { key: 'epsDiluted', label: 'EPS (diluted)' },
+            { key: 'weightedAverageShsOutDil', label: 'Diluted shares outstanding' },
+          ],
+          rows: [
+            {
+              fiscalYear: 2025,
+              fiscalPeriod: 'FY',
+              periodEnd: '2025-09-27',
+              filingDate: null,
+              reportedCurrency: 'USD',
+              lines: { revenue: 394_328_000_000, epsDiluted: 6.13, weightedAverageShsOutDil: 15_408_000_000 },
+            },
+          ],
+        }),
+      ),
+    );
+    drawer('AAPL');
+    await user.click(screen.getByRole('tab', { name: 'Statements' }));
+    await screen.findByTestId('reported-currency');
+    const cell = (name: RegExp) => within(screen.getByRole('row', { name })).getAllByRole('cell')[0];
+    expect(cell(/^Diluted shares/)).toHaveTextContent('15.41B shares');
+    expect(cell(/^EPS/)).toHaveTextContent(/^6\.13$/);
+    expect(cell(/^Revenue/)).toHaveTextContent(/^394\.33B$/);
   });
 
   it('switches statement kind', async () => {
