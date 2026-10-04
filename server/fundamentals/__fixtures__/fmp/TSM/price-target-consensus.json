@@ -1,0 +1,14 @@
+{
+  "status": 200,
+  "path": "/price-target-consensus?symbol=TSM",
+  "fetchedAt": "2026-10-04T22:01:52.889Z",
+  "body": [
+    {
+      "symbol": "TSM",
+      "targetHigh": 700,
+      "targetLow": 500,
+      "targetConsensus": 578.43,
+      "targetMedian": 554
+    }
+  ]
+}

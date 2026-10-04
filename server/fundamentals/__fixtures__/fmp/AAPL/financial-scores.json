@@ -1,0 +1,20 @@
+{
+  "status": 200,
+  "path": "/financial-scores?symbol=AAPL",
+  "fetchedAt": "2026-10-04T22:01:52.889Z",
+  "body": [
+    {
+      "symbol": "AAPL",
+      "reportedCurrency": "USD",
+      "altmanZScore": 13.263044883394603,
+      "piotroskiScore": 9,
+      "workingCapital": 492000000,
+      "totalAssets": 383266000000,
+      "retainedEarnings": 11326000000,
+      "ebit": 155386000000,
+      "marketCap": 4901023823640,
+      "totalLiabilities": 275746000000,
+      "revenue": 466823000000
+    }
+  ]
+}

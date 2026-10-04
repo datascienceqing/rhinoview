@@ -1,0 +1,14 @@
+{
+  "status": 200,
+  "path": "/price-target-consensus?symbol=MSFT",
+  "fetchedAt": "2026-10-04T22:01:52.889Z",
+  "body": [
+    {
+      "symbol": "MSFT",
+      "targetHigh": 725,
+      "targetLow": 440,
+      "targetConsensus": 563.5,
+      "targetMedian": 550
+    }
+  ]
+}

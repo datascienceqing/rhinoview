@@ -1,0 +1,14 @@
+{
+  "status": 200,
+  "path": "/price-target-consensus?symbol=RIVN",
+  "fetchedAt": "2026-10-04T22:01:52.889Z",
+  "body": [
+    {
+      "symbol": "RIVN",
+      "targetHigh": 22,
+      "targetLow": 13,
+      "targetConsensus": 16.89,
+      "targetMedian": 16
+    }
+  ]
+}

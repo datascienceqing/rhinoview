@@ -296,3 +296,87 @@ Upstream: `/rest/stocks/technical-indicators/{sma,ema,macd,rsi}`.
   require **no component changes** — if it does, the abstraction leaked.
 - Every endpoint can fail. Loading, empty, and error states are part of the
   Phase 1 deliverable, not Phase 4 polish.
+
+---
+
+# Phase 5 — watchlists, named layouts, fundamentals
+
+**Status: frozen for Phase 5.** Types are in `shared/types.ts` under the PHASE 5 banner.
+Two error codes are new: `NOT_FOUND` (404) and `CONFLICT` (409).
+
+## `GET /api/capabilities` — one new field
+
+`fundamentals: boolean` — whether `/api/fundamentals/*` is served. When false, the UI
+hides the Financials toggle. See the `Capabilities` type.
+
+## `GET /api/quotes?symbols=AAPL,MSFT,...` — batch quotes for the watchlist
+
+| Param | Rule |
+|---|---|
+| `symbols` | Comma-separated, 1–`MAX_QUOTE_SYMBOLS` (50) entries, each 1–16 chars. Empty or too many → `BAD_REQUEST`. |
+
+**Success:** `ApiResult<QuotesResponse>` — `{ quotes, missing, failed }`.
+
+- **Partial success is normal.** An unknown symbol goes to `missing`; a resolved symbol
+  whose fetch failed goes to `failed`. Neither fails the request. The request fails as
+  a whole only for bad params, or when EVERY symbol failed (then use the first error's code).
+- `quotes` is in request order, with canonical symbols, de-duplicated case-insensitively.
+- **The proxy fans out to `engine.getSnapshot` per symbol** with a concurrency limit of 5,
+  through a shared quote cache (TTL 15 s, successes only). Two watchlists that share a
+  symbol fetch it once.
+- **FMP trap, measured:** `/stable/quote?symbol=AAPL,MSFT,NVDA` answers HTTP 200 with an
+  EMPTY array. It looks like success and returns nothing. `batch-quote` and
+  `batch-quote-short` are HTTP 402 on Starter. There is no batch endpoint: fan out.
+- **Rate budget (FMP Starter, 300 calls/min).** A full 50-symbol list polled every 30 s
+  costs at most 100 calls/min before the cache helps. The client therefore polls every
+  30 s, and only while the page is visible (`document.visibilityState === 'visible'`).
+
+## Workspace — named layouts and watchlists
+
+Stored server-side in one JSON file (`WORKSPACE_FILE`, default `data/workspace.json`).
+Single user, no authentication: the server binds `127.0.0.1` only.
+Invariants for the store are in `server/workspace/types.ts`.
+
+| Method & path | Body | Success |
+|---|---|---|
+| `GET /api/workspace` | — | `Workspace` |
+| `GET /api/layouts` | — | `{ layouts: ChartLayout[], activeLayoutId }` |
+| `POST /api/layouts` | `CreateLayoutBody` | `ChartLayout` (201) |
+| `PUT /api/layouts/:id` | `UpdateLayoutBody` | `ChartLayout` |
+| `DELETE /api/layouts/:id` | — | `Workspace` |
+| `GET /api/watchlists` | — | `{ watchlists: Watchlist[], activeWatchlistId }` |
+| `POST /api/watchlists` | `CreateWatchlistBody` | `Watchlist` (201) |
+| `PUT /api/watchlists/:id` | `UpdateWatchlistBody` | `Watchlist` |
+| `DELETE /api/watchlists/:id` | — | `Workspace` |
+| `PUT /api/workspace/active` | `SetActiveBody` | `Workspace` |
+
+- Bodies are JSON, validated with zod. Unknown fields → `BAD_REQUEST`.
+- **Optimistic concurrency.** `PUT` must carry the `revision` it was based on. A stale
+  revision → `CONFLICT` (409). The client then refetches, shows the current state, and
+  tells the user. It never retries the same write blindly.
+- Unknown id → `NOT_FOUND` (404). Validation failures (names, limits, last layout,
+  bad symbol format, invalid indicator params) → `BAD_REQUEST` with a user-safe message.
+- The default workspace is created on first read: layout "Main" (AAPL, 1D, candlestick),
+  watchlist "Watchlist" (AAPL, MSFT, NVDA, AMZN, GOOGL).
+- The MSW mock in `mocks/workspace.ts` implements this table exactly, and tests guard it.
+  It is orchestrator-owned: client workers build against it and do not edit it.
+
+## Fundamentals
+
+Invariants for the provider are in `server/fundamentals/types.ts`. Read them; several
+record measured FMP behaviour that is not what you would guess.
+
+| Path | Params | Success |
+|---|---|---|
+| `GET /api/fundamentals/overview` | `symbol` | `FundamentalsOverview` |
+| `GET /api/fundamentals/statements` | `symbol`, `statement` (`income`\|`balance`\|`cashflow`), `period` (`annual`\|`quarter`) | `StatementsResponse` |
+| `GET /api/fundamentals/earnings` | `symbol` | `EarningsResponse` |
+
+- Unknown symbol → `UNKNOWN_SYMBOL` (404). Plan tier lacks the data → `UNAUTHORIZED`.
+- The overview is partial-success: unavailable sections are listed in `unavailable`.
+- FMP Starter, measured: statements are available annual AND quarterly; `ratios` and
+  `key-metrics` are annual only (quarterly → 402); `ratios-ttm` and `key-metrics-ttm`
+  work. TTM values come from the TTM endpoints. Do not derive quarterly ratios.
+- Statements: annual returns up to 10 fiscal years, quarterly up to 8 quarters, newest first.
+- Cache: overview and statements 6 h, earnings 1 h. Successes only.
+- Real recorded responses for five symbols are in `server/fundamentals/__fixtures__/fmp/`.

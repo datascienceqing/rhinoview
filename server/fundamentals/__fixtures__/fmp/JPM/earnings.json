@@ -1,0 +1,1492 @@
+{
+  "status": 200,
+  "path": "/earnings?symbol=JPM",
+  "fetchedAt": "2026-10-04T22:01:52.889Z",
+  "body": [
+    {
+      "symbol": "JPM",
+      "date": "2026-10-13",
+      "epsActual": null,
+      "epsEstimated": 5.9,
+      "revenueActual": null,
+      "revenueEstimated": 51099600000,
+      "lastUpdated": "2026-10-04"
+    },
+    {
+      "symbol": "JPM",
+      "date": "2026-07-14",
+      "epsActual": 7.59,
+      "epsEstimated": 5.59,
+      "revenueActual": 57347000000,
+      "revenueEstimated": 50720640000,
+      "lastUpdated": "2026-10-04"
+    },
+    {
+      "symbol": "JPM",
+      "date": "2026-04-14",
+      "epsActual": 5.94,
+      "epsEstimated": 5.47,
+      "revenueActual": 49836000000,
+      "revenueEstimated": 49181760000,
+      "lastUpdated": "2026-07-14"
+    },
+    {
+      "symbol": "JPM",
+      "date": "2026-01-13",
+      "epsActual": 4.63,
+      "epsEstimated": 4.85,
+      "revenueActual": 45798000000,
+      "revenueEstimated": 46166450000,
+      "lastUpdated": "2026-04-13"
+    },
+    {
+      "symbol": "JPM",
+      "date": "2025-10-14",
+      "epsActual": 5.07,
+      "epsEstimated": 4.85,
+      "revenueActual": 46430000000,
+      "revenueEstimated": 45467182057,
+      "lastUpdated": "2026-02-18"
+    },
+    {
+      "symbol": "JPM",
+      "date": "2025-07-15",
+      "epsActual": 4.96,
+      "epsEstimated": 4.48,
+      "revenueActual": 44882000000,
+      "revenueEstimated": 43812377772,
+      "lastUpdated": "2026-02-18"
+    },
+    {
+      "symbol": "JPM",
+      "date": "2025-04-11",
+      "epsActual": 5.07,
+      "epsEstimated": 4.63,
+      "revenueActual": 45327000000,
+      "revenueEstimated": 43993969886,
+      "lastUpdated": "2026-02-18"
+    },
+    {
+      "symbol": "JPM",
+      "date": "2025-01-15",
+      "epsActual": 4.81,
+      "epsEstimated": 4.09,
+      "revenueActual": 42768000000,
+      "revenueEstimated": 41949590000,
+      "lastUpdated": "2026-05-07"
+    },
+    {
+      "symbol": "JPM",
+      "date": "2024-10-11",
+      "epsActual": 4.37,
+      "epsEstimated": 3.99,
+      "revenueActual": 42656000000,
+      "revenueEstimated": 41426533657,
+      "lastUpdated": "2026-02-18"
+    },
+    {
+      "symbol": "JPM",
+      "date": "2024-07-12",
+      "epsActual": 6.12,
+      "epsEstimated": 5.88,
+      "revenueActual": 51000000000,
+      "revenueEstimated": 42226050000,
+      "lastUpdated": "2026-08-17"
+    },
+    {
+      "symbol": "JPM",
+      "date": "2024-04-12",
+      "epsActual": 4.63,
+      "epsEstimated": 4.17,
+      "revenueActual": 41908000000,
+      "revenueEstimated": 41688837366,
+      "lastUpdated": "2026-02-18"
+    },
+    {
+      "symbol": "JPM",
+      "date": "2024-01-12",
+      "epsActual": 3.97,
+      "epsEstimated": 3.73,
+      "revenueActual": 38600000000,
+      "revenueEstimated": 41915200000,
+      "lastUpdated": "2026-02-18"
+    },
+    {
+      "symbol": "JPM",
+      "date": "2023-10-13",
+      "epsActual": 4.33,
+      "epsEstimated": 3.89,
+      "revenueActual": 39761000000,
+      "revenueEstimated": 39560200000,
+      "lastUpdated": "2026-02-18"
+    },
+    {
+      "symbol": "JPM",
+      "date": "2023-07-14",
+      "epsActual": 4.37,
+      "epsEstimated": 3.62,
+      "revenueActual": 38582000000,
+      "revenueEstimated": 38957600000,
+      "lastUpdated": "2026-02-18"
+    },
+    {
+      "symbol": "JPM",
+      "date": "2023-04-14",
+      "epsActual": 4.1,
+      "epsEstimated": 3.41,
+      "revenueActual": 38348000000,
+      "revenueEstimated": 35563400000,
+      "lastUpdated": "2026-02-18"
+    },
+    {
+      "symbol": "JPM",
+      "date": "2023-01-13",
+      "epsActual": 3.57,
+      "epsEstimated": 3.11,
+      "revenueActual": 34547000000,
+      "revenueEstimated": 34352590000,
+      "lastUpdated": "2026-05-07"
+    },
+    {
+      "symbol": "JPM",
+      "date": "2022-10-14",
+      "epsActual": 3.12,
+      "epsEstimated": 2.96,
+      "revenueActual": 32702000000,
+      "revenueEstimated": 32056129590,
+      "lastUpdated": "2026-02-18"
+    },
+    {
+      "symbol": "JPM",
+      "date": "2022-07-14",
+      "epsActual": 2.76,
+      "epsEstimated": 2.85,
+      "revenueActual": 30709000000,
+      "revenueEstimated": 31867527383,
+      "lastUpdated": "2026-02-18"
+    },
+    {
+      "symbol": "JPM",
+      "date": "2022-04-13",
+      "epsActual": 2.63,
+      "epsEstimated": 2.73,
+      "revenueActual": 30718000000,
+      "revenueEstimated": 30607875171,
+      "lastUpdated": "2026-02-18"
+    },
+    {
+      "symbol": "JPM",
+      "date": "2022-01-14",
+      "epsActual": 3.33,
+      "epsEstimated": 2.98,
+      "revenueActual": 30706000000,
+      "revenueEstimated": 29817980000,
+      "lastUpdated": "2026-05-07"
+    },
+    {
+      "symbol": "JPM",
+      "date": "2021-10-13",
+      "epsActual": 3.74,
+      "epsEstimated": 3,
+      "revenueActual": 29661000000,
+      "revenueEstimated": 29600500000,
+      "lastUpdated": "2026-02-18"
+    },
+    {
+      "symbol": "JPM",
+      "date": "2021-07-13",
+      "epsActual": 3.78,
+      "epsEstimated": 3.1,
+      "revenueActual": 30486000000,
+      "revenueEstimated": 29960500000,
+      "lastUpdated": "2026-02-18"
+    },
+    {
+      "symbol": "JPM",
+      "date": "2021-04-14",
+      "epsActual": 4.5,
+      "epsEstimated": 3.05,
+      "revenueActual": 32250000000,
+      "revenueEstimated": 29195525805,
+      "lastUpdated": "2026-02-18"
+    },
+    {
+      "symbol": "JPM",
+      "date": "2021-01-15",
+      "epsActual": 3.79,
+      "epsEstimated": 2.72,
+      "revenueActual": 30558000000,
+      "revenueEstimated": 30487830000,
+      "lastUpdated": "2026-05-07"
+    },
+    {
+      "symbol": "JPM",
+      "date": "2020-10-13",
+      "epsActual": 2.92,
+      "epsEstimated": 2.35,
+      "revenueActual": 29158000000,
+      "revenueEstimated": 20128421524,
+      "lastUpdated": "2026-02-18"
+    },
+    {
+      "symbol": "JPM",
+      "date": "2020-07-14",
+      "epsActual": 1.38,
+      "epsEstimated": 1.34,
+      "revenueActual": 33071000000,
+      "revenueEstimated": 24854492753,
+      "lastUpdated": "2026-02-18"
+    },
+    {
+      "symbol": "JPM",
+      "date": "2020-04-14",
+      "epsActual": 2.57,
+      "epsEstimated": 2.35,
+      "revenueActual": 28331000000,
+      "revenueEstimated": 25905778210,
+      "lastUpdated": "2026-02-18"
+    },
+    {
+      "symbol": "JPM",
+      "date": "2020-01-14",
+      "epsActual": 2.57,
+      "epsEstimated": 2.35,
+      "revenueActual": 28331000000,
+      "revenueEstimated": 25905778210,
+      "lastUpdated": "2026-02-18"
+    },
+    {
+      "symbol": "JPM",
+      "date": "2019-10-15",
+      "epsActual": 2.68,
+      "epsEstimated": 2.44,
+      "revenueActual": 29291000000,
+      "revenueEstimated": 26822929104,
+      "lastUpdated": "2026-02-18"
+    },
+    {
+      "symbol": "JPM",
+      "date": "2019-07-16",
+      "epsActual": 2.59,
+      "epsEstimated": 2.5,
+      "revenueActual": 28747000000,
+      "revenueEstimated": 25484929078,
+      "lastUpdated": "2026-02-18"
+    },
+    {
+      "symbol": "JPM",
+      "date": "2019-04-12",
+      "epsActual": 2.65,
+      "epsEstimated": 2.32,
+      "revenueActual": 29123000000,
+      "revenueEstimated": 25826056603,
+      "lastUpdated": "2026-02-18"
+    },
+    {
+      "symbol": "JPM",
+      "date": "2019-02-26",
+      "epsActual": 1.98,
+      "epsEstimated": 2.2,
+      "revenueActual": 26109000000,
+      "revenueEstimated": 29010000000,
+      "lastUpdated": "2026-02-18"
+    },
+    {
+      "symbol": "JPM",
+      "date": "2018-10-12",
+      "epsActual": 2.34,
+      "epsEstimated": 2.24,
+      "revenueActual": 27260000000,
+      "revenueEstimated": 26211538461,
+      "lastUpdated": "2026-02-18"
+    },
+    {
+      "symbol": "JPM",
+      "date": "2018-07-13",
+      "epsActual": 2.29,
+      "epsEstimated": 2.22,
+      "revenueActual": 27753000000,
+      "revenueEstimated": 26904655021,
+      "lastUpdated": "2026-02-18"
+    },
+    {
+      "symbol": "JPM",
+      "date": "2018-04-13",
+      "epsActual": 2.37,
+      "epsEstimated": 2.28,
+      "revenueActual": 27907000000,
+      "revenueEstimated": 26847240506,
+      "lastUpdated": "2026-02-18"
+    },
+    {
+      "symbol": "JPM",
+      "date": "2018-01-12",
+      "epsActual": 1.76,
+      "epsEstimated": 1.69,
+      "revenueActual": 24153000000,
+      "revenueEstimated": 23484278409,
+      "lastUpdated": "2026-02-18"
+    },
+    {
+      "symbol": "JPM",
+      "date": "2017-10-12",
+      "epsActual": 1.76,
+      "epsEstimated": 1.67,
+      "revenueActual": 25578000000,
+      "revenueEstimated": 23979375000,
+      "lastUpdated": "2026-02-18"
+    },
+    {
+      "symbol": "JPM",
+      "date": "2017-07-14",
+      "epsActual": 1.82,
+      "epsEstimated": 1.57,
+      "revenueActual": 25086000000,
+      "revenueEstimated": 22337901098,
+      "lastUpdated": "2026-02-18"
+    },
+    {
+      "symbol": "JPM",
+      "date": "2017-04-13",
+      "epsActual": 1.65,
+      "epsEstimated": 1.52,
+      "revenueActual": 24675000000,
+      "revenueEstimated": 22974109090,
+      "lastUpdated": "2026-02-18"
+    },
+    {
+      "symbol": "JPM",
+      "date": "2017-01-13",
+      "epsActual": 1.71,
+      "epsEstimated": 1.44,
+      "revenueActual": 23376000000,
+      "revenueEstimated": 20443789473,
+      "lastUpdated": "2026-02-18"
+    },
+    {
+      "symbol": "JPM",
+      "date": "2016-10-14",
+      "epsActual": 1.58,
+      "epsEstimated": 1.4,
+      "revenueActual": 24673000000,
+      "revenueEstimated": 21705993670,
+      "lastUpdated": "2026-02-18"
+    },
+    {
+      "symbol": "JPM",
+      "date": "2016-07-14",
+      "epsActual": 1.55,
+      "epsEstimated": 1.43,
+      "revenueActual": 24380000000,
+      "revenueEstimated": 22492516129,
+      "lastUpdated": "2026-02-18"
+    },
+    {
+      "symbol": "JPM",
+      "date": "2016-04-13",
+      "epsActual": 1.35,
+      "epsEstimated": 1.26,
+      "revenueActual": 23239000000,
+      "revenueEstimated": 21689733333,
+      "lastUpdated": "2026-02-18"
+    },
+    {
+      "symbol": "JPM",
+      "date": "2016-01-14",
+      "epsActual": 1.32,
+      "epsEstimated": 1.25,
+      "revenueActual": 22371000000,
+      "revenueEstimated": 21671401515,
+      "lastUpdated": "2026-02-18"
+    },
+    {
+      "symbol": "JPM",
+      "date": "2015-10-13",
+      "epsActual": 1.32,
+      "epsEstimated": 1.38,
+      "revenueActual": 22780000000,
+      "revenueEstimated": 18576547619,
+      "lastUpdated": "2026-02-18"
+    },
+    {
+      "symbol": "JPM",
+      "date": "2015-07-14",
+      "epsActual": 1.54,
+      "epsEstimated": 1.44,
+      "revenueActual": 23812000000,
+      "revenueEstimated": 22265766233,
+      "lastUpdated": "2026-02-18"
+    },
+    {
+      "symbol": "JPM",
+      "date": "2015-04-14",
+      "epsActual": 1.45,
+      "epsEstimated": 1.39,
+      "revenueActual": 24066000000,
+      "revenueEstimated": 23236137931,
+      "lastUpdated": "2026-02-18"
+    },
+    {
+      "symbol": "JPM",
+      "date": "2015-01-14",
+      "epsActual": 1.19,
+      "epsEstimated": 1.31,
+      "revenueActual": 22512000000,
+      "revenueEstimated": 25044117647,
+      "lastUpdated": "2026-02-18"
+    },
+    {
+      "symbol": "JPM",
+      "date": "2014-10-14",
+      "epsActual": 1.36,
+      "epsEstimated": 1.4,
+      "revenueActual": 24469000000,
+      "revenueEstimated": 24828838235,
+      "lastUpdated": "2026-02-18"
+    },
+    {
+      "symbol": "JPM",
+      "date": "2014-07-15",
+      "epsActual": 1.46,
+      "epsEstimated": 1.3,
+      "revenueActual": 24678000000,
+      "revenueEstimated": 21804534246,
+      "lastUpdated": "2026-02-18"
+    },
+    {
+      "symbol": "JPM",
+      "date": "2014-04-11",
+      "epsActual": 1.28,
+      "epsEstimated": 1.41,
+      "revenueActual": 25341000000,
+      "revenueEstimated": 25391406250,
+      "lastUpdated": "2026-02-18"
+    },
+    {
+      "symbol": "JPM",
+      "date": "2014-01-14",
+      "epsActual": 1.4,
+      "epsEstimated": 1.35,
+      "revenueActual": 23156000000,
+      "revenueEstimated": 23062821428,
+      "lastUpdated": "2026-02-18"
+    },
+    {
+      "symbol": "JPM",
+      "date": "2013-10-11",
+      "epsActual": 1.42,
+      "epsEstimated": 1.27,
+      "revenueActual": 23117000000,
+      "revenueEstimated": 19047105633,
+      "lastUpdated": "2026-02-18"
+    },
+    {
+      "symbol": "JPM",
+      "date": "2013-07-12",
+      "epsActual": 1.6,
+      "epsEstimated": 1.45,
+      "revenueActual": 25211000000,
+      "revenueEstimated": 22689899999,
+      "lastUpdated": "2026-02-18"
+    },
+    {
+      "symbol": "JPM",
+      "date": "2013-04-12",
+      "epsActual": 1.59,
+      "epsEstimated": 1.38,
+      "revenueActual": 25122000000,
+      "revenueEstimated": 21961999999,
+      "lastUpdated": "2026-02-18"
+    },
+    {
+      "symbol": "JPM",
+      "date": "2013-01-16",
+      "epsActual": 1.39,
+      "epsEstimated": 1.16,
+      "revenueActual": 23653000000,
+      "revenueEstimated": 19739194244,
+      "lastUpdated": "2026-02-18"
+    },
+    {
+      "symbol": "JPM",
+      "date": "2012-10-12",
+      "epsActual": 1.4,
+      "epsEstimated": 1.21,
+      "revenueActual": 25146000000,
+      "revenueEstimated": 20649695364,
+      "lastUpdated": "2026-02-18"
+    },
+    {
+      "symbol": "JPM",
+      "date": "2012-07-13",
+      "epsActual": 1.21,
+      "epsEstimated": 0.71,
+      "revenueActual": 22180000000,
+      "revenueEstimated": 14447522935,
+      "lastUpdated": "2026-02-18"
+    },
+    {
+      "symbol": "JPM",
+      "date": "2012-04-13",
+      "epsActual": 1.31,
+      "epsEstimated": 1.18,
+      "revenueActual": 26052000000,
+      "revenueEstimated": 24016687499,
+      "lastUpdated": "2026-02-18"
+    },
+    {
+      "symbol": "JPM",
+      "date": "2012-01-13",
+      "epsActual": 0.9,
+      "epsEstimated": 0.9,
+      "revenueActual": 21471000000,
+      "revenueEstimated": 21471000000,
+      "lastUpdated": "2026-02-18"
+    },
+    {
+      "symbol": "JPM",
+      "date": "2011-10-13",
+      "epsActual": 1.1,
+      "epsEstimated": 0.91,
+      "revenueActual": 23763000000,
+      "revenueEstimated": 21200323529,
+      "lastUpdated": "2026-02-18"
+    },
+    {
+      "symbol": "JPM",
+      "date": "2011-07-14",
+      "epsActual": 1.37,
+      "epsEstimated": 1.21,
+      "revenueActual": 26779000000,
+      "revenueEstimated": 25513850393,
+      "lastUpdated": "2026-02-18"
+    },
+    {
+      "symbol": "JPM",
+      "date": "2011-04-13",
+      "epsActual": 1.38,
+      "epsEstimated": 1.16,
+      "revenueActual": 25221000000,
+      "revenueEstimated": 22856531249,
+      "lastUpdated": "2026-02-18"
+    },
+    {
+      "symbol": "JPM",
+      "date": "2011-01-14",
+      "epsActual": 1.12,
+      "epsEstimated": 1,
+      "revenueActual": 26098000000,
+      "revenueEstimated": 23301785714,
+      "lastUpdated": "2026-02-18"
+    },
+    {
+      "symbol": "JPM",
+      "date": "2010-10-13",
+      "epsActual": 1.01,
+      "epsEstimated": 0.9,
+      "revenueActual": 23824000000,
+      "revenueEstimated": 21229306930,
+      "lastUpdated": "2026-02-18"
+    },
+    {
+      "symbol": "JPM",
+      "date": "2010-07-15",
+      "epsActual": 1.2,
+      "epsEstimated": 0.67,
+      "revenueActual": 25101000000,
+      "revenueEstimated": 23037904109,
+      "lastUpdated": "2026-02-18"
+    },
+    {
+      "symbol": "JPM",
+      "date": "2010-04-14",
+      "epsActual": 0.833,
+      "epsEstimated": 0.64,
+      "revenueActual": 27671000000,
+      "revenueEstimated": 23931675675,
+      "lastUpdated": "2026-02-18"
+    },
+    {
+      "symbol": "JPM",
+      "date": "2010-01-15",
+      "epsActual": 0.74,
+      "epsEstimated": 0.61,
+      "revenueActual": 23164000000,
+      "revenueEstimated": 19094648648,
+      "lastUpdated": "2026-02-18"
+    },
+    {
+      "symbol": "JPM",
+      "date": "2009-10-14",
+      "epsActual": 0.906,
+      "epsEstimated": 0.52,
+      "revenueActual": 26622000000,
+      "revenueEstimated": 16882243902,
+      "lastUpdated": "2026-02-18"
+    },
+    {
+      "symbol": "JPM",
+      "date": "2009-07-16",
+      "epsActual": 0.712,
+      "epsEstimated": 0.04,
+      "revenueActual": 25623000000,
+      "revenueEstimated": 3660428571,
+      "lastUpdated": "2026-02-18"
+    },
+    {
+      "symbol": "JPM",
+      "date": "2009-04-16",
+      "epsActual": 0.57,
+      "epsEstimated": 0.32,
+      "revenueActual": 25025000000,
+      "revenueEstimated": 20020000000,
+      "lastUpdated": "2026-02-18"
+    },
+    {
+      "symbol": "JPM",
+      "date": "2009-01-15",
+      "epsActual": 0.07,
+      "epsEstimated": null,
+      "revenueActual": 17226000000,
+      "revenueEstimated": null,
+      "lastUpdated": "2026-02-18"
+    },
+    {
+      "symbol": "JPM",
+      "date": "2008-10-15",
+      "epsActual": 0.15,
+      "epsEstimated": -0.21,
+      "revenueActual": 23069000000,
+      "revenueEstimated": 28134272727,
+      "lastUpdated": "2026-02-18"
+    },
+    {
+      "symbol": "JPM",
+      "date": "2008-07-17",
+      "epsActual": 0.58,
+      "epsEstimated": 0.44,
+      "revenueActual": 18399000000,
+      "revenueEstimated": 14991777777,
+      "lastUpdated": "2026-02-18"
+    },
+    {
+      "symbol": "JPM",
+      "date": "2008-04-16",
+      "epsActual": 0.679,
+      "epsEstimated": 0.64,
+      "revenueActual": 16890000000,
+      "revenueEstimated": 15896470588,
+      "lastUpdated": "2026-02-18"
+    },
+    {
+      "symbol": "JPM",
+      "date": "2008-01-16",
+      "epsActual": 0.86,
+      "epsEstimated": 0.92,
+      "revenueActual": 17384000000,
+      "revenueEstimated": 18593627906,
+      "lastUpdated": "2026-02-18"
+    },
+    {
+      "symbol": "JPM",
+      "date": "2007-10-17",
+      "epsActual": 0.97,
+      "epsEstimated": 0.9,
+      "revenueActual": 16112000000,
+      "revenueEstimated": 14952061855,
+      "lastUpdated": "2026-02-18"
+    },
+    {
+      "symbol": "JPM",
+      "date": "2007-07-18",
+      "epsActual": 1.2,
+      "epsEstimated": 1.09,
+      "revenueActual": 18908000000,
+      "revenueEstimated": 17174766666,
+      "lastUpdated": "2026-02-18"
+    },
+    {
+      "symbol": "JPM",
+      "date": "2007-04-18",
+      "epsActual": 1.34,
+      "epsEstimated": 1.02,
+      "revenueActual": 18968000000,
+      "revenueEstimated": 14438328358,
+      "lastUpdated": "2026-02-18"
+    },
+    {
+      "symbol": "JPM",
+      "date": "2007-01-17",
+      "epsActual": 1.09,
+      "epsEstimated": 0.95,
+      "revenueActual": 16054000000,
+      "revenueEstimated": 13688147368,
+      "lastUpdated": "2026-02-18"
+    },
+    {
+      "symbol": "JPM",
+      "date": "2006-10-18",
+      "epsActual": 0.922,
+      "epsEstimated": 0.86,
+      "revenueActual": 15545000000,
+      "revenueEstimated": 14531195652,
+      "lastUpdated": "2026-02-18"
+    },
+    {
+      "symbol": "JPM",
+      "date": "2006-07-19",
+      "epsActual": 0.991,
+      "epsEstimated": 0.87,
+      "revenueActual": 14940000000,
+      "revenueEstimated": 13257393939,
+      "lastUpdated": "2026-02-18"
+    },
+    {
+      "symbol": "JPM",
+      "date": "2006-04-19",
+      "epsActual": 0.863,
+      "epsEstimated": 0.84,
+      "revenueActual": 15236000000,
+      "revenueEstimated": 14822093023,
+      "lastUpdated": "2026-02-18"
+    },
+    {
+      "symbol": "JPM",
+      "date": "2006-01-18",
+      "epsActual": 0.73,
+      "epsEstimated": 0.72,
+      "revenueActual": 13678000000,
+      "revenueEstimated": 13488027777,
+      "lastUpdated": "2026-02-18"
+    },
+    {
+      "symbol": "JPM",
+      "date": "2005-10-19",
+      "epsActual": 0.712,
+      "epsEstimated": 0.72,
+      "revenueActual": 14265000000,
+      "revenueEstimated": 13694400000,
+      "lastUpdated": "2026-02-18"
+    },
+    {
+      "symbol": "JPM",
+      "date": "2005-07-20",
+      "epsActual": 0.2801,
+      "epsEstimated": 0.64,
+      "revenueActual": 12548000000,
+      "revenueEstimated": 12167757575,
+      "lastUpdated": "2026-02-18"
+    },
+    {
+      "symbol": "JPM",
+      "date": "2005-04-20",
+      "epsActual": 0.634,
+      "epsEstimated": 0.69,
+      "revenueActual": 13647000000,
+      "revenueEstimated": 11459962962,
+      "lastUpdated": "2026-02-18"
+    },
+    {
+      "symbol": "JPM",
+      "date": "2005-01-19",
+      "epsActual": 0.64,
+      "epsEstimated": 0.68,
+      "revenueActual": 12950000000,
+      "revenueEstimated": 13711764705,
+      "lastUpdated": "2026-02-18"
+    },
+    {
+      "symbol": "JPM",
+      "date": "2004-10-20",
+      "epsActual": 0.3948,
+      "epsEstimated": 0.74,
+      "revenueActual": 16546000000,
+      "revenueEstimated": 15422833333,
+      "lastUpdated": "2026-02-18"
+    },
+    {
+      "symbol": "JPM",
+      "date": "2004-07-21",
+      "epsActual": -0.26823,
+      "epsEstimated": 0.83,
+      "revenueActual": 8631000000,
+      "revenueEstimated": 8427917647,
+      "lastUpdated": "2026-02-18"
+    },
+    {
+      "symbol": "JPM",
+      "date": "2004-04-21",
+      "epsActual": 0.922,
+      "epsEstimated": 0.87,
+      "revenueActual": 8977000000,
+      "revenueEstimated": 8521271739,
+      "lastUpdated": "2026-02-18"
+    },
+    {
+      "symbol": "JPM",
+      "date": "2004-01-21",
+      "epsActual": 0.917,
+      "epsEstimated": 0.77,
+      "revenueActual": 8068000000,
+      "revenueEstimated": 7013056179,
+      "lastUpdated": "2026-02-18"
+    },
+    {
+      "symbol": "JPM",
+      "date": "2003-10-22",
+      "epsActual": 0.787,
+      "epsEstimated": 0.76,
+      "revenueActual": 7748000000,
+      "revenueEstimated": 7573692307,
+      "lastUpdated": "2026-02-18"
+    },
+    {
+      "symbol": "JPM",
+      "date": "2003-07-16",
+      "epsActual": 0.891,
+      "epsEstimated": 0.63,
+      "revenueActual": 9034000000,
+      "revenueEstimated": 6440865168,
+      "lastUpdated": "2026-02-18"
+    },
+    {
+      "symbol": "JPM",
+      "date": "2003-04-16",
+      "epsActual": 0.692,
+      "epsEstimated": 0.51,
+      "revenueActual": 8406000000,
+      "revenueEstimated": 6213130434,
+      "lastUpdated": "2026-02-18"
+    },
+    {
+      "symbol": "JPM",
+      "date": "2003-01-22",
+      "epsActual": -0.07,
+      "epsEstimated": -0.09,
+      "revenueActual": 7495000000,
+      "revenueEstimated": 9160555555,
+      "lastUpdated": "2026-02-18"
+    },
+    {
+      "symbol": "JPM",
+      "date": "2002-10-16",
+      "epsActual": 0.01994,
+      "epsEstimated": 0.07,
+      "revenueActual": 6947000000,
+      "revenueEstimated": 4912521428,
+      "lastUpdated": "2026-02-18"
+    },
+    {
+      "symbol": "JPM",
+      "date": "2002-07-17",
+      "epsActual": 0.51,
+      "epsEstimated": 0.65,
+      "revenueActual": 7574000000,
+      "revenueEstimated": 8488103448,
+      "lastUpdated": "2026-02-18"
+    },
+    {
+      "symbol": "JPM",
+      "date": "2002-04-17",
+      "epsActual": 0.4896,
+      "epsEstimated": 0.53,
+      "revenueActual": 7598000000,
+      "revenueEstimated": 7064807017,
+      "lastUpdated": "2026-02-18"
+    },
+    {
+      "symbol": "JPM",
+      "date": "2002-01-16",
+      "epsActual": 0.12,
+      "epsEstimated": 0.34,
+      "revenueActual": 6577000000,
+      "revenueEstimated": 9749435294,
+      "lastUpdated": "2026-02-18"
+    },
+    {
+      "symbol": "JPM",
+      "date": "2001-10-17",
+      "epsActual": 0.2222,
+      "epsEstimated": 0.5,
+      "revenueActual": 7349000000,
+      "revenueEstimated": 7275490196,
+      "lastUpdated": "2026-02-18"
+    },
+    {
+      "symbol": "JPM",
+      "date": "2001-07-18",
+      "epsActual": 0.1859,
+      "epsEstimated": 0.65,
+      "revenueActual": 6871000000,
+      "revenueEstimated": 7057578125,
+      "lastUpdated": "2026-02-18"
+    },
+    {
+      "symbol": "JPM",
+      "date": "2001-04-18",
+      "epsActual": 0.59,
+      "epsEstimated": 0.67,
+      "revenueActual": 8325000000,
+      "revenueEstimated": 7968214285,
+      "lastUpdated": "2026-02-18"
+    },
+    {
+      "symbol": "JPM",
+      "date": "2001-03-12",
+      "epsActual": 1.22,
+      "epsEstimated": 0.45,
+      "revenueActual": 32101000000,
+      "revenueEstimated": null,
+      "lastUpdated": "2026-02-18"
+    },
+    {
+      "symbol": "JPM",
+      "date": "2000-10-18",
+      "epsActual": 1.07,
+      "epsEstimated": 0.94,
+      "revenueActual": 7723000000,
+      "revenueEstimated": 7049999999,
+      "lastUpdated": "2026-02-18"
+    },
+    {
+      "symbol": "JPM",
+      "date": "2000-07-19",
+      "epsActual": 0.842,
+      "epsEstimated": 0.85,
+      "revenueActual": 7899000000,
+      "revenueEstimated": 4845894736,
+      "lastUpdated": "2026-02-18"
+    },
+    {
+      "symbol": "JPM",
+      "date": "2000-04-19",
+      "epsActual": 1.61,
+      "epsEstimated": 1.02,
+      "revenueActual": 8769000000,
+      "revenueEstimated": 5701415094,
+      "lastUpdated": "2026-02-18"
+    },
+    {
+      "symbol": "JPM",
+      "date": "2000-03-13",
+      "epsActual": 1.39,
+      "epsEstimated": null,
+      "revenueActual": 9382000000,
+      "revenueEstimated": null,
+      "lastUpdated": "2026-02-18"
+    },
+    {
+      "symbol": "JPM",
+      "date": "1999-10-20",
+      "epsActual": 0.932,
+      "epsEstimated": 0.88,
+      "revenueActual": 5191000000,
+      "revenueEstimated": 5019868131,
+      "lastUpdated": "2026-02-18"
+    },
+    {
+      "symbol": "JPM",
+      "date": "1999-07-21",
+      "epsActual": 1.08,
+      "epsEstimated": 0.9,
+      "revenueActual": 5616000000,
+      "revenueEstimated": 6729902912,
+      "lastUpdated": "2026-02-18"
+    },
+    {
+      "symbol": "JPM",
+      "date": "1999-04-20",
+      "epsActual": 0.946,
+      "epsEstimated": 0.83,
+      "revenueActual": 7967000000,
+      "revenueEstimated": 6963791208,
+      "lastUpdated": "2026-02-18"
+    },
+    {
+      "symbol": "JPM",
+      "date": "1999-03-11",
+      "epsActual": 0.906,
+      "epsEstimated": null,
+      "revenueActual": 8347000000,
+      "revenueEstimated": null,
+      "lastUpdated": "2026-02-18"
+    },
+    {
+      "symbol": "JPM",
+      "date": "1999-01-19",
+      "epsActual": 0.647,
+      "epsEstimated": 0.79,
+      "revenueActual": 4218000000,
+      "revenueEstimated": 4552987341,
+      "lastUpdated": "2026-02-18"
+    },
+    {
+      "symbol": "JPM",
+      "date": "1998-07-21",
+      "epsActual": 0.818,
+      "epsEstimated": 0.79,
+      "revenueActual": 8342000000,
+      "revenueEstimated": 6575084337,
+      "lastUpdated": "2026-02-18"
+    },
+    {
+      "symbol": "JPM",
+      "date": "1998-04-21",
+      "epsActual": 0.556,
+      "epsEstimated": 0.75,
+      "revenueActual": 8252000000,
+      "revenueEstimated": 6365384615,
+      "lastUpdated": "2026-02-18"
+    },
+    {
+      "symbol": "JPM",
+      "date": "1998-03-30",
+      "epsActual": 0.696,
+      "epsEstimated": null,
+      "revenueActual": 7808000000,
+      "revenueEstimated": null,
+      "lastUpdated": "2026-02-18"
+    },
+    {
+      "symbol": "JPM",
+      "date": "1997-10-21",
+      "epsActual": 0.751,
+      "epsEstimated": 0.72,
+      "revenueActual": 7864000000,
+      "revenueEstimated": 6077760000,
+      "lastUpdated": "2026-02-18"
+    },
+    {
+      "symbol": "JPM",
+      "date": "1997-07-15",
+      "epsActual": 0.709,
+      "epsEstimated": 0.69,
+      "revenueActual": 7504000000,
+      "revenueEstimated": 5859085714,
+      "lastUpdated": "2026-02-18"
+    },
+    {
+      "symbol": "JPM",
+      "date": "1997-04-15",
+      "epsActual": 0.702,
+      "epsEstimated": 0.66,
+      "revenueActual": 7224000000,
+      "revenueEstimated": 5893701492,
+      "lastUpdated": "2026-02-18"
+    },
+    {
+      "symbol": "JPM",
+      "date": "1997-03-25",
+      "epsActual": 0.642,
+      "epsEstimated": null,
+      "revenueActual": 6995000000,
+      "revenueEstimated": null,
+      "lastUpdated": "2026-02-18"
+    },
+    {
+      "symbol": "JPM",
+      "date": "1996-11-14",
+      "epsActual": 0.676,
+      "epsEstimated": null,
+      "revenueActual": 6774000000,
+      "revenueEstimated": null,
+      "lastUpdated": "2026-02-18"
+    },
+    {
+      "symbol": "JPM",
+      "date": "1996-08-14",
+      "epsActual": 0.641,
+      "epsEstimated": null,
+      "revenueActual": 6720000000,
+      "revenueEstimated": null,
+      "lastUpdated": "2026-02-18"
+    },
+    {
+      "symbol": "JPM",
+      "date": "1996-05-15",
+      "epsActual": -0.11842,
+      "epsEstimated": null,
+      "revenueActual": 6932000000,
+      "revenueEstimated": null,
+      "lastUpdated": "2026-02-18"
+    },
+    {
+      "symbol": "JPM",
+      "date": "1996-03-20",
+      "epsActual": 0.606,
+      "epsEstimated": null,
+      "revenueActual": 3810000000,
+      "revenueEstimated": null,
+      "lastUpdated": "2026-02-18"
+    },
+    {
+      "symbol": "JPM",
+      "date": "1995-11-14",
+      "epsActual": 0.57,
+      "epsEstimated": null,
+      "revenueActual": 3810000000,
+      "revenueEstimated": null,
+      "lastUpdated": "2026-02-18"
+    },
+    {
+      "symbol": "JPM",
+      "date": "1995-08-14",
+      "epsActual": 0.56,
+      "epsEstimated": null,
+      "revenueActual": 3728000000,
+      "revenueEstimated": null,
+      "lastUpdated": "2026-02-18"
+    },
+    {
+      "symbol": "JPM",
+      "date": "1995-05-15",
+      "epsActual": 0.49,
+      "epsEstimated": null,
+      "revenueActual": 3536000000,
+      "revenueEstimated": null,
+      "lastUpdated": "2026-02-18"
+    },
+    {
+      "symbol": "JPM",
+      "date": "1995-03-27",
+      "epsActual": 0.2278,
+      "epsEstimated": null,
+      "revenueActual": 3281000000,
+      "revenueEstimated": null,
+      "lastUpdated": "2026-02-18"
+    },
+    {
+      "symbol": "JPM",
+      "date": "1994-11-14",
+      "epsActual": 0.57,
+      "epsEstimated": null,
+      "revenueActual": 3297000000,
+      "revenueEstimated": null,
+      "lastUpdated": "2026-02-18"
+    },
+    {
+      "symbol": "JPM",
+      "date": "1994-08-15",
+      "epsActual": 0.4738,
+      "epsEstimated": null,
+      "revenueActual": 3086000000,
+      "revenueEstimated": null,
+      "lastUpdated": "2026-02-18"
+    },
+    {
+      "symbol": "JPM",
+      "date": "1994-05-16",
+      "epsActual": 0.4224,
+      "epsEstimated": null,
+      "revenueActual": 3021000000,
+      "revenueEstimated": null,
+      "lastUpdated": "2026-02-18"
+    },
+    {
+      "symbol": "JPM",
+      "date": "1994-03-25",
+      "epsActual": 0.4562,
+      "epsEstimated": null,
+      "revenueActual": 3127000000,
+      "revenueEstimated": null,
+      "lastUpdated": "2026-02-18"
+    },
+    {
+      "symbol": "JPM",
+      "date": "1993-09-30",
+      "epsActual": 0.66,
+      "epsEstimated": null,
+      "revenueActual": 3077000000,
+      "revenueEstimated": null,
+      "lastUpdated": "2026-02-18"
+    },
+    {
+      "symbol": "JPM",
+      "date": "1993-06-30",
+      "epsActual": 0.503,
+      "epsEstimated": null,
+      "revenueActual": 3174000000,
+      "revenueEstimated": null,
+      "lastUpdated": "2026-02-18"
+    },
+    {
+      "symbol": "JPM",
+      "date": "1993-03-31",
+      "epsActual": 0.514,
+      "epsEstimated": null,
+      "revenueActual": 3049000000,
+      "revenueEstimated": null,
+      "lastUpdated": "2026-02-18"
+    },
+    {
+      "symbol": "JPM",
+      "date": "1992-12-31",
+      "epsActual": 0.4045,
+      "epsEstimated": null,
+      "revenueActual": 2876000000,
+      "revenueEstimated": null,
+      "lastUpdated": "2026-02-18"
+    },
+    {
+      "symbol": "JPM",
+      "date": "1992-09-30",
+      "epsActual": 0.3752,
+      "epsEstimated": null,
+      "revenueActual": 3031000000,
+      "revenueEstimated": null,
+      "lastUpdated": "2026-02-18"
+    },
+    {
+      "symbol": "JPM",
+      "date": "1992-06-30",
+      "epsActual": 0.3429,
+      "epsEstimated": null,
+      "revenueActual": 3036000000,
+      "revenueEstimated": null,
+      "lastUpdated": "2026-02-18"
+    },
+    {
+      "symbol": "JPM",
+      "date": "1992-03-31",
+      "epsActual": 0.3796,
+      "epsEstimated": null,
+      "revenueActual": 3231000000,
+      "revenueEstimated": null,
+      "lastUpdated": "2026-02-18"
+    },
+    {
+      "symbol": "JPM",
+      "date": "1991-12-31",
+      "epsActual": -0.58267,
+      "epsEstimated": null,
+      "revenueActual": 8824800000,
+      "revenueEstimated": null,
+      "lastUpdated": "2026-02-18"
+    },
+    {
+      "symbol": "JPM",
+      "date": "1991-09-30",
+      "epsActual": 0.4835,
+      "epsEstimated": null,
+      "revenueActual": 1787800000,
+      "revenueEstimated": null,
+      "lastUpdated": "2026-02-18"
+    },
+    {
+      "symbol": "JPM",
+      "date": "1991-06-30",
+      "epsActual": 0.3384,
+      "epsEstimated": null,
+      "revenueActual": 1734500000,
+      "revenueEstimated": null,
+      "lastUpdated": "2026-02-18"
+    },
+    {
+      "symbol": "JPM",
+      "date": "1991-03-31",
+      "epsActual": 0.3199,
+      "epsEstimated": null,
+      "revenueActual": 1780900000,
+      "revenueEstimated": null,
+      "lastUpdated": "2026-02-18"
+    },
+    {
+      "symbol": "JPM",
+      "date": "1990-12-31",
+      "epsActual": 0.2571,
+      "epsEstimated": null,
+      "revenueActual": 1954900000,
+      "revenueEstimated": null,
+      "lastUpdated": "2026-02-18"
+    },
+    {
+      "symbol": "JPM",
+      "date": "1990-09-30",
+      "epsActual": -0.1603,
+      "epsEstimated": null,
+      "revenueActual": 1983600000,
+      "revenueEstimated": null,
+      "lastUpdated": "2026-02-18"
+    },
+    {
+      "symbol": "JPM",
+      "date": "1990-06-30",
+      "epsActual": 0.413,
+      "epsEstimated": null,
+      "revenueActual": 1946000000,
+      "revenueEstimated": null,
+      "lastUpdated": "2026-02-18"
+    },
+    {
+      "symbol": "JPM",
+      "date": "1990-03-31",
+      "epsActual": 0.4095,
+      "epsEstimated": null,
+      "revenueActual": 2082000000,
+      "revenueEstimated": null,
+      "lastUpdated": "2026-02-18"
+    },
+    {
+      "symbol": "JPM",
+      "date": "1989-12-31",
+      "epsActual": 0.2777,
+      "epsEstimated": null,
+      "revenueActual": null,
+      "revenueEstimated": null,
+      "lastUpdated": "2026-02-18"
+    },
+    {
+      "symbol": "JPM",
+      "date": "1989-09-30",
+      "epsActual": -2.58215,
+      "epsEstimated": null,
+      "revenueActual": null,
+      "revenueEstimated": null,
+      "lastUpdated": "2026-02-18"
+    },
+    {
+      "symbol": "JPM",
+      "date": "1989-06-30",
+      "epsActual": 0.4027,
+      "epsEstimated": null,
+      "revenueActual": null,
+      "revenueEstimated": null,
+      "lastUpdated": "2026-02-18"
+    },
+    {
+      "symbol": "JPM",
+      "date": "1989-03-31",
+      "epsActual": 0.3692,
+      "epsEstimated": null,
+      "revenueActual": null,
+      "revenueEstimated": null,
+      "lastUpdated": "2026-02-18"
+    },
+    {
+      "symbol": "JPM",
+      "date": "1988-12-31",
+      "epsActual": 0.984,
+      "epsEstimated": null,
+      "revenueActual": null,
+      "revenueEstimated": null,
+      "lastUpdated": "2026-02-18"
+    },
+    {
+      "symbol": "JPM",
+      "date": "1988-09-30",
+      "epsActual": 0.758,
+      "epsEstimated": null,
+      "revenueActual": null,
+      "revenueEstimated": null,
+      "lastUpdated": "2026-02-18"
+    },
+    {
+      "symbol": "JPM",
+      "date": "1988-06-30",
+      "epsActual": 0.457,
+      "epsEstimated": null,
+      "revenueActual": null,
+      "revenueEstimated": null,
+      "lastUpdated": "2026-02-18"
+    },
+    {
+      "symbol": "JPM",
+      "date": "1988-03-31",
+      "epsActual": 0.4491,
+      "epsEstimated": null,
+      "revenueActual": null,
+      "revenueEstimated": null,
+      "lastUpdated": "2026-02-18"
+    },
+    {
+      "symbol": "JPM",
+      "date": "1987-12-31",
+      "epsActual": 0.865,
+      "epsEstimated": null,
+      "revenueActual": null,
+      "revenueEstimated": null,
+      "lastUpdated": "2026-02-18"
+    },
+    {
+      "symbol": "JPM",
+      "date": "1987-09-30",
+      "epsActual": -0.40648,
+      "epsEstimated": null,
+      "revenueActual": null,
+      "revenueEstimated": null,
+      "lastUpdated": "2026-02-18"
+    },
+    {
+      "symbol": "JPM",
+      "date": "1987-06-30",
+      "epsActual": -6.77701,
+      "epsEstimated": null,
+      "revenueActual": null,
+      "revenueEstimated": null,
+      "lastUpdated": "2026-02-18"
+    },
+    {
+      "symbol": "JPM",
+      "date": "1987-03-31",
+      "epsActual": 0.565,
+      "epsEstimated": null,
+      "revenueActual": null,
+      "revenueEstimated": null,
+      "lastUpdated": "2026-02-18"
+    },
+    {
+      "symbol": "JPM",
+      "date": "1986-12-31",
+      "epsActual": 0.682,
+      "epsEstimated": null,
+      "revenueActual": null,
+      "revenueEstimated": null,
+      "lastUpdated": "2026-02-18"
+    },
+    {
+      "symbol": "JPM",
+      "date": "1986-09-30",
+      "epsActual": 0.667,
+      "epsEstimated": null,
+      "revenueActual": null,
+      "revenueEstimated": null,
+      "lastUpdated": "2026-02-18"
+    },
+    {
+      "symbol": "JPM",
+      "date": "1986-06-30",
+      "epsActual": 0.661,
+      "epsEstimated": null,
+      "revenueActual": null,
+      "revenueEstimated": null,
+      "lastUpdated": "2026-02-18"
+    },
+    {
+      "symbol": "JPM",
+      "date": "1986-03-31",
+      "epsActual": 0.694,
+      "epsEstimated": null,
+      "revenueActual": null,
+      "revenueEstimated": null,
+      "lastUpdated": "2026-02-18"
+    },
+    {
+      "symbol": "JPM",
+      "date": "1985-12-31",
+      "epsActual": 0.665,
+      "epsEstimated": null,
+      "revenueActual": null,
+      "revenueEstimated": null,
+      "lastUpdated": "2026-02-18"
+    },
+    {
+      "symbol": "JPM",
+      "date": "1985-09-30",
+      "epsActual": 0.656,
+      "epsEstimated": null,
+      "revenueActual": null,
+      "revenueEstimated": null,
+      "lastUpdated": "2026-02-18"
+    }
+  ]
+}

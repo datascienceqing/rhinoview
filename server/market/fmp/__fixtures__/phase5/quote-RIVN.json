@@ -1,0 +1,26 @@
+{
+  "status": 200,
+  "path": "/quote?symbol=RIVN",
+  "fetchedAt": "2026-10-04T22:01:52.889Z",
+  "body": [
+    {
+      "symbol": "RIVN",
+      "name": "Rivian Automotive, Inc.",
+      "price": 14.3,
+      "changePercentage": -3.11653,
+      "change": -0.46,
+      "volume": 60862087,
+      "dayLow": 13.96,
+      "dayHigh": 15.36,
+      "yearHigh": 22.69,
+      "yearLow": 12.39,
+      "marketCap": 17358454099,
+      "priceAvg50": 15.7275,
+      "priceAvg200": 16.16095,
+      "exchange": "NASDAQ",
+      "open": 15.26,
+      "previousClose": 14.76,
+      "timestamp": 1790971200
+    }
+  ]
+}

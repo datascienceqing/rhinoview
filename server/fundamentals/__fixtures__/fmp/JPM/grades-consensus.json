@@ -1,0 +1,16 @@
+{
+  "status": 200,
+  "path": "/grades-consensus?symbol=JPM",
+  "fetchedAt": "2026-10-04T22:01:52.889Z",
+  "body": [
+    {
+      "symbol": "JPM",
+      "strongBuy": 1,
+      "buy": 31,
+      "hold": 27,
+      "sell": 2,
+      "strongSell": 0,
+      "consensus": "Buy"
+    }
+  ]
+}

@@ -1,0 +1,16 @@
+{
+  "status": 200,
+  "path": "/grades-consensus?symbol=MSFT",
+  "fetchedAt": "2026-10-04T22:01:52.889Z",
+  "body": [
+    {
+      "symbol": "MSFT",
+      "strongBuy": 0,
+      "buy": 67,
+      "hold": 15,
+      "sell": 0,
+      "strongSell": 0,
+      "consensus": "Buy"
+    }
+  ]
+}

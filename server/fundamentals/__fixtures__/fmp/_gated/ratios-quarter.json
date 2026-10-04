@@ -1,0 +1,6 @@
+{
+  "status": 402,
+  "path": "/ratios?symbol=AAPL&period=quarter&limit=4",
+  "fetchedAt": "2026-10-04T22:01:52.889Z",
+  "body": "Premium Query Parameter: 'Special Endpoint : This value set for 'period' is not available under your current subscription please visit our subscription page to upgrade your plan at https://financialmodelingprep.com/"
+}

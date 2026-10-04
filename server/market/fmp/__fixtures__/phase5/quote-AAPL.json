@@ -1,0 +1,26 @@
+{
+  "status": 200,
+  "path": "/quote?symbol=AAPL",
+  "fetchedAt": "2026-10-04T22:01:52.889Z",
+  "body": [
+    {
+      "symbol": "AAPL",
+      "name": "Apple Inc.",
+      "price": 333.69,
+      "changePercentage": 1.02022,
+      "change": 3.37,
+      "volume": 33278552,
+      "dayLow": 330.61,
+      "dayHigh": 334.54,
+      "yearHigh": 345.34,
+      "yearLow": 243.42,
+      "marketCap": 4901023823640,
+      "priceAvg50": 322.4162,
+      "priceAvg200": 289.1586,
+      "exchange": "NASDAQ",
+      "open": 333.205,
+      "previousClose": 330.32,
+      "timestamp": 1790971201
+    }
+  ]
+}

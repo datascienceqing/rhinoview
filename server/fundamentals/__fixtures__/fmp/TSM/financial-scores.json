@@ -1,0 +1,20 @@
+{
+  "status": 200,
+  "path": "/financial-scores?symbol=TSM",
+  "fetchedAt": "2026-10-04T22:01:52.889Z",
+  "body": [
+    {
+      "symbol": "TSM",
+      "reportedCurrency": "TWD",
+      "altmanZScore": 18.685183941970248,
+      "piotroskiScore": 8,
+      "workingCapital": 2707939000000,
+      "totalAssets": 9375655000000,
+      "retainedEarnings": 5739966000000,
+      "ebit": 2507368403000,
+      "marketCap": 77965827401862.39,
+      "totalLiabilities": 2901184000000,
+      "revenue": 4450378591000
+    }
+  ]
+}

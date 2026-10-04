@@ -50,6 +50,25 @@ installs corrupt the lockfile for whoever else is running.
 
 ---
 
+## Phase 5 file ownership
+
+Phase 5 replaces the ownership table above for the duration of the phase. The full task
+for each worker is in `docs/PHASE5_PLAN.md`, section 3.
+
+| Path | Owner |
+|---|---|
+| Everything in `docs/PHASE5_PLAN.md` section 2 (wave 0 seams, `src/App.tsx`, `mocks/workspace.ts`, `mocks/envelope.ts`, fixtures) | **Orchestrator — frozen** |
+| `server/market/fmp/**`, `server/routes/quotes.ts`, `server/provider/quotes.ts`, `server/cache/quotesCache.ts` | W1 — FMP intraday and batch quotes |
+| `server/fundamentals/**` (not `types.ts`), `server/routes/fundamentals.ts` | W2 — fundamentals |
+| `server/workspace/**` (not `types.ts`), `server/routes/workspace.ts` | W3 — workspace store |
+| `src/layouts/**`, `src/workspace/**` (not `types.ts`), `src/ui/ChartPanel.tsx`, `src/ui/TimeframeSelector.tsx`, `src/panes/storage.ts` | W4 — named layouts |
+| `src/watchlist/**`, `mocks/quotes.ts` | W5 — watchlist |
+| `src/fundamentals/**`, `mocks/fundamentals.ts` | W6 — financials and earnings markers |
+
+Two sanctioned cross-boundary imports exist. W3 imports `checkIndicatorParams` from
+`src/indicators/params.ts`, so server and client validate indicators the same way. W5
+imports (does not edit) `SymbolSearch` from `src/ui`.
+
 ## Where the data comes from
 
 **There is no market-data subscription.** A deterministic **synthetic engine** stands

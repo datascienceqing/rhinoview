@@ -1,0 +1,6 @@
+{
+  "status": 200,
+  "path": "/quote?symbol=AAPL,MSFT,NVDA",
+  "fetchedAt": "2026-10-04T22:01:52.889Z",
+  "body": []
+}

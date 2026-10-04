@@ -1,0 +1,26 @@
+{
+  "status": 200,
+  "path": "/quote?symbol=MSFT",
+  "fetchedAt": "2026-10-04T22:01:52.889Z",
+  "body": [
+    {
+      "symbol": "MSFT",
+      "name": "Microsoft Corporation",
+      "price": 517.53,
+      "changePercentage": 0.92239,
+      "change": 4.73,
+      "volume": 17822339,
+      "dayLow": 513.66,
+      "dayHigh": 522.5,
+      "yearHigh": 553.72,
+      "yearLow": 349.2,
+      "marketCap": 3842944891500,
+      "priceAvg50": 487.7242,
+      "priceAvg200": 432.83096,
+      "exchange": "NASDAQ",
+      "open": 519.095,
+      "previousClose": 512.8,
+      "timestamp": 1790971201
+    }
+  ]
+}

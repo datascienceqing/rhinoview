@@ -1,0 +1,26 @@
+{
+  "status": 200,
+  "path": "/quote?symbol=TSM",
+  "fetchedAt": "2026-10-04T22:01:52.889Z",
+  "body": [
+    {
+      "symbol": "TSM",
+      "name": "Taiwan Semiconductor Manufacturing Company Limited",
+      "price": 472.78,
+      "changePercentage": 2.95732,
+      "change": 13.58,
+      "volume": 9722477,
+      "dayLow": 464.1,
+      "dayHigh": 474.79,
+      "yearHigh": 479,
+      "yearLow": 266.82,
+      "marketCap": 2452064014400,
+      "priceAvg50": 424.8956,
+      "priceAvg200": 387.16614,
+      "exchange": "NYSE",
+      "open": 465.64,
+      "previousClose": 459.2,
+      "timestamp": 1790971202
+    }
+  ]
+}

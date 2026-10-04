@@ -1,0 +1,1051 @@
+{
+  "status": 200,
+  "path": "/earnings?symbol=TSM",
+  "fetchedAt": "2026-10-04T22:01:52.889Z",
+  "body": [
+    {
+      "symbol": "TSM",
+      "date": "2026-10-15",
+      "epsActual": null,
+      "epsEstimated": 4.4,
+      "revenueActual": null,
+      "revenueEstimated": 45301130000,
+      "lastUpdated": "2026-10-04"
+    },
+    {
+      "symbol": "TSM",
+      "date": "2026-07-16",
+      "epsActual": 4.31,
+      "epsEstimated": 3.87,
+      "revenueActual": 39356270000,
+      "revenueEstimated": 39834730000,
+      "lastUpdated": "2026-10-04"
+    },
+    {
+      "symbol": "TSM",
+      "date": "2026-04-15",
+      "epsActual": 3.49,
+      "epsEstimated": 3.31,
+      "revenueActual": 35978710000,
+      "revenueEstimated": 35351050000,
+      "lastUpdated": "2026-07-15"
+    },
+    {
+      "symbol": "TSM",
+      "date": "2026-01-15",
+      "epsActual": 3.09,
+      "epsEstimated": 2.9,
+      "revenueActual": 33138200000,
+      "revenueEstimated": 33007930000,
+      "lastUpdated": "2026-07-10"
+    },
+    {
+      "symbol": "TSM",
+      "date": "2025-10-16",
+      "epsActual": 2.92,
+      "epsEstimated": 2.63,
+      "revenueActual": 32358720000,
+      "revenueEstimated": 32071990000,
+      "lastUpdated": "2026-07-10"
+    },
+    {
+      "symbol": "TSM",
+      "date": "2025-07-17",
+      "epsActual": 2.5,
+      "epsEstimated": 2.38,
+      "revenueActual": 31752990000,
+      "revenueEstimated": 30211540000,
+      "lastUpdated": "2026-07-10"
+    },
+    {
+      "symbol": "TSM",
+      "date": "2025-05-15",
+      "epsActual": 2.14,
+      "epsEstimated": 2.07,
+      "revenueActual": 25804130000,
+      "revenueEstimated": 25460310000,
+      "lastUpdated": "2026-07-10"
+    },
+    {
+      "symbol": "TSM",
+      "date": "2025-01-16",
+      "epsActual": 2.19,
+      "epsEstimated": 2.2,
+      "revenueActual": 26375350000,
+      "revenueEstimated": 26237680000,
+      "lastUpdated": "2026-07-10"
+    },
+    {
+      "symbol": "TSM",
+      "date": "2024-11-14",
+      "epsActual": 1.95,
+      "epsEstimated": 1.79,
+      "revenueActual": 23602750000,
+      "revenueEstimated": 23309750000,
+      "lastUpdated": "2026-07-10"
+    },
+    {
+      "symbol": "TSM",
+      "date": "2024-08-14",
+      "epsActual": 1.47,
+      "epsEstimated": 1.41,
+      "revenueActual": 20661080000,
+      "revenueEstimated": 20329020000,
+      "lastUpdated": "2026-07-10"
+    },
+    {
+      "symbol": "TSM",
+      "date": "2024-04-18",
+      "epsActual": 1.34,
+      "epsEstimated": 1.3,
+      "revenueActual": 18322300000,
+      "revenueEstimated": 18316990000,
+      "lastUpdated": "2026-07-10"
+    },
+    {
+      "symbol": "TSM",
+      "date": "2024-01-18",
+      "epsActual": 1.46,
+      "epsEstimated": 1.38,
+      "revenueActual": 19801180000,
+      "revenueEstimated": 19675490000,
+      "lastUpdated": "2026-07-10"
+    },
+    {
+      "symbol": "TSM",
+      "date": "2023-11-14",
+      "epsActual": 1.26,
+      "epsEstimated": 1.16,
+      "revenueActual": 16893940000,
+      "revenueEstimated": 16963430000,
+      "lastUpdated": "2026-07-10"
+    },
+    {
+      "symbol": "TSM",
+      "date": "2023-07-13",
+      "epsActual": 1.13,
+      "epsEstimated": 1.07,
+      "revenueActual": 15470330000,
+      "revenueEstimated": 15441200000,
+      "lastUpdated": "2026-07-10"
+    },
+    {
+      "symbol": "TSM",
+      "date": "2023-04-13",
+      "epsActual": 1.4,
+      "epsEstimated": 1.21,
+      "revenueActual": 16695620000,
+      "revenueEstimated": 16989990000,
+      "lastUpdated": "2026-07-10"
+    },
+    {
+      "symbol": "TSM",
+      "date": "2023-01-12",
+      "epsActual": 1.82,
+      "epsEstimated": 1.8,
+      "revenueActual": 20543930000,
+      "revenueEstimated": 20573740000,
+      "lastUpdated": "2026-07-10"
+    },
+    {
+      "symbol": "TSM",
+      "date": "2022-11-14",
+      "epsActual": 1.79,
+      "epsEstimated": 1.69,
+      "revenueActual": 19223160000,
+      "revenueEstimated": 19440660000,
+      "lastUpdated": "2026-07-10"
+    },
+    {
+      "symbol": "TSM",
+      "date": "2022-07-14",
+      "epsActual": 1.55,
+      "epsEstimated": 1.5,
+      "revenueActual": 17867830000,
+      "revenueEstimated": 17680030000,
+      "lastUpdated": "2026-07-10"
+    },
+    {
+      "symbol": "TSM",
+      "date": "2022-04-14",
+      "epsActual": 1.4,
+      "epsEstimated": 1.31,
+      "revenueActual": 16936870000,
+      "revenueEstimated": 16734890000,
+      "lastUpdated": "2026-07-10"
+    },
+    {
+      "symbol": "TSM",
+      "date": "2022-02-25",
+      "epsActual": 1.15,
+      "epsEstimated": 1.14,
+      "revenueActual": 15823640000,
+      "revenueEstimated": 15664620000,
+      "lastUpdated": "2026-07-10"
+    },
+    {
+      "symbol": "TSM",
+      "date": "2021-11-12",
+      "epsActual": 1.08,
+      "epsEstimated": 1.05,
+      "revenueActual": 14793920000,
+      "revenueEstimated": 15124340000,
+      "lastUpdated": "2026-07-10"
+    },
+    {
+      "symbol": "TSM",
+      "date": "2021-07-15",
+      "epsActual": 0.93,
+      "epsEstimated": 0.89,
+      "revenueActual": 13328870000,
+      "revenueEstimated": 13438160000,
+      "lastUpdated": "2026-07-10"
+    },
+    {
+      "symbol": "TSM",
+      "date": "2021-04-15",
+      "epsActual": 0.96,
+      "epsEstimated": 0.91,
+      "revenueActual": 12735340000,
+      "revenueEstimated": 12522280000,
+      "lastUpdated": "2026-07-10"
+    },
+    {
+      "symbol": "TSM",
+      "date": "2021-01-14",
+      "epsActual": 0.97,
+      "epsEstimated": 0.92,
+      "revenueActual": 12859430000,
+      "revenueEstimated": 12636910000,
+      "lastUpdated": "2026-07-10"
+    },
+    {
+      "symbol": "TSM",
+      "date": "2020-10-15",
+      "epsActual": 0.9,
+      "epsEstimated": 0.92,
+      "revenueActual": 12337310000,
+      "revenueEstimated": 10601160000,
+      "lastUpdated": "2026-07-10"
+    },
+    {
+      "symbol": "TSM",
+      "date": "2020-07-16",
+      "epsActual": 0.78,
+      "epsEstimated": 0.73,
+      "revenueActual": 10545500000,
+      "revenueEstimated": 10412070000,
+      "lastUpdated": "2026-07-10"
+    },
+    {
+      "symbol": "TSM",
+      "date": "2020-04-16",
+      "epsActual": 0.75,
+      "epsEstimated": 0.73,
+      "revenueActual": 10288590000,
+      "revenueEstimated": 10056950000,
+      "lastUpdated": "2026-07-10"
+    },
+    {
+      "symbol": "TSM",
+      "date": "2020-01-16",
+      "epsActual": 0.73,
+      "epsEstimated": 0.72,
+      "revenueActual": 10368710000,
+      "revenueEstimated": 10597090000,
+      "lastUpdated": "2026-07-10"
+    },
+    {
+      "symbol": "TSM",
+      "date": "2019-10-17",
+      "epsActual": 0.62,
+      "epsEstimated": 0.63,
+      "revenueActual": 9460677000,
+      "revenueEstimated": 9797093000,
+      "lastUpdated": "2026-07-10"
+    },
+    {
+      "symbol": "TSM",
+      "date": "2019-07-25",
+      "epsActual": 0.41,
+      "epsEstimated": 0.42,
+      "revenueActual": 7772989000,
+      "revenueEstimated": 7756999000,
+      "lastUpdated": "2026-07-10"
+    },
+    {
+      "symbol": "TSM",
+      "date": "2019-05-20",
+      "epsActual": 0.3792,
+      "epsEstimated": 0.08222,
+      "revenueActual": 7088534000,
+      "revenueEstimated": 7631671000,
+      "lastUpdated": "2026-07-10"
+    },
+    {
+      "symbol": "TSM",
+      "date": "2019-01-17",
+      "epsActual": 0.125,
+      "epsEstimated": 0.1244,
+      "revenueActual": 9386117000,
+      "revenueEstimated": 6900290000,
+      "lastUpdated": "2026-07-10"
+    },
+    {
+      "symbol": "TSM",
+      "date": "2018-10-18",
+      "epsActual": 0.56,
+      "epsEstimated": 0.56,
+      "revenueActual": 8516122000,
+      "revenueEstimated": 8423660000,
+      "lastUpdated": "2026-07-10"
+    },
+    {
+      "symbol": "TSM",
+      "date": "2018-07-19",
+      "epsActual": 0.47,
+      "epsEstimated": 0.45,
+      "revenueActual": 7634950000,
+      "revenueEstimated": 7613261000,
+      "lastUpdated": "2026-07-10"
+    },
+    {
+      "symbol": "TSM",
+      "date": "2018-04-19",
+      "epsActual": 0.59,
+      "epsEstimated": 0.6,
+      "revenueActual": 8508469000,
+      "revenueEstimated": 8562506000,
+      "lastUpdated": "2026-07-10"
+    },
+    {
+      "symbol": "TSM",
+      "date": "2018-01-18",
+      "epsActual": 0.64,
+      "epsEstimated": 0.63,
+      "revenueActual": 9197655000,
+      "revenueEstimated": 8900956000,
+      "lastUpdated": "2026-07-10"
+    },
+    {
+      "symbol": "TSM",
+      "date": "2017-10-19",
+      "epsActual": 0.57,
+      "epsEstimated": 0.56,
+      "revenueActual": 8307135000,
+      "revenueEstimated": 8333187000,
+      "lastUpdated": "2026-07-10"
+    },
+    {
+      "symbol": "TSM",
+      "date": "2017-08-14",
+      "epsActual": 0.42,
+      "epsEstimated": 0.42,
+      "revenueActual": 7026387000,
+      "revenueEstimated": 6876625000,
+      "lastUpdated": "2026-07-10"
+    },
+    {
+      "symbol": "TSM",
+      "date": "2017-04-13",
+      "epsActual": 0.54,
+      "epsEstimated": 0.53,
+      "revenueActual": 7708585000,
+      "revenueEstimated": 7686753000,
+      "lastUpdated": "2026-07-10"
+    },
+    {
+      "symbol": "TSM",
+      "date": "2017-01-13",
+      "epsActual": 0.61,
+      "epsEstimated": 0.58,
+      "revenueActual": 8101167000,
+      "revenueEstimated": 7826551000,
+      "lastUpdated": "2026-07-10"
+    },
+    {
+      "symbol": "TSM",
+      "date": "2016-10-13",
+      "epsActual": 0.59,
+      "epsEstimated": 0.57,
+      "revenueActual": 8289917000,
+      "revenueEstimated": 7923114000,
+      "lastUpdated": "2026-07-10"
+    },
+    {
+      "symbol": "TSM",
+      "date": "2016-07-14",
+      "epsActual": 0.43,
+      "epsEstimated": 0.42,
+      "revenueActual": 6872672000,
+      "revenueEstimated": 6582500000,
+      "lastUpdated": "2026-07-10"
+    },
+    {
+      "symbol": "TSM",
+      "date": "2016-04-19",
+      "epsActual": 0.38,
+      "epsEstimated": 0.37,
+      "revenueActual": 6296078000,
+      "revenueEstimated": 6329887000,
+      "lastUpdated": "2026-07-10"
+    },
+    {
+      "symbol": "TSM",
+      "date": "2016-01-14",
+      "epsActual": 0.405,
+      "epsEstimated": 0.4,
+      "revenueActual": 6175190000,
+      "revenueEstimated": 5614748000,
+      "lastUpdated": "2026-07-10"
+    },
+    {
+      "symbol": "TSM",
+      "date": "2015-11-13",
+      "epsActual": 0.43,
+      "epsEstimated": 0.4,
+      "revenueActual": 6458645000,
+      "revenueEstimated": 6419921000,
+      "lastUpdated": "2026-07-10"
+    },
+    {
+      "symbol": "TSM",
+      "date": "2015-08-11",
+      "epsActual": 0.5,
+      "epsEstimated": 0.4396,
+      "revenueActual": 6675626000,
+      "revenueEstimated": 5962698000,
+      "lastUpdated": "2026-07-10"
+    },
+    {
+      "symbol": "TSM",
+      "date": "2015-04-16",
+      "epsActual": 0.48,
+      "epsEstimated": 0.48,
+      "revenueActual": 7177362000,
+      "revenueEstimated": 7170701000,
+      "lastUpdated": "2026-07-10"
+    },
+    {
+      "symbol": "TSM",
+      "date": "2015-01-15",
+      "epsActual": 0.4411,
+      "epsEstimated": 0.49,
+      "revenueActual": 7244983000,
+      "revenueEstimated": 6874315000,
+      "lastUpdated": "2026-07-10"
+    },
+    {
+      "symbol": "TSM",
+      "date": "2014-11-14",
+      "epsActual": 0.5,
+      "epsEstimated": 0.49,
+      "revenueActual": 6859130000,
+      "revenueEstimated": 6760445000,
+      "lastUpdated": "2026-07-10"
+    },
+    {
+      "symbol": "TSM",
+      "date": "2014-07-16",
+      "epsActual": 0.38,
+      "epsEstimated": 0.37,
+      "revenueActual": 6114233000,
+      "revenueEstimated": 5928535000,
+      "lastUpdated": "2026-07-10"
+    },
+    {
+      "symbol": "TSM",
+      "date": "2014-04-17",
+      "epsActual": 0.31,
+      "epsEstimated": 0.3,
+      "revenueActual": 4891918000,
+      "revenueEstimated": 4744186000,
+      "lastUpdated": "2026-07-10"
+    },
+    {
+      "symbol": "TSM",
+      "date": "2014-01-16",
+      "epsActual": 0.2684,
+      "epsEstimated": 0.27,
+      "revenueActual": 4986477000,
+      "revenueEstimated": 4483439000,
+      "lastUpdated": "2026-07-10"
+    },
+    {
+      "symbol": "TSM",
+      "date": "2013-11-15",
+      "epsActual": 0.34,
+      "epsEstimated": 0.28,
+      "revenueActual": 5547408000,
+      "revenueEstimated": 5381143000,
+      "lastUpdated": "2026-07-10"
+    },
+    {
+      "symbol": "TSM",
+      "date": "2013-07-18",
+      "epsActual": 0.33,
+      "epsEstimated": 0.31,
+      "revenueActual": 5210042000,
+      "revenueEstimated": 5048839000,
+      "lastUpdated": "2026-07-10"
+    },
+    {
+      "symbol": "TSM",
+      "date": "2013-04-18",
+      "epsActual": 0.26,
+      "epsEstimated": 0.21,
+      "revenueActual": 4463873000,
+      "revenueEstimated": 4282875000,
+      "lastUpdated": "2026-07-10"
+    },
+    {
+      "symbol": "TSM",
+      "date": "2013-01-17",
+      "epsActual": 0.28,
+      "epsEstimated": 0.28,
+      "revenueActual": 4366155000,
+      "revenueEstimated": 4285318000,
+      "lastUpdated": "2026-07-10"
+    },
+    {
+      "symbol": "TSM",
+      "date": "2012-10-25",
+      "epsActual": 0.32,
+      "epsEstimated": 0.31,
+      "revenueActual": 4822082000,
+      "revenueEstimated": 4675364000,
+      "lastUpdated": "2026-07-10"
+    },
+    {
+      "symbol": "TSM",
+      "date": "2012-07-19",
+      "epsActual": 0.27,
+      "epsEstimated": 0.27,
+      "revenueActual": 4277774000,
+      "revenueEstimated": 4267878000,
+      "lastUpdated": "2026-07-10"
+    },
+    {
+      "symbol": "TSM",
+      "date": "2012-04-26",
+      "epsActual": 0.22,
+      "epsEstimated": 0.19,
+      "revenueActual": 3576194000,
+      "revenueEstimated": 3028818000,
+      "lastUpdated": "2026-07-10"
+    },
+    {
+      "symbol": "TSM",
+      "date": "2011-12-31",
+      "epsActual": 0.04053,
+      "epsEstimated": 0.1599,
+      "revenueActual": 3478469000,
+      "revenueEstimated": 3006369000,
+      "lastUpdated": "2026-07-10"
+    },
+    {
+      "symbol": "TSM",
+      "date": "2011-10-27",
+      "epsActual": 0.2,
+      "epsEstimated": 0.2,
+      "revenueActual": 3489947000,
+      "revenueEstimated": 3543402000,
+      "lastUpdated": "2026-07-10"
+    },
+    {
+      "symbol": "TSM",
+      "date": "2011-07-28",
+      "epsActual": 0.24,
+      "epsEstimated": 0.25,
+      "revenueActual": 3831841000,
+      "revenueEstimated": 3489947000,
+      "lastUpdated": "2026-07-10"
+    },
+    {
+      "symbol": "TSM",
+      "date": "2011-04-29",
+      "epsActual": 0.24,
+      "epsEstimated": 0.24,
+      "revenueActual": 3585013000,
+      "revenueEstimated": 3663694000,
+      "lastUpdated": "2026-07-10"
+    },
+    {
+      "symbol": "TSM",
+      "date": "2010-12-31",
+      "epsActual": 0.05368,
+      "epsEstimated": 0.2398,
+      "revenueActual": 3766092000,
+      "revenueEstimated": 3585013000,
+      "lastUpdated": "2026-07-10"
+    },
+    {
+      "symbol": "TSM",
+      "date": "2010-10-28",
+      "epsActual": 0.28,
+      "epsEstimated": 0.24,
+      "revenueActual": 3588209000,
+      "revenueEstimated": 3049104000,
+      "lastUpdated": "2026-07-10"
+    },
+    {
+      "symbol": "TSM",
+      "date": "2010-07-30",
+      "epsActual": 0.24,
+      "epsEstimated": 0.23,
+      "revenueActual": 3254129000,
+      "revenueEstimated": 3138782000,
+      "lastUpdated": "2026-07-10"
+    },
+    {
+      "symbol": "TSM",
+      "date": "2010-04-28",
+      "epsActual": 0.2,
+      "epsEstimated": 0.19,
+      "revenueActual": 2899671000,
+      "revenueEstimated": 2775338000,
+      "lastUpdated": "2026-07-10"
+    },
+    {
+      "symbol": "TSM",
+      "date": "2010-01-28",
+      "epsActual": 0.19,
+      "epsEstimated": 0.19,
+      "revenueActual": 2867129000,
+      "revenueEstimated": 2747057000,
+      "lastUpdated": "2026-07-10"
+    },
+    {
+      "symbol": "TSM",
+      "date": "2009-10-29",
+      "epsActual": 0.18,
+      "epsEstimated": 0.18,
+      "revenueActual": 2791232000,
+      "revenueEstimated": 2760054000,
+      "lastUpdated": "2026-07-10"
+    },
+    {
+      "symbol": "TSM",
+      "date": "2009-07-30",
+      "epsActual": 0.14,
+      "epsEstimated": 0.13,
+      "revenueActual": 2254115000,
+      "revenueEstimated": 2099149000,
+      "lastUpdated": "2026-07-10"
+    },
+    {
+      "symbol": "TSM",
+      "date": "2009-04-30",
+      "epsActual": 0.00897,
+      "epsEstimated": null,
+      "revenueActual": 1180501000,
+      "revenueEstimated": null,
+      "lastUpdated": "2026-07-10"
+    },
+    {
+      "symbol": "TSM",
+      "date": "2009-01-22",
+      "epsActual": 0.07,
+      "epsEstimated": 0.07,
+      "revenueActual": 2028549000,
+      "revenueEstimated": null,
+      "lastUpdated": "2026-07-10"
+    },
+    {
+      "symbol": "TSM",
+      "date": "2008-10-30",
+      "epsActual": 0.19,
+      "epsEstimated": 0.2,
+      "revenueActual": 2879507000,
+      "revenueEstimated": 2939839000,
+      "lastUpdated": "2026-07-10"
+    },
+    {
+      "symbol": "TSM",
+      "date": "2008-07-31",
+      "epsActual": 0.18,
+      "epsEstimated": 0.18,
+      "revenueActual": 2808581000,
+      "revenueEstimated": 2789120000,
+      "lastUpdated": "2026-07-10"
+    },
+    {
+      "symbol": "TSM",
+      "date": "2008-04-29",
+      "epsActual": 0.17,
+      "epsEstimated": 0.16,
+      "revenueActual": 2870349000,
+      "revenueEstimated": 2586311000,
+      "lastUpdated": "2026-07-10"
+    },
+    {
+      "symbol": "TSM",
+      "date": "2007-12-31",
+      "epsActual": 0.04085,
+      "epsEstimated": 0.1498,
+      "revenueActual": 2968453000,
+      "revenueEstimated": 2586534000,
+      "lastUpdated": "2026-07-10"
+    },
+    {
+      "symbol": "TSM",
+      "date": "2007-10-25",
+      "epsActual": 0.17,
+      "epsEstimated": 0.18,
+      "revenueActual": 2678321000,
+      "revenueEstimated": 2848034000,
+      "lastUpdated": "2026-07-10"
+    },
+    {
+      "symbol": "TSM",
+      "date": "2007-07-26",
+      "epsActual": 0.15,
+      "epsEstimated": 0.14,
+      "revenueActual": 2218007000,
+      "revenueEstimated": 2114896000,
+      "lastUpdated": "2026-07-10"
+    },
+    {
+      "symbol": "TSM",
+      "date": "2007-04-26",
+      "epsActual": 0.11,
+      "epsEstimated": 0.11,
+      "revenueActual": 1974450000,
+      "revenueEstimated": 1964811000,
+      "lastUpdated": "2026-07-10"
+    },
+    {
+      "symbol": "TSM",
+      "date": "2007-01-25",
+      "epsActual": 0.16,
+      "epsEstimated": 0.1399,
+      "revenueActual": 346368200,
+      "revenueEstimated": 323277000,
+      "lastUpdated": "2026-07-10"
+    },
+    {
+      "symbol": "TSM",
+      "date": "2006-10-26",
+      "epsActual": 0.19,
+      "epsEstimated": 0.19,
+      "revenueActual": 2498635000,
+      "revenueEstimated": 2443888000,
+      "lastUpdated": "2026-07-10"
+    },
+    {
+      "symbol": "TSM",
+      "date": "2006-07-27",
+      "epsActual": 0.2,
+      "epsEstimated": 0.19,
+      "revenueActual": 2522855000,
+      "revenueEstimated": 2313156000,
+      "lastUpdated": "2026-07-10"
+    },
+    {
+      "symbol": "TSM",
+      "date": "2006-04-27",
+      "epsActual": 0.19,
+      "epsEstimated": 0.17,
+      "revenueActual": 2342946000,
+      "revenueEstimated": 2080052000,
+      "lastUpdated": "2026-07-10"
+    },
+    {
+      "symbol": "TSM",
+      "date": "2006-01-26",
+      "epsActual": 0.2,
+      "epsEstimated": 0.19,
+      "revenueActual": 2561453000,
+      "revenueEstimated": 2093365000,
+      "lastUpdated": "2026-07-10"
+    },
+    {
+      "symbol": "TSM",
+      "date": "2005-10-27",
+      "epsActual": 0.14,
+      "epsEstimated": 0.14,
+      "revenueActual": 2128339000,
+      "revenueEstimated": 1953193000,
+      "lastUpdated": "2026-07-10"
+    },
+    {
+      "symbol": "TSM",
+      "date": "2005-07-26",
+      "epsActual": 0.11,
+      "epsEstimated": 0.11,
+      "revenueActual": 1783720000,
+      "revenueEstimated": 1775763000,
+      "lastUpdated": "2026-07-10"
+    },
+    {
+      "symbol": "TSM",
+      "date": "2005-04-26",
+      "epsActual": 0.1,
+      "epsEstimated": 0.1,
+      "revenueActual": 1701980000,
+      "revenueEstimated": 1694388000,
+      "lastUpdated": "2026-07-10"
+    },
+    {
+      "symbol": "TSM",
+      "date": "2005-01-27",
+      "epsActual": 0.14,
+      "epsEstimated": 0.12,
+      "revenueActual": 2010086000,
+      "revenueEstimated": 1667599000,
+      "lastUpdated": "2026-07-10"
+    },
+    {
+      "symbol": "TSM",
+      "date": "2004-10-26",
+      "epsActual": 0.16,
+      "epsEstimated": 0.14,
+      "revenueActual": 2074906000,
+      "revenueEstimated": 1770558000,
+      "lastUpdated": "2026-07-10"
+    },
+    {
+      "symbol": "TSM",
+      "date": "2004-07-29",
+      "epsActual": 0.14,
+      "epsEstimated": 0.12,
+      "revenueActual": 1885540000,
+      "revenueEstimated": 1552660000,
+      "lastUpdated": "2026-07-10"
+    },
+    {
+      "symbol": "TSM",
+      "date": "2004-04-21",
+      "epsActual": 0.11,
+      "epsEstimated": 0.1,
+      "revenueActual": 1805576000,
+      "revenueEstimated": 1627995000,
+      "lastUpdated": "2026-07-10"
+    },
+    {
+      "symbol": "TSM",
+      "date": "2004-01-29",
+      "epsActual": 0.1,
+      "epsEstimated": 0.09,
+      "revenueActual": 1949500000,
+      "revenueEstimated": 1736063000,
+      "lastUpdated": "2026-07-10"
+    },
+    {
+      "symbol": "TSM",
+      "date": "2003-10-28",
+      "epsActual": 0.09,
+      "epsEstimated": 0.08,
+      "revenueActual": 1697632000,
+      "revenueEstimated": 1488150000,
+      "lastUpdated": "2026-07-10"
+    },
+    {
+      "symbol": "TSM",
+      "date": "2003-07-24",
+      "epsActual": 0.06,
+      "epsEstimated": 0.05,
+      "revenueActual": 1409887000,
+      "revenueEstimated": 1127909000,
+      "lastUpdated": "2026-07-10"
+    },
+    {
+      "symbol": "TSM",
+      "date": "2003-04-29",
+      "epsActual": 0.02,
+      "epsEstimated": 0.01,
+      "revenueActual": 1235751000,
+      "revenueEstimated": 1361816000,
+      "lastUpdated": "2026-07-10"
+    },
+    {
+      "symbol": "TSM",
+      "date": "2003-01-28",
+      "epsActual": 0.03144,
+      "epsEstimated": 0.02,
+      "revenueActual": 1262020000,
+      "revenueEstimated": 1706848000,
+      "lastUpdated": "2026-07-10"
+    },
+    {
+      "symbol": "TSM",
+      "date": "2002-10-22",
+      "epsActual": 0.03301,
+      "epsEstimated": 0.04,
+      "revenueActual": 1283180000,
+      "revenueEstimated": 2024711000,
+      "lastUpdated": "2026-07-10"
+    },
+    {
+      "symbol": "TSM",
+      "date": "2002-07-25",
+      "epsActual": 0.05,
+      "epsEstimated": 0.06,
+      "revenueActual": 1227483000,
+      "revenueEstimated": 1434687000,
+      "lastUpdated": "2026-07-10"
+    },
+    {
+      "symbol": "TSM",
+      "date": "2002-05-09",
+      "epsActual": 0.04,
+      "epsEstimated": 0.04,
+      "revenueActual": 1286323000,
+      "revenueEstimated": 1288679000,
+      "lastUpdated": "2026-07-10"
+    },
+    {
+      "symbol": "TSM",
+      "date": "2002-01-28",
+      "epsActual": 0.03,
+      "epsEstimated": 0.03,
+      "revenueActual": 1211289000,
+      "revenueEstimated": 1213508000,
+      "lastUpdated": "2026-07-10"
+    },
+    {
+      "symbol": "TSM",
+      "date": "2001-10-26",
+      "epsActual": 0.02044,
+      "epsEstimated": 0.01,
+      "revenueActual": 944508500,
+      "revenueEstimated": 946238900,
+      "lastUpdated": "2026-07-10"
+    },
+    {
+      "symbol": "TSM",
+      "date": "2001-07-26",
+      "epsActual": 0.02044,
+      "epsEstimated": null,
+      "revenueActual": 939603500,
+      "revenueEstimated": null,
+      "lastUpdated": "2026-07-10"
+    },
+    {
+      "symbol": "TSM",
+      "date": "2001-03-30",
+      "epsActual": 0.14,
+      "epsEstimated": 0.13,
+      "revenueActual": 991091800,
+      "revenueEstimated": null,
+      "lastUpdated": "2026-07-10"
+    },
+    {
+      "symbol": "TSM",
+      "date": "2001-01-26",
+      "epsActual": 0.1085,
+      "epsEstimated": null,
+      "revenueActual": 1306296000,
+      "revenueEstimated": null,
+      "lastUpdated": "2026-07-10"
+    },
+    {
+      "symbol": "TSM",
+      "date": "2000-10-19",
+      "epsActual": 0.13,
+      "epsEstimated": 0.12,
+      "revenueActual": 1308690000,
+      "revenueEstimated": 1199632000,
+      "lastUpdated": "2026-07-10"
+    },
+    {
+      "symbol": "TSM",
+      "date": "2000-07-31",
+      "epsActual": 0.1,
+      "epsEstimated": 0.08,
+      "revenueActual": 1307178000,
+      "revenueEstimated": 982179600,
+      "lastUpdated": "2026-07-10"
+    },
+    {
+      "symbol": "TSM",
+      "date": "2000-04-27",
+      "epsActual": 0.1226,
+      "epsEstimated": 0.07,
+      "revenueActual": 1304308000,
+      "revenueEstimated": 1120026000,
+      "lastUpdated": "2026-07-10"
+    },
+    {
+      "symbol": "TSM",
+      "date": "2000-01-27",
+      "epsActual": 0.06,
+      "epsEstimated": 0.06,
+      "revenueActual": 574590300,
+      "revenueEstimated": 575643000,
+      "lastUpdated": "2026-07-10"
+    },
+    {
+      "symbol": "TSM",
+      "date": "1999-10-25",
+      "epsActual": 0.05,
+      "epsEstimated": 0.05,
+      "revenueActual": 574295700,
+      "revenueEstimated": 575347800,
+      "lastUpdated": "2026-07-10"
+    },
+    {
+      "symbol": "TSM",
+      "date": "1999-09-10",
+      "epsActual": 0.05,
+      "epsEstimated": 0.04,
+      "revenueActual": 575040700,
+      "revenueEstimated": 574295700,
+      "lastUpdated": "2026-07-10"
+    },
+    {
+      "symbol": "TSM",
+      "date": "1999-04-21",
+      "epsActual": 0.04,
+      "epsEstimated": 0.02,
+      "revenueActual": 576203200,
+      "revenueEstimated": 634984800,
+      "lastUpdated": "2026-07-10"
+    },
+    {
+      "symbol": "TSM",
+      "date": "1999-01-27",
+      "epsActual": 0.03,
+      "epsEstimated": 0.02,
+      "revenueActual": 316152300,
+      "revenueEstimated": 261303500,
+      "lastUpdated": "2026-07-10"
+    },
+    {
+      "symbol": "TSM",
+      "date": "1998-09-30",
+      "epsActual": 0.03301,
+      "epsEstimated": null,
+      "revenueActual": 422162700,
+      "revenueEstimated": null,
+      "lastUpdated": "2026-07-10"
+    },
+    {
+      "symbol": "TSM",
+      "date": "1998-07-20",
+      "epsActual": 0.03301,
+      "epsEstimated": null,
+      "revenueActual": 421978500,
+      "revenueEstimated": null,
+      "lastUpdated": "2026-07-10"
+    },
+    {
+      "symbol": "TSM",
+      "date": "1998-04-27",
+      "epsActual": 0.04,
+      "epsEstimated": 0.04,
+      "revenueActual": 403642100,
+      "revenueEstimated": 404381600,
+      "lastUpdated": "2026-07-10"
+    },
+    {
+      "symbol": "TSM",
+      "date": "1998-03-11",
+      "epsActual": 0.04,
+      "epsEstimated": 0.03,
+      "revenueActual": 348235800,
+      "revenueEstimated": 403642100,
+      "lastUpdated": "2026-07-10"
+    }
+  ]
+}

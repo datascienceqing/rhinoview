@@ -1,0 +1,14 @@
+{
+  "status": 200,
+  "path": "/price-target-consensus?symbol=AAPL",
+  "fetchedAt": "2026-10-04T22:01:52.889Z",
+  "body": [
+    {
+      "symbol": "AAPL",
+      "targetHigh": 400,
+      "targetLow": 245,
+      "targetConsensus": 341.68,
+      "targetMedian": 357.5
+    }
+  ]
+}

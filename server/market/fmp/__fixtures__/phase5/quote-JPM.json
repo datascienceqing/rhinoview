@@ -1,0 +1,26 @@
+{
+  "status": 200,
+  "path": "/quote?symbol=JPM",
+  "fetchedAt": "2026-10-04T22:01:52.889Z",
+  "body": [
+    {
+      "symbol": "JPM",
+      "name": "JPMorgan Chase & Co.",
+      "price": 332.38,
+      "changePercentage": -0.24011,
+      "change": -0.8,
+      "volume": 6539384,
+      "dayLow": 330,
+      "dayHigh": 334.845,
+      "yearHigh": 366.5,
+      "yearLow": 279.1,
+      "marketCap": 890615533800,
+      "priceAvg50": 352.2368,
+      "priceAvg200": 321.7671,
+      "exchange": "NYSE",
+      "open": 334,
+      "previousClose": 333.18,
+      "timestamp": 1790971202
+    }
+  ]
+}
