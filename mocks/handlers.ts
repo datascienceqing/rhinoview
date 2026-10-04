@@ -1,6 +1,12 @@
 import { HttpResponse, delay, http } from 'msw';
-import type { ApiError, ApiResult, BarsResponse, SearchResponse, Snapshot, Timeframe } from '@shared/types';
+import type { BarsResponse, SearchResponse, Snapshot, Timeframe } from '@shared/types';
 import { TIMEFRAMES } from '@shared/types';
+import { fail, ok } from './envelope';
+import { createFundamentalsHandlers } from './fundamentals';
+import { createQuotesHandlers } from './quotes';
+import { createWorkspaceHandlers } from './workspace';
+
+export { STATUS, fail, ok } from './envelope';
 import {
   MOCK_AAPL_SNAPSHOT,
   MOCK_RATE_LIMIT_SECONDS,
@@ -17,29 +23,8 @@ export interface HandlerOptions {
   latencyMs?: number;
 }
 
-const STATUS: Record<ApiError['code'], number> = {
-  BAD_REQUEST: 400,
-  UNKNOWN_SYMBOL: 404,
-  NO_DATA: 200,
-  RATE_LIMITED: 429,
-  UPSTREAM_ERROR: 502,
-  UPSTREAM_TIMEOUT: 504,
-  UNAUTHORIZED: 500,
-  INTERNAL: 500,
-};
 
-export function ok<T>(data: T): Response {
-  const body: ApiResult<T> = { ok: true, data };
-  return HttpResponse.json(body);
-}
 
-/** Contract-valid failure envelope with the status code the contract maps it to. */
-export function fail(error: ApiError): Response {
-  const body: ApiResult<never> = { ok: false, error };
-  const headers: Record<string, string> = {};
-  if (error.retryAfterSeconds !== undefined) headers['Retry-After'] = String(error.retryAfterSeconds);
-  return HttpResponse.json(body, { status: STATUS[error.code], headers });
-}
 
 const rateLimited = () =>
   fail(apiError('RATE_LIMITED', 'Upstream rate limit reached.', MOCK_RATE_LIMIT_SECONDS));
@@ -109,6 +94,15 @@ export function createHandlers({ latencyMs = 0 }: HandlerOptions = {}) {
 
   return [
     http.get('*/api/health', () => ok({ status: 'up' })),
+
+    http.get('*/api/capabilities', () =>
+      ok({ timeframes: [...TIMEFRAMES], delayed: true, provider: 'mock', fundamentals: true }),
+    ),
+
+    // Phase 5 domains, each in its own file so parallel workers never edit this one.
+    ...createWorkspaceHandlers(),
+    ...createQuotesHandlers(),
+    ...createFundamentalsHandlers(),
 
     http.get('*/api/search', async ({ request }) => {
       await wait();

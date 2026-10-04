@@ -182,12 +182,19 @@ describe('the API key never escapes', () => {
   });
 
   it('the recorded fixtures were scrubbed: none contains an apikey', async () => {
-    const { readdirSync, readFileSync } = await import('node:fs');
+    const { readdirSync, readFileSync, statSync } = await import('node:fs');
+    const { join } = await import('node:path');
     const { fileURLToPath } = await import('node:url');
-    const dir = fileURLToPath(new URL('./__fixtures__/', import.meta.url));
-    const files = readdirSync(dir);
+    const root = fileURLToPath(new URL('./__fixtures__/', import.meta.url));
+    // Recursive: Phase 5 adds subdirectories (phase5/) of recorded responses.
+    const walk = (dir: string): string[] =>
+      readdirSync(dir).flatMap((name) => {
+        const p = join(dir, name);
+        return statSync(p).isDirectory() ? walk(p) : [p];
+      });
+    const files = walk(root);
     expect(files.length).toBeGreaterThan(5);
-    for (const f of files) expect(readFileSync(dir + f, 'utf8').toLowerCase(), f).not.toMatch(/apikey|api_key/);
+    for (const f of files) expect(readFileSync(f, 'utf8').toLowerCase(), f).not.toMatch(/apikey|api_key/);
   });
 
   it('logs only the path and status on upstream errors, never a URL', async () => {

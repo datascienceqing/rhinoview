@@ -124,19 +124,29 @@ export interface MarketEngine {
 //    Derive everything from a hash of the symbol. No Math.random(), no Date.now()
 //    inside price generation.
 //
-// 2. CROSS-TIMEFRAME COHERENCE — the hard one, and the one most worth testing.
-//    Bars must agree when aggregated. For any symbol and any period covered by both:
-//      • a 1h bar's `open`  === the first 5m bar's `open` in that hour
-//      • a 1h bar's `close` === the last 5m bar's `close` in that hour
-//      • a 1h bar's `high`  === max of the 5m `high`s in that hour
-//      • a 1h bar's `low`   === min of the 5m `low`s in that hour
-//      • a 1h bar's `volume` === sum of the 5m `volume`s in that hour
-//    and likewise 1D over 1h, and 1W over 1D.
-//    The way to get this is construction, not reconciliation: generate ONE
-//    deterministic minute-level price path per symbol, then bucket it into whatever
-//    timeframe was asked for. Generating each timeframe independently cannot satisfy
-//    this, and switching timeframes would then show contradictory prices for the
-//    same instant.
+// 2. CROSS-TIMEFRAME COHERENCE — scoped to timeframe FAMILIES (revised in Phase 5).
+//    Bars must agree when aggregated WITHIN a family:
+//      • the INTRADAY family: 1m → 5m → 15m → 1h
+//      • the DAILY family:    1D → 1W
+//    For a bar and the bars it aggregates: open = first open, close = last close,
+//    high = max high, low = min low, volume = summed volume. Exactly.
+//
+//    The boundary BETWEEN the families (1h → 1D) is NOT required to agree for a real
+//    provider, and it does not. Measured on FMP: a session's 5-minute volumes sum to
+//    66–75% of that day's 1D volume, and open/close differ by cents. That is correct
+//    data, not a defect. The official daily bar includes the opening and closing
+//    auctions and extended hours, and its close is the auction price. Intraday bars
+//    cover continuous regular-session trading only. Every real vendor works this way.
+//
+//    The first version of this invariant demanded exact agreement across ALL
+//    timeframes. Only a synthetic engine can do that. The SYNTHETIC engine still does,
+//    because it builds every timeframe from one minute-level path, and its tests keep
+//    asserting the full chain. Do not weaken the synthetic engine to match reality.
+//
+//    Consequence for the forming bar: never rebuild a DAILY-family bar from
+//    intraday-family bars for a real provider. Today's 1D bar would show ~70% of its
+//    real volume and then jump when the official bar arrives. Use the provider's own
+//    daily bar.
 //
 // 3. MARKET CALENDAR. Bars exist only during US equity regular sessions:
 //    09:30–16:00 America/New_York, Monday–Friday, excluding US market holidays, with

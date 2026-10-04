@@ -49,6 +49,8 @@ export interface FakeSeries {
   priceLines: FakePriceLine[];
   getPane: () => FakePane;
   removed: boolean;
+  /** Set by createSeriesMarkers: the markers currently drawn on this series. */
+  markersApi?: { markers: unknown[]; setMarkers: ReturnType<typeof vi.fn>; detach: ReturnType<typeof vi.fn> };
 }
 
 export class FakeChart {
@@ -216,4 +218,15 @@ export const fakeModule = {
   AreaSeries: { tag: 'Area' },
   ColorType: { Solid: 'solid' },
   CrosshairMode: { Normal: 0 },
+  createSeriesMarkers: (series: FakeSeries, markers: unknown[] = []) => {
+    const api = {
+      markers,
+      setMarkers: vi.fn((m: unknown[]) => {
+        api.markers = m;
+      }),
+      detach: vi.fn(),
+    };
+    series.markersApi = api;
+    return api;
+  },
 };

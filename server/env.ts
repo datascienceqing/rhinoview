@@ -32,6 +32,9 @@ const schema = z
 
     SERVER_PORT: z.coerce.number().int().positive().default(8787),
 
+    /** Where the workspace (named layouts and watchlists) is saved. Gitignored. */
+    WORKSPACE_FILE: optional(z.string().min(1).default('data/workspace.json')),
+
     /**
      * Synthetic-provider fault injection, so the client's error and loading states
      * are reachable in development rather than theoretical. All default to off.

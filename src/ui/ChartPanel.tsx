@@ -1,4 +1,5 @@
 import { useCallback, useState } from 'react';
+import type { ChartMarker } from '../chart/markers';
 import { INDICATOR_PLACEMENT, isIntraday } from '@shared/types';
 import type { ChartType, Timeframe } from '@shared/types';
 import { ChartView } from '../chart';
@@ -13,10 +14,12 @@ export interface ChartPanelProps {
   symbol: string;
   timeframe: Timeframe;
   chartType: ChartType;
+  /** Phase 5 seam: flags on the price series, for example earnings. */
+  markers?: readonly ChartMarker[];
 }
 
 /** The chart plus everything layered on it: legend, and loading/empty/error states. */
-export function ChartPanel({ symbol, timeframe, chartType }: ChartPanelProps) {
+export function ChartPanel({ symbol, timeframe, chartType, markers }: ChartPanelProps) {
   const history = useBarHistory(symbol, timeframe);
   const [hoverTime, setHoverTime] = useState<number | null>(null);
   const indicatorState = useIndicators(symbol);
@@ -49,6 +52,7 @@ export function ChartPanel({ symbol, timeframe, chartType }: ChartPanelProps) {
         onNearStart={history.loadOlder}
         indicators={computed}
         onPaneLayout={onPaneLayout}
+        {...(markers ? { markers } : {})}
       />
 
       {history.status === 'ready' && history.bars.length > 0 && (

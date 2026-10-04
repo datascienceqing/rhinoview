@@ -164,6 +164,8 @@ export type ApiErrorCode =
   | 'UPSTREAM_ERROR' // upstream 5xx or malformed response
   | 'UPSTREAM_TIMEOUT'
   | 'UNAUTHORIZED' // API key missing, invalid, or lacks the plan tier for this data
+  | 'NOT_FOUND' // a workspace entity (layout, watchlist) id that does not exist — never a symbol
+  | 'CONFLICT' // a write carried a stale `revision`; refetch and reapply, do not blindly retry
   | 'INTERNAL';
 
 export interface ApiError {
@@ -235,3 +237,281 @@ export interface IndicatorConfig {
 }
 
 export type ChartType = 'candlestick' | 'line' | 'area';
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// PHASE 5 — capabilities, batch quotes, workspace (layouts + watchlists), fundamentals
+// Frozen for Phase 5. Orchestrator-owned: report problems, never edit.
+// ═══════════════════════════════════════════════════════════════════════════════
+
+/** `GET /api/capabilities` — what the active providers can actually serve. */
+export interface Capabilities {
+  /** Subset of TIMEFRAMES the market-data provider serves. The UI disables the rest. */
+  timeframes: Timeframe[];
+  /** Market data is delayed; the UI must badge it. */
+  delayed: boolean;
+  /** Active market-data provider name, for diagnostics. Never contains any part of a key. */
+  provider: string;
+  /** Whether the fundamentals endpoints are served at all. When false, the UI hides the panel. */
+  fundamentals: boolean;
+}
+
+// ───────────────────────────── Batch quotes ─────────────────────────────
+
+/** Hard cap on symbols per `/api/quotes` request, and per watchlist. */
+export const MAX_QUOTE_SYMBOLS = 50;
+
+/**
+ * `GET /api/quotes?symbols=AAPL,MSFT,...` — the watchlist's data source.
+ *
+ * PARTIAL SUCCESS IS NORMAL. One delisted or mistyped ticker must not blank the whole
+ * watchlist, so an unknown symbol lands in `missing` and the request still succeeds.
+ * Only a failure of the request as a whole (bad params, provider down, rate limited
+ * on every symbol) is an `ok: false` envelope.
+ */
+export interface QuotesResponse {
+  /** One per resolvable requested symbol, in request order, canonical symbol casing. */
+  quotes: Snapshot[];
+  /** Requested symbols that could not be resolved, exactly as the caller spelled them. */
+  missing: string[];
+  /** Symbols that resolved but whose quote fetch failed transiently; retry later. */
+  failed: string[];
+}
+
+// ─────────────────────── Workspace: layouts and watchlists ───────────────────────
+
+/** Opaque server-generated id. Clients never mint ids. */
+export type EntityId = string;
+
+/**
+ * A named chart, as TradingView calls a saved "layout". The chart's ENTIRE visible
+ * configuration lives here, including its indicators.
+ *
+ * Indicators belong to the layout, not to the symbol. Switching the symbol inside a
+ * layout keeps its indicators; switching layouts swaps them. That is the TradingView
+ * model, and it replaces the Phase 3 per-symbol localStorage persistence, which must
+ * be migrated into the default layout on first load and then retired.
+ */
+export interface ChartLayout {
+  id: EntityId;
+  /** 1–64 chars after trimming. Unique among layouts, compared case-insensitively. */
+  name: string;
+  symbol: string;
+  timeframe: Timeframe;
+  chartType: ChartType;
+  indicators: IndicatorConfig[];
+  /**
+   * Monotonic per entity, starting at 1. Every successful write increments it. A write
+   * must carry the revision it was based on; a stale one gets CONFLICT (409). This is
+   * what stops two open tabs from silently overwriting each other's edits.
+   */
+  revision: number;
+  createdAt: UnixSeconds;
+  updatedAt: UnixSeconds;
+}
+
+export interface Watchlist {
+  id: EntityId;
+  /** 1–64 chars after trimming. Unique among watchlists, compared case-insensitively. */
+  name: string;
+  /** Canonical symbols, no duplicates, user-chosen order, at most MAX_QUOTE_SYMBOLS. */
+  symbols: string[];
+  revision: number;
+  createdAt: UnixSeconds;
+  updatedAt: UnixSeconds;
+}
+
+export const MAX_LAYOUTS = 50;
+export const MAX_WATCHLISTS = 50;
+export const MAX_NAME_LENGTH = 64;
+
+/** `GET /api/workspace` — everything the client needs on load, in one request. */
+export interface Workspace {
+  /** Never empty: the server guarantees at least one layout exists. */
+  layouts: ChartLayout[];
+  /** May be empty. */
+  watchlists: Watchlist[];
+  /** Always the id of an existing layout. */
+  activeLayoutId: EntityId;
+  /** The id of an existing watchlist, or null when there are none. */
+  activeWatchlistId: EntityId | null;
+}
+
+/** Body of `POST /api/layouts`. Omitted fields take the server's defaults. */
+export interface CreateLayoutBody {
+  name: string;
+  symbol?: string;
+  timeframe?: Timeframe;
+  chartType?: ChartType;
+  indicators?: IndicatorConfig[];
+}
+
+/** Body of `PUT /api/layouts/:id`. Partial update; `revision` is required. */
+export interface UpdateLayoutBody {
+  revision: number;
+  name?: string;
+  symbol?: string;
+  timeframe?: Timeframe;
+  chartType?: ChartType;
+  indicators?: IndicatorConfig[];
+}
+
+export interface CreateWatchlistBody {
+  name: string;
+  symbols?: string[];
+}
+
+export interface UpdateWatchlistBody {
+  revision: number;
+  name?: string;
+  symbols?: string[];
+}
+
+/** Body of `PUT /api/workspace/active`. */
+export interface SetActiveBody {
+  activeLayoutId?: EntityId;
+  activeWatchlistId?: EntityId | null;
+}
+
+// ───────────────────────────── Fundamentals ─────────────────────────────
+
+export type StatementKind = 'income' | 'balance' | 'cashflow';
+export type StatementPeriod = 'annual' | 'quarter';
+
+/**
+ * Company identity and description. Every field the provider may omit is nullable;
+ * an omitted field is `null`, never `""`, never `0`, never a guess.
+ */
+export interface CompanyProfile {
+  symbol: string;
+  name: string;
+  exchange: string | null;
+  sector: string | null;
+  industry: string | null;
+  country: string | null;
+  website: string | null;
+  description: string | null;
+  ceo: string | null;
+  employees: number | null;
+  ipoDate: string | null; // 'YYYY-MM-DD'
+  /** Currency the listing TRADES in — not necessarily the currency it REPORTS in. */
+  currency: string;
+  marketCap: number | null;
+}
+
+/**
+ * A curated set of trailing-twelve-month metrics. Curated deliberately: FMP returns
+ * 100+ TTM fields and dumping them all is unreadable. Ratios are FRACTIONS, never
+ * pre-multiplied — 0.4512 means 45.12%. Every field is nullable: a bank has no gross
+ * margin, a company with losses has no meaningful P/E, and a missing value must render
+ * as "—", never as 0.
+ */
+export interface KeyMetricsTTM {
+  // Valuation
+  peRatio: number | null;
+  priceToSales: number | null;
+  priceToBook: number | null;
+  evToEbitda: number | null;
+  pegRatio: number | null;
+  // Profitability (fractions)
+  grossMargin: number | null;
+  operatingMargin: number | null;
+  netMargin: number | null;
+  returnOnEquity: number | null;
+  returnOnAssets: number | null;
+  returnOnInvestedCapital: number | null;
+  // Financial health
+  debtToEquity: number | null;
+  currentRatio: number | null;
+  interestCoverage: number | null;
+  // Per share, in the REPORTING currency
+  epsDiluted: number | null;
+  revenuePerShare: number | null;
+  freeCashFlowPerShare: number | null;
+  bookValuePerShare: number | null;
+  // Dividend (fractions)
+  dividendYield: number | null;
+  payoutRatio: number | null;
+}
+
+export interface FinancialScores {
+  /** 0–9. */
+  piotroskiScore: number | null;
+  altmanZScore: number | null;
+}
+
+export interface AnalystConsensus {
+  targetHigh: number | null;
+  targetLow: number | null;
+  targetConsensus: number | null;
+  targetMedian: number | null;
+  strongBuy: number | null;
+  buy: number | null;
+  hold: number | null;
+  sell: number | null;
+  strongSell: number | null;
+  /** Provider's summary label, e.g. "Buy". Null when absent. */
+  consensus: string | null;
+}
+
+/** `GET /api/fundamentals/overview?symbol=` — the panel's headline, in one request. */
+export interface FundamentalsOverview {
+  profile: CompanyProfile;
+  metrics: KeyMetricsTTM;
+  scores: FinancialScores;
+  analyst: AnalystConsensus;
+  /** The currency the financial statements and per-share metrics are REPORTED in. */
+  reportedCurrency: string;
+  /** When the provider's data was fetched, for a "data as of" label. */
+  asOf: UnixSeconds;
+  /**
+   * Sections the provider could not serve for this symbol (plan tier, no coverage).
+   * Their fields are all null. The UI shows "not available" for these sections,
+   * instead of a block of dashes that looks like a loading failure.
+   * The overview succeeds when at least the profile is available.
+   */
+  unavailable: ('metrics' | 'scores' | 'analyst')[];
+}
+
+/**
+ * One reporting period of one statement. `lines` is a curated, ordered map of
+ * line-item key → value in `reportedCurrency`, null when the line is absent for this
+ * company (a bank has no "cost of revenue").
+ */
+export interface StatementRow {
+  /** The issuer's fiscal year, e.g. 2026. NOT the calendar year — MSFT's FY2026 ends June 2026. */
+  fiscalYear: number;
+  /** 'FY' for annual rows; 'Q1'..'Q4' for quarterly rows. */
+  fiscalPeriod: 'FY' | 'Q1' | 'Q2' | 'Q3' | 'Q4';
+  /** Period end date, 'YYYY-MM-DD'. */
+  periodEnd: string;
+  /** Filing date, 'YYYY-MM-DD', or null when unknown. */
+  filingDate: string | null;
+  reportedCurrency: string;
+  lines: Record<string, number | null>;
+}
+
+/** `GET /api/fundamentals/statements?symbol=&statement=&period=` */
+export interface StatementsResponse {
+  symbol: string;
+  statement: StatementKind;
+  period: StatementPeriod;
+  /** Ordered list of line-item keys with display labels, in presentation order. */
+  lineItems: { key: string; label: string }[];
+  /** NEWEST period first. */
+  rows: StatementRow[];
+}
+
+/** One earnings report. Estimates are null when the provider had none. */
+export interface EarningsEvent {
+  date: string; // 'YYYY-MM-DD'
+  epsActual: number | null;
+  epsEstimate: number | null;
+  revenueActual: number | null;
+  revenueEstimate: number | null;
+}
+
+/** `GET /api/fundamentals/earnings?symbol=` — NEWEST first; upcoming reports have null actuals. */
+export interface EarningsResponse {
+  symbol: string;
+  events: EarningsEvent[];
+}

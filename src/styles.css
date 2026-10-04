@@ -390,3 +390,79 @@ button:focus-visible {
   color: var(--text);
   text-decoration: underline;
 }
+
+/* ── Phase 5 frame: chart + bottom drawer in the centre, watchlist on the right ── */
+.app-body {
+  display: flex;
+  flex: 1 1 auto;
+  min-height: 0;
+}
+
+.app-center {
+  display: flex;
+  flex: 1 1 auto;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.app-center > .workspace {
+  flex: 1 1 auto;
+  min-height: 0;
+}
+
+.sidebar-right {
+  flex: 0 0 300px;
+  min-width: 0;
+  border-left: 1px solid var(--border);
+  background: var(--bg-elevated);
+  overflow: hidden;
+}
+
+.fundamentals-drawer {
+  flex: 0 0 40%;
+  min-height: 160px;
+  border-top: 1px solid var(--border);
+  background: var(--bg-elevated);
+  overflow: auto;
+}
+
+.panel-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 6px 10px;
+  border-bottom: 1px solid var(--border);
+  color: var(--text);
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.panel-close {
+  border: 0;
+  background: transparent;
+  color: var(--text-dim);
+  cursor: pointer;
+  font-size: 16px;
+}
+
+.layout-switcher {
+  padding: 4px 8px;
+  color: var(--text);
+  font-size: 13px;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.toolbar-toggle {
+  padding: 4px 10px;
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  background: transparent;
+  color: var(--text-dim);
+  cursor: pointer;
+}
+
+.toolbar-toggle.active {
+  border-color: var(--accent);
+  color: var(--text);
+}

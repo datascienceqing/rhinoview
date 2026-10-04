@@ -4,8 +4,10 @@ import { IndicatorPanes } from '../panes/IndicatorPanes';
 import type { PaneLayout } from '../panes/IndicatorPanes';
 import type { ComputedIndicator } from '../panes/computeCache';
 import { PriceChart } from './PriceChart';
+import type { ChartMarker } from './markers';
 
 const NO_INDICATORS: readonly ComputedIndicator[] = [];
+const NO_MARKERS: readonly ChartMarker[] = [];
 
 export interface ChartViewProps {
   bars: Bar[];
@@ -18,6 +20,8 @@ export interface ChartViewProps {
   indicators?: readonly ComputedIndicator[];
   /** Where each separate indicator's pane starts (px from the chart's top), for placing legends. */
   onPaneLayout?: (layout: PaneLayout) => void;
+  /** Flags on the price series, for example earnings. Phase 5 seam; see markers.ts. */
+  markers?: readonly ChartMarker[];
 }
 
 /**
@@ -36,6 +40,7 @@ export function ChartView({
   onNearStart,
   indicators = NO_INDICATORS,
   onPaneLayout,
+  markers = NO_MARKERS,
 }: ChartViewProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const chartRef = useRef<PriceChart | null>(null);
@@ -80,6 +85,10 @@ export function ChartView({
   useEffect(() => {
     panesRef.current?.sync(indicators);
   }, [indicators]);
+
+  useEffect(() => {
+    chartRef.current?.setMarkers(markers);
+  }, [markers]);
 
   return <div ref={containerRef} className="chart-container" data-testid="chart-container" />;
 }

@@ -12,6 +12,13 @@ import { NO_FAULTS, createFaultInjector, faultsFromEnv } from './provider/faults
 import type { FaultConfig } from './provider/faults';
 import { MarketService } from './provider/service';
 import { registerApiRoutes } from './routes';
+import { registerFundamentalsRoutes } from './routes/fundamentals';
+import { registerQuotesRoutes } from './routes/quotes';
+import { registerWorkspaceRoutes } from './routes/workspace';
+import { UNAVAILABLE_FUNDAMENTALS, createFundamentalsProvider } from './fundamentals';
+import type { FundamentalsProvider } from './fundamentals';
+import { createWorkspaceStore } from './workspace';
+import type { WorkspaceStore } from './workspace';
 
 export interface BuildServerOptions {
   /** The engine to serve from. Required: selection is async, see `createServer`. */
@@ -27,6 +34,10 @@ export interface BuildServerOptions {
   /** Test seams for fault injection. */
   random?: () => number;
   sleep?: (ms: number) => Promise<void>;
+  /** Phase 5. Defaults to a provider that serves nothing. */
+  fundamentals?: FundamentalsProvider;
+  /** Phase 5. Null means the workspace routes answer "not implemented". */
+  workspace?: WorkspaceStore | null;
 }
 
 export function buildServer(opts: BuildServerOptions): FastifyInstance {
@@ -51,7 +62,11 @@ export function buildServer(opts: BuildServerOptions): FastifyInstance {
   });
 
   app.get('/api/health', async () => ({ ok: true as const, data: { status: 'up' } }));
-  registerApiRoutes(app, service);
+  const fundamentals = opts.fundamentals ?? UNAVAILABLE_FUNDAMENTALS;
+  registerApiRoutes(app, service, { fundamentalsAvailable: fundamentals.available });
+  registerQuotesRoutes(app, { service });
+  registerFundamentalsRoutes(app, { fundamentals });
+  registerWorkspaceRoutes(app, { store: opts.workspace ?? null });
 
   return app;
 }
@@ -59,7 +74,9 @@ export function buildServer(opts: BuildServerOptions): FastifyInstance {
 /** Production wiring: engine and fault injection both chosen from `env`. */
 export async function createServer(): Promise<FastifyInstance> {
   const engine = await selectEngine(); // throws for DATA_PROVIDER=massive — fail at boot, not per request
-  return buildServer({ engine, provider: env.DATA_PROVIDER, faults: faultsFromEnv() });
+  const fundamentals = await createFundamentalsProvider();
+  const workspace = await createWorkspaceStore(env.WORKSPACE_FILE);
+  return buildServer({ engine, provider: env.DATA_PROVIDER, faults: faultsFromEnv(), fundamentals, workspace });
 }
 
 // Only listen when run directly, so tests can import buildServer() without binding a port.

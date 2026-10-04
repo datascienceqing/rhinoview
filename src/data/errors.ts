@@ -20,6 +20,8 @@ export const API_ERROR_CODES: readonly ApiErrorCode[] = [
   'UPSTREAM_ERROR',
   'UPSTREAM_TIMEOUT',
   'UNAUTHORIZED',
+  'NOT_FOUND',
+  'CONFLICT',
   'INTERNAL',
 ];
 

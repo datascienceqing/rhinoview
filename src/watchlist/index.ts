@@ -1,0 +1,1 @@
+export { WatchlistPanel } from './WatchlistPanel';

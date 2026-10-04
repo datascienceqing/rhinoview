@@ -59,6 +59,11 @@ export default defineConfig({
           name: 'node',
           environment: 'node',
           globals: true,
+          // The synthetic engine's invariant tests are CPU-heavy. On a slower machine
+          // (Node 20 measured ~5x slower, a shared cloud sandbox) they exceed vitest's
+          // 5s default while still computing correct answers. A timeout is not a
+          // correctness signal for them, so allow more time.
+          testTimeout: 20_000,
           include: ['server/**/*.{test,spec}.ts', 'shared/**/*.{test,spec}.ts'],
         },
       },

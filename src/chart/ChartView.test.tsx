@@ -115,3 +115,30 @@ describe('ChartView events', () => {
     expect(chart.fitContentCalls).toBeGreaterThan(1); // initial load + the replace
   });
 });
+
+describe('ChartView markers (Phase 5 seam)', () => {
+  const DAY = 86_400;
+  const T0 = 1_790_000_000;
+  const daily = [0, 1, 2, 3].map((d) => bar(T0 + d * DAY));
+  const earnings = [{ id: 'e1', time: T0 + 2 * DAY, text: 'E' }];
+  const priceSeries = () => lastChart().liveSeries[0];
+
+  it('draws a marker on the bar that contains its date', () => {
+    render(<ChartView bars={daily} chartType="candlestick" intraday={false} markers={earnings} />);
+    const drawn = priceSeries()?.markersApi?.markers as { time: number; text: string }[];
+    expect(drawn.map((m) => [m.time, m.text])).toEqual([[T0 + 2 * DAY, 'E']]);
+  });
+
+  it('keeps the markers when the chart type changes (the price series is replaced)', () => {
+    const { rerender } = render(<ChartView bars={daily} chartType="candlestick" intraday={false} markers={earnings} />);
+    rerender(<ChartView bars={daily} chartType="line" intraday={false} markers={earnings} />);
+    const series = priceSeries();
+    expect(series?.definition).toEqual(fakeModule.LineSeries);
+    expect((series?.markersApi?.markers as unknown[]).length).toBe(1);
+  });
+
+  it('attaches no markers plugin when there are no markers', () => {
+    render(<ChartView bars={daily} chartType="candlestick" intraday={false} />);
+    expect(priceSeries()?.markersApi).toBeUndefined();
+  });
+});

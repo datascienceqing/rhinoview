@@ -56,13 +56,13 @@ describe('GET /api/capabilities', () => {
     app = buildServer({ engine: eodEngine(), provider: 'fmp' });
     const { status, body } = await get(app, '/api/capabilities');
     expect(status).toBe(200);
-    expect(body).toEqual({ ok: true, data: { timeframes: ['1D', '1W'], delayed: true, provider: 'fmp' } });
+    expect(body).toEqual({ ok: true, data: { timeframes: ['1D', '1W'], delayed: true, provider: 'fmp', fundamentals: false } });
   });
 
   it('lists a full-featured engine in canonical order, whatever order the engine declared', async () => {
     app = buildServer({ engine: eodEngine({ supportedTimeframes: [...TIMEFRAMES].reverse(), delayed: false }) });
     const { body } = await get(app, '/api/capabilities');
-    expect(body).toEqual({ ok: true, data: { timeframes: [...TIMEFRAMES], delayed: false, provider: 'custom' } });
+    expect(body).toEqual({ ok: true, data: { timeframes: [...TIMEFRAMES], delayed: false, provider: 'custom', fundamentals: false } });
   });
 
   it('reads delayed from the engine rather than a literal', async () => {
@@ -71,10 +71,10 @@ describe('GET /api/capabilities', () => {
     expect(body.ok && body.data.delayed).toBe(false);
   });
 
-  it('carries nothing but the three contract fields', async () => {
+  it('carries nothing but the four contract fields', async () => {
     app = buildServer({ engine: eodEngine(), provider: 'fmp' });
     const { body } = await get<Record<string, unknown>>(app, '/api/capabilities');
-    expect(body.ok && Object.keys(body.data).sort()).toEqual(['delayed', 'provider', 'timeframes']);
+    expect(body.ok && Object.keys(body.data).sort()).toEqual(['delayed', 'fundamentals', 'provider', 'timeframes']);
   });
 });
 
@@ -132,5 +132,18 @@ describe('an engine that refuses a request as unsupported', () => {
     const { status, body } = await get(app, `/api/bars?symbol=AAPL&timeframe=1D&from=${NOW - DAY}&to=${NOW}&adjusted=false`);
     expect(status).toBe(400);
     expect(body).toMatchObject({ ok: false, error: { code: 'BAD_REQUEST' } });
+  });
+});
+
+describe('GET /api/capabilities — fundamentals flag (Phase 5)', () => {
+  it('reports fundamentals: true when an available provider is wired in', async () => {
+    const app = buildServer({
+      engine: eodEngine(),
+      provider: 'fmp',
+      fundamentals: { available: true, getOverview: vi.fn(), getStatements: vi.fn(), getEarnings: vi.fn() },
+    });
+    const body = (await app.inject({ method: 'GET', url: '/api/capabilities' })).json();
+    expect(body.ok && body.data.fundamentals).toBe(true);
+    await app.close();
   });
 });

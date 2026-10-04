@@ -19,6 +19,8 @@ export const STATUS_FOR_CODE: Record<ApiErrorCode, number> = {
   UPSTREAM_ERROR: 502,
   UPSTREAM_TIMEOUT: 504,
   UNAUTHORIZED: 500,
+  NOT_FOUND: 404,
+  CONFLICT: 409,
   INTERNAL: 500,
 };
 

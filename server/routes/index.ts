@@ -5,12 +5,18 @@
  * the envelope. Everything with logic lives in `server/provider/`.
  */
 import type { FastifyInstance } from 'fastify';
+import type { Capabilities } from '@shared/types';
 import type { MarketService } from '../provider/service';
 import { ApiFailure, MESSAGES } from '../provider/errors';
 import { logUnexpected, respond, sendFailure } from './envelope';
 import { barsQuery, indicatorQuery, parseQuery, searchQuery, snapshotQuery } from './schemas';
 
-export function registerApiRoutes(app: FastifyInstance, service: MarketService): void {
+export interface ApiRouteOptions {
+  /** Whether a FundamentalsProvider is available; reported by /api/capabilities. */
+  fundamentalsAvailable: boolean;
+}
+
+export function registerApiRoutes(app: FastifyInstance, service: MarketService, opts: ApiRouteOptions): void {
   // Anything that escapes a handler or Fastify itself still leaves as an envelope, and
   // never as Fastify's default JSON (which can carry the raw error message).
   app.setErrorHandler((err, req, reply) => {
@@ -27,7 +33,9 @@ export function registerApiRoutes(app: FastifyInstance, service: MarketService):
     sendFailure(reply, new ApiFailure('BAD_REQUEST', 'No such endpoint.'), 404),
   );
 
-  app.get('/api/capabilities', (_req, reply) => respond(reply, () => service.capabilities()));
+  app.get('/api/capabilities', (_req, reply) =>
+    respond(reply, (): Capabilities => ({ ...service.capabilities(), fundamentals: opts.fundamentalsAvailable })),
+  );
 
   app.get('/api/search', (req, reply) =>
     respond(reply, () => {

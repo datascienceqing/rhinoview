@@ -8,3 +8,6 @@ dist/
 coverage/
 .vite/
 public/mockServiceWorker.js
+
+# Server-side workspace (named layouts, watchlists). User data, never commit.
+/data/

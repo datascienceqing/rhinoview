@@ -5,8 +5,11 @@ import {
   CrosshairMode,
   LineSeries,
   createChart,
+  createSeriesMarkers,
 } from 'lightweight-charts';
-import type { IChartApi, ISeriesApi, MouseEventParams, Time } from 'lightweight-charts';
+import type { IChartApi, ISeriesApi, ISeriesMarkersPluginApi, MouseEventParams, Time, UTCTimestamp } from 'lightweight-charts';
+import { snapMarkers } from './markers';
+import type { ChartMarker } from './markers';
 import type { Bar, ChartType } from '@shared/types';
 import { classifyUpdate, toCandles, toCloseLine } from './convert';
 import { readTheme, withAlpha } from './theme';
@@ -44,6 +47,9 @@ export class PriceChart {
   private chart: IChartApi | null;
   private series: ActiveSeries | null = null;
   private bars: Bar[] = [];
+  private markers: readonly ChartMarker[] = [];
+  /** Bound to the current price series; recreated whenever the series is replaced. */
+  private markersApi: ISeriesMarkersPluginApi<Time> | null = null;
   private intraday = false;
   private readonly theme: ChartTheme;
 
@@ -115,6 +121,11 @@ export class PriceChart {
     if (!chart || this.series?.type === type) return;
     const range = chart.timeScale().getVisibleLogicalRange();
     if (this.series) chart.removeSeries(this.series.api);
+    // The markers plugin was attached to the removed series and went with it. Without
+    // this reset, writeMarkers would keep writing to the dead plugin and the new series
+    // would show no flags — ChartView.test.tsx "keeps the markers when the chart type
+    // changes" fails exactly that way.
+    this.markersApi = null;
     this.series = this.addSeriesFor(chart, type);
     this.writeData();
     if (range && this.bars.length > 0) chart.timeScale().setVisibleLogicalRange(range);
@@ -148,11 +159,19 @@ export class PriceChart {
     }
   }
 
+  /** Flags on the price series, for example earnings. Re-snapped whenever bars change. */
+  setMarkers(markers: readonly ChartMarker[]): void {
+    if (!this.chart) return;
+    this.markers = markers;
+    this.writeMarkers();
+  }
+
   dispose(): void {
     const chart = this.chart;
     if (!chart) return;
     this.chart = null;
     this.series = null;
+    this.markersApi = null;
     chart.unsubscribeCrosshairMove(this.onCrosshair);
     chart.timeScale().unsubscribeVisibleLogicalRangeChange(this.onRange);
     chart.remove();
@@ -185,6 +204,28 @@ export class PriceChart {
         s.api.setData(toCloseLine(this.bars));
         break;
     }
+    // Bars or series changed, so the markers must snap again.
+    this.writeMarkers();
+  }
+
+  private writeMarkers(): void {
+    const s = this.series;
+    if (!s) return;
+    if (!this.markersApi) {
+      // Nothing to draw and no plugin yet: do not attach one.
+      if (this.markers.length === 0) return;
+      this.markersApi = createSeriesMarkers(s.api as ISeriesApi<'Candlestick'>, []);
+    }
+    this.markersApi.setMarkers(
+      snapMarkers(this.bars, this.markers).map((m) => ({
+        time: m.barTime as UTCTimestamp,
+        position: m.position ?? 'belowBar',
+        shape: 'circle' as const,
+        color: m.color ?? this.theme.accent,
+        text: m.text,
+        id: m.id,
+      })),
+    );
   }
 
   private addSeriesFor(chart: IChartApi, type: ChartType): ActiveSeries {

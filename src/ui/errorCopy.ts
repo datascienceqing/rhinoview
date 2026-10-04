@@ -7,13 +7,16 @@ export interface ErrorCopy {
   retryable: boolean;
 }
 
-export type Subject = 'chart' | 'quote' | 'search' | 'history';
+export type Subject = 'chart' | 'quote' | 'search' | 'history' | 'workspace' | 'watchlist' | 'fundamentals';
 
 const NOUN: Record<Subject, string> = {
   chart: 'chart data',
   quote: 'the quote',
   search: 'search results',
   history: 'older history',
+  workspace: 'your saved charts',
+  watchlist: 'the watchlist',
+  fundamentals: 'financial data',
 };
 
 /**
@@ -68,6 +71,18 @@ export function describeError(error: DataError, subject: Subject): ErrorCopy {
       return {
         title: 'No data available',
         detail: 'The data provider has no data for this symbol and range.',
+        retryable: false,
+      };
+    case 'NOT_FOUND':
+      return {
+        title: 'No longer exists',
+        detail: 'That item was deleted, possibly from another tab. Reload to see the current list.',
+        retryable: false,
+      };
+    case 'CONFLICT':
+      return {
+        title: 'Changed elsewhere',
+        detail: 'This was edited in another tab or window. Your view has been refreshed; reapply your change.',
         retryable: false,
       };
     case 'BAD_REQUEST':
