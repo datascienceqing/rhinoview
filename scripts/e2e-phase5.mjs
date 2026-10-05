@@ -170,6 +170,17 @@ async function main() {
   check('fundamentals ^GSPC -> 404 UNKNOWN_SYMBOL', fidx.status === 404 && fidx.json?.error?.code === 'UNKNOWN_SYMBOL', fidx.json);
   const ann = await call('GET', '/api/fundamentals/statements?symbol=MSFT&statement=balance&period=annual');
   check('statements MSFT balance annual: at most 10 rows, FY rows', ann.status === 200 && ann.json?.data?.rows?.length > 0 && ann.json.data.rows.length <= 10 && ann.json.data.rows.every((r) => r.fiscalPeriod === 'FY'), ann.json?.error ?? ann.status);
+  // User decision after Gate 6: earnings default to 40 events; `limit` gets more.
+  const erAll = await call('GET', '/api/fundamentals/earnings?symbol=AAPL&limit=400');
+  const total = erAll.json?.data?.events?.length ?? 0;
+  check('earnings default holds at most 40 events', er.json?.data?.events?.length === Math.min(40, total), { def: er.json?.data?.events?.length, total });
+  check('earnings default is the newest events', JSON.stringify(er.json?.data?.events?.[0]) === JSON.stringify(erAll.json?.data?.events?.[0]), null);
+  const er10 = await call('GET', '/api/fundamentals/earnings?symbol=AAPL&limit=10');
+  check('earnings limit=10 -> 10 events', er10.json?.data?.events?.length === Math.min(10, total), er10.json?.data?.events?.length);
+  for (const bad of ['0', '401', '1.5', 'abc']) {
+    const r = await call('GET', `/api/fundamentals/earnings?symbol=AAPL&limit=${bad}`);
+    check(`earnings limit=${bad} -> 400`, r.status === 400 && r.json?.error?.code === 'BAD_REQUEST', r.status);
+  }
   const unk = await call('GET', '/api/fundamentals/overview?symbol=ZZZZQX');
   check('unknown symbol -> 404 UNKNOWN_SYMBOL', unk.status === 404 && unk.json?.error?.code === 'UNKNOWN_SYMBOL', unk.json);
 

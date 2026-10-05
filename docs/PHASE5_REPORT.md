@@ -17,7 +17,7 @@ were not done, because `FMP_API_KEY` was not set.
 | `npm run typecheck` | clean | clean |
 | `npm run lint` | clean | clean |
 | Test files | 40 passed, 1 skipped | 67 passed, 1 skipped |
-| Tests | 1467 passed, 5 skipped | 2051 passed, 5 skipped |
+| Tests | 1467 passed, 5 skipped | 2084 passed, 5 skipped |
 
 The orchestrator ran the full suite on an idle machine two times in a row. Both runs passed.
 
@@ -42,7 +42,7 @@ The orchestrator ran the full suite on an idle machine two times in a row. Both 
 ## 4. Orchestrator verification
 
 1. **Mutation checks.** For one core rule of each worker, the orchestrator broke the rule, saw the
-   tests fail, and restored the file. All fourteen mutations failed tests.
+   tests fail, and restored the file. All sixteen mutations failed tests.
 
    | Rule | Tests that failed |
    |---|---|
@@ -60,13 +60,15 @@ The orchestrator ran the full suite on an idle machine two times in a row. Both 
    | W4 refresh keeps pending edits (G6-1) | 1 |
    | W5 `BRK.B` matches `BRK-B` (G6-3) | 1 |
    | W5 "unavailable" after the first response (G6-3) | 1 |
+   | W2 route cuts earnings to `limit` (section 10) | 4 |
+   | W6 "Show more" hides when the list is complete (section 10) | 2 |
 
 2. **End-to-end against the real server (plan 5.2).** `node scripts/e2e-phase5.mjs` starts a
-   server with synthetic data and a temporary workspace file. Result: 34 passed, 0 failed.
+   server with synthetic data and a temporary workspace file. Result: 41 passed, 0 failed.
    The base script came from the `phase-5` branch of another session. This branch added checks
    for the Gate 5 repairs.
 3. **Client against the real server (plan 5.3).** `scripts/browser-phase5.mjs` uses headless
-   Chromium at 1440 × 900. Result: 9 passed, 0 failed. The orchestrator also looked at the
+   Chromium at 1440 × 900. Result: 10 passed, 0 failed. The orchestrator also looked at the
    screenshots. The daily chart showed a red "E" marker. The marker agreed with the "Miss" row of
    the Earnings tab.
 4. **Live FMP checks (plan 5.4).** Not done. `FMP_API_KEY` was not set. Not verified live.
@@ -106,7 +108,7 @@ sent the clear defects to their owners in one round.
 | G6-1 | non-blocking | W4 | A refresh after `NOT_FOUND` removed pending edits from the screen and remounted the chart. | Repaired. |
 | G6-2 | non-blocking | W4 | After a failed refetch, Retry showed "Saved" for an edit that the server refused. | Repaired. |
 | G6-3 | non-blocking | W5 | A row for `BRK.B` showed "loading…" forever when the server returned `BRK-B`. | Repaired. |
-| G6-4 | non-blocking | W1/CONTRACT | The FMP engine refuses `^` and `=` symbols, so they are always `missing` under FMP. | Open. It needs a live check of FMP symbols. |
+| G6-4 | non-blocking | W1/CONTRACT | The FMP engine refuses `^` and `=` symbols, so they are always `missing` under FMP. | User decision: show "not found" for now. No code change. |
 | G6-5 | non-blocking | W1 | FMP can clip the morning of the oldest day without a signal. | Repaired. |
 | G6-6 | non-blocking | W5 | One failed watchlist write dropped all queued writes. | Repaired. |
 | G6-7 | non-blocking | W4 | One keepalive test passed with no request. | Repaired. |
@@ -128,22 +130,28 @@ successful adopt.
    files: the store, the quotes route, the fundamentals route and the quotes mock. Each copy has a
    comment. A later phase can move it to `shared/types.ts`.
 
-## 8. Decisions for the user at review
+## 8. Decisions
 
-1. **Earnings history length.** The FMP provider returns all events (165 for AAPL). The contract
-   gives no limit. The `phase-5` branch limits the list to 40.
-2. **Overview EPS.** It is FMP `netIncomePerShareTTM`, labelled "EPS (TTM)". It differs a little
+The user decided these items after Gate 6:
+
+1. **Branch for the merge.** The `phase-5` branch is not complete. Do not merge it. Merge only
+   the pull request from `claude/nice-cannon-ew871u`.
+2. **Earnings history length.** The earnings response holds 40 events by default. An optional
+   `limit` (up to 400) gets more. The Earnings tab has a "Show more" button that gets 40 more.
+   See section 10.
+3. **Index symbols under FMP (G6-4).** Show "not found" for now. A live check of the FMP
+   spelling can change this later.
+
+These items stay open for the user at review:
+
+1. **Overview EPS.** It is FMP `netIncomePerShareTTM`, labelled "EPS (TTM)". It differs a little
    from the sum of four quarters of diluted EPS (AAPL 8.775 against 8.73).
-3. **All-unknown quotes request.** A request with only unknown symbols succeeds, with all symbols
+2. **All-unknown quotes request.** A request with only unknown symbols succeeds, with all symbols
    in `missing`. Only a request where every symbol failed is an error.
-4. **Several open tabs.** Each tab polls quotes. The rate budget assumes one tab. The limit of 5
+3. **Several open tabs.** Each tab polls quotes. The rate budget assumes one tab. The limit of 5
    is for each request (G6-8).
-5. **Two implementations of Phase 5.** The `phase-5` branch holds a separate implementation from
-   another session. Choose one branch for the merge.
-6. **Layout details.** The watchlist is 300 px. The Financials drawer is below the chart. The
+4. **Layout details.** The watchlist is 300 px. The Financials drawer is below the chart. The
    layout switcher is at the left of the toolbar.
-7. **Index symbols under FMP (G6-4).** A watchlist can hold `^GSPC`, but the FMP engine refuses
-   it, so the row shows "not found". A live check must show the FMP spelling of index symbols.
 
 ## 9. Not verified
 
@@ -154,3 +162,24 @@ successful adopt.
 - The headless browser in this container reports the locale `en-US@posix`. The chart library
   then logs `RangeError`. The browser check sets the locale to `en-US`. A real browser does not
   report `@posix`.
+
+## 10. Earnings limit (user decision after Gate 6)
+
+The user asked for 40 earnings events by default, with an option to get more.
+
+- **Contract.** `GET /api/fundamentals/earnings` takes an optional `limit`, an integer from 1 to
+  400. The default is 40. Any other value gives `BAD_REQUEST`. `DEFAULT_EARNINGS_LIMIT` and
+  `MAX_EARNINGS_LIMIT` are in `shared/types.ts`. This is a change to a frozen file.
+- **W2 — server.** The route cuts the newest `limit` events from the cached full list, so a
+  larger `limit` costs no upstream call. The synthetic provider now gives 48 events for an
+  established symbol, so "Show more" can be tested offline.
+- **W6 — client and mock.** The Earnings tab and the chart markers share one request for 40
+  events. "Show more" asks for 40 more in a separate request. The markers stay at 40. The
+  button hides when the list is complete or when the limit reaches 400. The mock applies the
+  same `limit` rule.
+- **Verification.**
+  - The full suite passes: 2084 passed, 5 skipped.
+  - Two mutation checks made tests fail.
+  - The end-to-end script checks the default, `limit=10` and four bad values.
+  - The browser check showed 40 rows, then more rows after "Show more", and then no button.
+

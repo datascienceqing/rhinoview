@@ -66,6 +66,18 @@ for (const tab of ['Statements', 'Trends', 'Earnings']) {
   await page.waitForTimeout(1200);
   await page.screenshot({ path: `${OUT}/4-${tab}.png` });
 }
+// The loop ends on the Earnings tab. User decision: 40 events first, then "Show more".
+const earningRows = () => drawer.locator('tbody tr').count();
+const before = await earningRows();
+const more = drawer.getByRole('button', { name: 'Show more' });
+const hadMore = (await more.count()) === 1;
+if (hadMore) {
+  await more.click();
+  await page.waitForTimeout(1500);
+}
+const after = await earningRows();
+check('Earnings tab shows 40 rows, then more after "Show more"', before === 40 && hadMore && after > 40 && (await more.count()) === 0, JSON.stringify({ before, hadMore, after }));
+await page.screenshot({ path: `${OUT}/5-earnings-more.png` });
 check('earnings fetched for the daily chart', apiCalls.some((c) => c.includes('/api/fundamentals/earnings')));
 check('no external requests from the browser', !apiCalls.some((c) => c.startsWith('EXTERNAL')), apiCalls.filter((c) => c.startsWith('EXTERNAL')).join(','));
 check('no console errors', errors.length === 0, errors.slice(0, 5).join(' | '));
