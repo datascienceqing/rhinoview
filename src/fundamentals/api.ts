@@ -12,6 +12,7 @@ import type {
   StatementPeriod,
   StatementsResponse,
 } from '@shared/types';
+import { DEFAULT_EARNINGS_LIMIT } from '@shared/types';
 import { apiRequest } from '../data';
 
 /** Server caches overview/statements 6 h and earnings 1 h; five minutes here is well inside both. */
@@ -56,8 +57,9 @@ export function fetchStatements(
   );
 }
 
-export function fetchEarnings(symbol: string): Promise<EarningsResponse> {
-  return cached(`earnings:${symbol}`, () =>
-    apiRequest<EarningsResponse>('/fundamentals/earnings', { params: { symbol } }),
+/** Newest `limit` events. The initial load and the chart markers both use the default. */
+export function fetchEarnings(symbol: string, limit: number = DEFAULT_EARNINGS_LIMIT): Promise<EarningsResponse> {
+  return cached(`earnings:${symbol}:${limit}`, () =>
+    apiRequest<EarningsResponse>('/fundamentals/earnings', { params: { symbol, limit: String(limit) } }),
   );
 }

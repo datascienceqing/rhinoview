@@ -306,3 +306,125 @@ describe('useEarningsMarkers', () => {
     expect(result.current).toHaveLength(0);
   });
 });
+
+describe('Earnings tab: Show more', () => {
+  const openEarnings = async (symbol = 'AAPL') => {
+    const user = userEvent.setup();
+    const view = drawer(symbol);
+    await user.click(screen.getByRole('tab', { name: 'Earnings' }));
+    await screen.findByTestId('earnings-table');
+    return { user, ...view };
+  };
+  const rows = () => within(screen.getByTestId('earnings-table')).getAllByRole('row').length - 1;
+
+  it('shows 40 rows and a Show more button, then loads 40 more per click until all 165', async () => {
+    const { user } = await openEarnings();
+    expect(rows()).toBe(40);
+    for (const expected of [80, 120, 160, 165]) {
+      await user.click(screen.getByRole('button', { name: 'Show more' }));
+      await waitFor(() => expect(rows()).toBe(expected));
+    }
+    expect(screen.queryByRole('button', { name: /Show more|Loading/ })).toBeNull();
+  });
+
+  it('keeps the rows on screen while loading and disables the button', async () => {
+    const { user } = await openEarnings();
+    let release: () => void = () => undefined;
+    const gate = new Promise<void>((r) => (release = r));
+    server.use(
+      http.get('*/api/fundamentals/earnings', async ({ request }) => {
+        await gate;
+        const limit = Number(new URL(request.url).searchParams.get('limit'));
+        const events = Array.from({ length: limit }, (_, i) => ({
+          date: `2000-01-${String((i % 28) + 1).padStart(2, '0')}-${i}`,
+          epsActual: 1,
+          epsEstimate: 1,
+          revenueActual: 1,
+          revenueEstimate: 1,
+        }));
+        return ok({ symbol: 'AAPL', events });
+      }),
+    );
+    await user.click(screen.getByRole('button', { name: 'Show more' }));
+    const busy = screen.getByRole('button', { name: 'Loading…' });
+    expect(busy).toBeDisabled();
+    expect(rows()).toBe(40);
+    release();
+    await waitFor(() => expect(rows()).toBe(80));
+  });
+
+  it('does not change the request the markers use, and hides the button when a reply is short', async () => {
+    const limits: string[] = [];
+    server.events.on('request:start', ({ request }) => {
+      const u = new URL(request.url);
+      if (u.pathname.endsWith('/fundamentals/earnings')) limits.push(u.searchParams.get('limit') ?? '');
+    });
+    try {
+      function Both() {
+        useEarningsMarkers('RIVN');
+        return <EarningsTab symbol="RIVN" />;
+      }
+      render(<Both />);
+      await screen.findByTestId('earnings-table');
+      expect(limits).toEqual(['40']); // one shared initial request
+      // RIVN has 28 events: fewer than the limit, so there is nothing more to show.
+      expect(screen.queryByRole('button', { name: 'Show more' })).toBeNull();
+    } finally {
+      server.events.removeAllListeners();
+    }
+  });
+
+  it('leaves the markers request count unchanged on Show more', async () => {
+    const limits: string[] = [];
+    server.events.on('request:start', ({ request }) => {
+      const u = new URL(request.url);
+      if (u.pathname.endsWith('/fundamentals/earnings')) limits.push(u.searchParams.get('limit') ?? '');
+    });
+    try {
+      function Both() {
+        const markers = useEarningsMarkers('AAPL');
+        return (
+          <>
+            <span data-testid="count">{markers.length}</span>
+            <EarningsTab symbol="AAPL" />
+          </>
+        );
+      }
+      const user = userEvent.setup();
+      render(<Both />);
+      await screen.findByTestId('earnings-table');
+      const before = screen.getByTestId('count').textContent;
+      expect(limits).toEqual(['40']);
+      await user.click(screen.getByRole('button', { name: 'Show more' }));
+      await waitFor(() => expect(limits).toEqual(['40', '80']));
+      expect(screen.getByTestId('count').textContent).toBe(before);
+    } finally {
+      server.events.removeAllListeners();
+    }
+  });
+
+  it('keeps the current rows and shows Retry when loading more fails', async () => {
+    const { user } = await openEarnings();
+    server.use(http.get('*/api/fundamentals/earnings', () => fail({ code: 'UPSTREAM_ERROR', message: 'x' })));
+    await user.click(screen.getByRole('button', { name: 'Show more' }));
+    expect(await screen.findByRole('alert')).toHaveTextContent('Could not load more reports');
+    expect(rows()).toBe(40);
+    server.resetHandlers();
+    await user.click(screen.getByRole('button', { name: 'Retry' }));
+    await waitFor(() => expect(rows()).toBe(80));
+  });
+
+  it('resets to 40 rows when the symbol changes', async () => {
+    const user = userEvent.setup();
+    const view = renderWithDataSource(<EarningsTab symbol="AAPL" />);
+    await screen.findByTestId('earnings-table');
+    await user.click(screen.getByRole('button', { name: 'Show more' }));
+    await waitFor(() => expect(rows()).toBe(80));
+    view.rerender(<EarningsTab symbol="MSFT" />);
+    await waitFor(() => expect(screen.getByTestId('earnings-2026-10-28')).toBeInTheDocument());
+    expect(rows()).toBe(40);
+    view.rerender(<EarningsTab symbol="AAPL" />);
+    await waitFor(() => expect(screen.getByTestId('earnings-2026-10-29')).toBeInTheDocument());
+    expect(rows()).toBe(40);
+  });
+});

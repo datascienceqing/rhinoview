@@ -59,3 +59,27 @@ describe('fundamentals mock', () => {
     ).toBe('BAD_REQUEST');
   });
 });
+
+describe('fundamentals mock: earnings limit', () => {
+  const get = (query: string) =>
+    apiRequest<EarningsResponse>(`/fundamentals/earnings?${query}`);
+
+  it('defaults to the newest 40 events', async () => {
+    const e = await apiRequest<EarningsResponse>('/fundamentals/earnings', { params: { symbol: 'AAPL' } });
+    expect(e.events).toHaveLength(40);
+    expect(e.events[0]?.date).toBe('2026-10-29');
+  });
+
+  it('returns the newest `limit` events, and fewer when the list is shorter', async () => {
+    expect((await get('symbol=AAPL&limit=3')).events.map((x) => x.date)).toEqual(['2026-10-29', '2026-07-30', '2026-04-30']);
+    expect((await get('symbol=AAPL&limit=400')).events).toHaveLength(165);
+    expect((await get('symbol=RIVN&limit=400')).events).toHaveLength(28);
+  });
+
+  it.each(['limit=0', 'limit=401', 'limit=-1', 'limit=1.5', 'limit=abc', 'limit=', 'limit=%2010', 'limit=5&limit=6'])(
+    'rejects %s with BAD_REQUEST',
+    async (bad) => {
+      expect(await code(get(`symbol=AAPL&${bad}`))).toBe('BAD_REQUEST');
+    },
+  );
+});

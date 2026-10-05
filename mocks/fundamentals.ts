@@ -6,6 +6,7 @@
  */
 import { http } from 'msw';
 import type { StatementKind, StatementPeriod } from '@shared/types';
+import { DEFAULT_EARNINGS_LIMIT, MAX_EARNINGS_LIMIT } from '@shared/types';
 import { fail, ok } from './envelope';
 import { earningsFor, hasFundamentals, overviewFor, statementsFor } from './fundamentalsData';
 
@@ -21,6 +22,16 @@ function resolveSymbol(url: URL): SymbolResult {
     return { response: fail({ code: 'UNKNOWN_SYMBOL', message: `No data found for symbol "${raw}".` }) };
   }
   return { symbol };
+}
+
+/** Contract rule: absent -> default; otherwise ONE value that is an integer in 1..MAX. Else null. */
+function parseEarningsLimit(url: URL): number | null {
+  const all = url.searchParams.getAll('limit');
+  if (all.length === 0) return DEFAULT_EARNINGS_LIMIT;
+  const raw = all[0] ?? '';
+  if (all.length > 1 || !/^\d+$/.test(raw)) return null;
+  const n = Number(raw);
+  return n >= 1 && n <= MAX_EARNINGS_LIMIT ? n : null;
 }
 
 export function createFundamentalsHandlers() {
@@ -45,8 +56,14 @@ export function createFundamentalsHandlers() {
     }),
 
     http.get('*/api/fundamentals/earnings', ({ request }) => {
-      const r = resolveSymbol(new URL(request.url));
-      return 'response' in r ? r.response : ok(earningsFor(r.symbol));
+      const url = new URL(request.url);
+      const limit = parseEarningsLimit(url);
+      if (limit === null) return badRequest(`limit must be an integer from 1 to ${MAX_EARNINGS_LIMIT}.`);
+      const r = resolveSymbol(url);
+      if ('response' in r) return r.response;
+      // Newest first, so the newest `limit` events are a prefix.
+      const full = earningsFor(r.symbol);
+      return ok({ ...full, events: full.events.slice(0, limit) });
     }),
   ];
 }
