@@ -510,7 +510,16 @@ export interface EarningsEvent {
   revenueEstimate: number | null;
 }
 
-/** `GET /api/fundamentals/earnings?symbol=` — NEWEST first; upcoming reports have null actuals. */
+/** Events per earnings response when the request has no `limit`. */
+export const DEFAULT_EARNINGS_LIMIT = 40;
+/** Largest `limit` the earnings endpoint accepts. */
+export const MAX_EARNINGS_LIMIT = 400;
+
+/**
+ * `GET /api/fundamentals/earnings?symbol=&limit=` — NEWEST first; upcoming reports have null
+ * actuals. At most `limit` events (default DEFAULT_EARNINGS_LIMIT). Fewer events than `limit`
+ * means the provider has no more; exactly `limit` means there can be more ("Show more").
+ */
 export interface EarningsResponse {
   symbol: string;
   events: EarningsEvent[];
