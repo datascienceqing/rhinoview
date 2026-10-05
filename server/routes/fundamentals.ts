@@ -10,6 +10,7 @@
  */
 import type { FastifyInstance, FastifyReply, FastifyRequest } from 'fastify';
 import { z } from 'zod';
+import { DEFAULT_EARNINGS_LIMIT, MAX_EARNINGS_LIMIT } from '@shared/types';
 import { redact } from '../env';
 import type { FundamentalsProvider } from '../fundamentals/types';
 import { UnknownSymbolError } from '../market/types';
@@ -34,7 +35,14 @@ const enumOf = <const T extends string>(values: readonly [T, ...T[]]) =>
   z.enum(values, { errorMap: () => ({ message: `must be one of ${values.join(', ')}` }) });
 
 export const overviewQuery = z.object({ symbol });
-export const earningsQuery = z.object({ symbol });
+// Strict integer string: `z.coerce.number()` would take "" as 0 and "1e2" as 100.
+const earningsLimit = z
+  .string()
+  .regex(/^\d{1,4}$/, 'must be an integer')
+  .transform(Number)
+  .pipe(z.number().int().min(1).max(MAX_EARNINGS_LIMIT, `must be at most ${MAX_EARNINGS_LIMIT}`))
+  .default(String(DEFAULT_EARNINGS_LIMIT));
+export const earningsQuery = z.object({ symbol, limit: earningsLimit });
 export const statementsQuery = z.object({
   symbol,
   statement: enumOf(['income', 'balance', 'cashflow']),
@@ -77,6 +85,11 @@ export function registerFundamentalsRoutes(app: FastifyInstance, deps: Fundament
   );
 
   app.get('/api/fundamentals/earnings', (req, reply) =>
-    serve(req, reply, earningsQuery, (q) => fundamentals.getEarnings(q.symbol)),
+    // The provider (and the cache in front of it) holds the FULL list; the route cuts it, so
+    // a larger `limit` costs no extra upstream call. Events are newest first.
+    serve(req, reply, earningsQuery, async (q) => {
+      const res = await fundamentals.getEarnings(q.symbol);
+      return { ...res, events: res.events.slice(0, q.limit) };
+    }),
   );
 }

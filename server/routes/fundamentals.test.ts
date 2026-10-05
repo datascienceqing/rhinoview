@@ -5,8 +5,10 @@
  */
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import type { FastifyInstance } from 'fastify';
+import { DEFAULT_EARNINGS_LIMIT, MAX_EARNINGS_LIMIT } from '@shared/types';
 import type { ApiResult, Capabilities, EarningsResponse, FundamentalsOverview, StatementsResponse } from '@shared/types';
 import { FmpPaymentRequiredError, FmpUpstreamError } from '../market/fmp/client';
+import { CachedFundamentalsProvider } from '../fundamentals/cache';
 import { createFixtureFundamentals } from '../fundamentals/fmp/fixtureSource';
 import { SyntheticFundamentalsProvider } from '../fundamentals/synthetic/provider';
 import type { FundamentalsProvider } from '../fundamentals/types';
@@ -94,6 +96,69 @@ describe('success', () => {
     const tsm = await get<StatementsResponse>('/api/fundamentals/statements?symbol=TSM&statement=income&period=annual');
     expect(msft.body.ok && msft.body.data.rows[0]).toMatchObject({ fiscalYear: 2026, fiscalPeriod: 'Q4' });
     expect(tsm.body.ok && tsm.body.data.rows[0]?.reportedCurrency).toBe('TWD');
+  });
+});
+
+describe('earnings limit', () => {
+  const earnings = async (query: string) => {
+    const { body } = await get<EarningsResponse>(`/api/fundamentals/earnings?symbol=AAPL${query}`);
+    if (!body.ok) throw new Error('expected ok');
+    return body.data.events;
+  };
+  const full = async () => (await createFixtureFundamentals().getEarnings('AAPL')).events;
+
+  it('has the contract constants', () => {
+    expect([DEFAULT_EARNINGS_LIMIT, MAX_EARNINGS_LIMIT]).toEqual([40, 400]);
+  });
+
+  it('defaults to the newest 40, upcoming report included', async () => {
+    serve(createFixtureFundamentals());
+    const events = await earnings('');
+    const all = await full();
+    expect(all.length).toBe(165);
+    expect(events).toHaveLength(40);
+    expect(events).toEqual(all.slice(0, 40));
+    expect(events[0]?.epsActual).toBeNull(); // the upcoming report
+  });
+
+  it('honours limit=10, limit=1 and limit=400 (all 165)', async () => {
+    serve(createFixtureFundamentals());
+    const all = await full();
+    expect(await earnings('&limit=10')).toEqual(all.slice(0, 10));
+    expect(await earnings('&limit=1')).toEqual(all.slice(0, 1));
+    expect(await earnings('&limit=400')).toEqual(all);
+  });
+
+  it('returns fewer than limit when the provider has no more', async () => {
+    serve(createFixtureFundamentals());
+    const { body } = await get<EarningsResponse>('/api/fundamentals/earnings?symbol=RIVN&limit=400');
+    expect(body.ok && body.data.events.length).toBe(28);
+  });
+
+  it.each(['0', '401', '1.5', 'abc', '', '-1', '1e2', '+5', '%2010', '10&limit=20'])('rejects limit=%s with BAD_REQUEST and no provider call', async (value) => {
+    const provider = fake();
+    serve(provider);
+    const { status, body } = await get(`/api/fundamentals/earnings?symbol=AAPL&limit=${value}`);
+    expect(status).toBe(400);
+    expect(!body.ok && body.error.code).toBe('BAD_REQUEST');
+    expect(provider.getEarnings).not.toHaveBeenCalled();
+  });
+
+  it('serves different limits from ONE provider call through the cache', async () => {
+    const inner = createFixtureFundamentals();
+    const spy = vi.spyOn(inner, 'getEarnings');
+    serve(new CachedFundamentalsProvider(inner));
+    expect(await earnings('&limit=5')).toHaveLength(5);
+    expect(await earnings('&limit=200')).toHaveLength(165);
+    expect(await earnings('')).toHaveLength(40);
+    expect(spy).toHaveBeenCalledTimes(1);
+  });
+
+  it('cuts the synthetic list too, and the full list exceeds the default', async () => {
+    serve(new SyntheticFundamentalsProvider());
+    const all = (await new SyntheticFundamentalsProvider().getEarnings('AAPL')).events;
+    expect(all.length).toBeGreaterThan(40);
+    expect(await earnings('')).toEqual(all.slice(0, 40));
   });
 });
 

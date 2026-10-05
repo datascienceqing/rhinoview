@@ -227,8 +227,12 @@ describe('invariants 4 and 6 — currency, order, limits', () => {
       expect(events[0]).toMatchObject({ epsActual: null, revenueActual: null });
       expect(events[0]?.epsEstimate).not.toBeNull();
       expect(events.slice(1).every((e) => e.epsActual !== null && e.revenueActual !== null)).toBe(true);
-      expect(events.length).toBeLessThanOrEqual(41);
+      expect(events.length).toBeLessThanOrEqual(48); // 47 quarters plus the upcoming report
     }
+  });
+
+  it('holds more than 40 events for an established symbol, so "Show more" is testable offline', async () => {
+    expect((await provider.getEarnings('AAPL')).events.length).toBeGreaterThan(40);
   });
 
   it('reports quarterly EPS in earnings equal to the quarterly income statement', async () => {

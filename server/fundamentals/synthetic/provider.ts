@@ -377,7 +377,7 @@ export class SyntheticFundamentalsProvider implements FundamentalsProvider {
         revenueActual: null,
         revenueEstimate: co.nextRevenue,
       };
-      return { symbol: model.symbol, events: [upcoming, ...reported].slice(0, 41) };
+      return { symbol: model.symbol, events: [upcoming, ...reported] };
     });
   }
 
