@@ -12,6 +12,7 @@ import { snapMarkers } from './markers';
 import type { ChartMarker } from './markers';
 import type { Bar, ChartType } from '@shared/types';
 import { classifyUpdate, toCandles, toCloseLine } from './convert';
+import { VerticalPan } from './verticalPan';
 import { readTheme, withAlpha } from './theme';
 import type { ChartTheme } from './theme';
 import { formatCrosshairTime, formatTick } from './timeFormat';
@@ -28,6 +29,8 @@ export interface PriceChartHandlers {
   onCrosshairTime?: (time: number | null) => void;
   /** The visible range is within LOAD_OLDER_THRESHOLD_BARS of the oldest bar. Fires often; callers must de-duplicate. */
   onNearStart?: () => void;
+  /** The price axis switched between auto-fit and a position the user dragged it to. */
+  onAutoScaleChange?: (autoScaled: boolean) => void;
 }
 
 /** One live series, tagged so `setData` is checked against the right data shape. */
@@ -46,6 +49,7 @@ type ActiveSeries =
 export class PriceChart {
   private chart: IChartApi | null;
   private series: ActiveSeries | null = null;
+  private readonly verticalPan: VerticalPan;
   private bars: Bar[] = [];
   private markers: readonly ChartMarker[] = [];
   /** Bound to the current price series; recreated whenever the series is replaced. */
@@ -96,6 +100,16 @@ export class PriceChart {
     this.chart.panes()[0]?.setPreserveEmptyPane(true);
     this.chart.subscribeCrosshairMove(this.onCrosshair);
     this.chart.timeScale().subscribeVisibleLogicalRangeChange(this.onRange);
+    // Lets a vertical drag move the price axis, as in TradingView. See verticalPan.ts.
+    this.verticalPan = new VerticalPan(container, this.chart, () =>
+      this.handlers.onAutoScaleChange?.(this.verticalPan.isAutoScaled()),
+    );
+  }
+
+  /** Fit the price axis of every pane to its data again (the "Auto" button). */
+  resetAutoScale(): void {
+    if (!this.chart) return;
+    this.verticalPan.resetAutoScale();
   }
 
   /** The underlying chart, for panes/indicators that add series at a pane index. Null once disposed. */
@@ -155,6 +169,8 @@ export class PriceChart {
         });
       }
     } else {
+      // New symbol or timeframe: a price position dragged for the old data means nothing now.
+      if (!this.verticalPan.isAutoScaled()) this.verticalPan.resetAutoScale();
       this.resetView();
     }
   }
@@ -172,6 +188,7 @@ export class PriceChart {
     this.chart = null;
     this.series = null;
     this.markersApi = null;
+    this.verticalPan.dispose();
     chart.unsubscribeCrosshairMove(this.onCrosshair);
     chart.timeScale().unsubscribeVisibleLogicalRangeChange(this.onRange);
     chart.remove();

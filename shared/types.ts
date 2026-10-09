@@ -470,6 +470,14 @@ export interface FundamentalsOverview {
    * The overview succeeds when at least the profile is available.
    */
   unavailable: ('metrics' | 'scores' | 'analyst')[];
+  /**
+   * True when the issuer's "cost of revenue" is mostly interest expense: banks,
+   * broker-dealers and card lenders. Its gross margin is then a lending spread, not a
+   * gross margin, and the UI shows "NM" for it. Operating and net margin stay meaningful.
+   * The provider decides from the income statement, not from the sector: FMP puts Visa
+   * (interest 7% of cost of revenue) in the same industry as Capital One (43%).
+   */
+  grossMarginNotMeaningful: boolean;
 }
 
 /**
@@ -510,7 +518,16 @@ export interface EarningsEvent {
   revenueEstimate: number | null;
 }
 
-/** `GET /api/fundamentals/earnings?symbol=` — NEWEST first; upcoming reports have null actuals. */
+/** Events per earnings response when the request has no `limit`. */
+export const DEFAULT_EARNINGS_LIMIT = 40;
+/** Largest `limit` the earnings endpoint accepts. */
+export const MAX_EARNINGS_LIMIT = 400;
+
+/**
+ * `GET /api/fundamentals/earnings?symbol=&limit=` — NEWEST first; upcoming reports have null
+ * actuals. At most `limit` events (default DEFAULT_EARNINGS_LIMIT). Fewer events than `limit`
+ * means the provider has no more; exactly `limit` means there can be more ("Show more").
+ */
 export interface EarningsResponse {
   symbol: string;
   events: EarningsEvent[];

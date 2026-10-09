@@ -370,7 +370,7 @@ record measured FMP behaviour that is not what you would guess.
 |---|---|---|
 | `GET /api/fundamentals/overview` | `symbol` | `FundamentalsOverview` |
 | `GET /api/fundamentals/statements` | `symbol`, `statement` (`income`\|`balance`\|`cashflow`), `period` (`annual`\|`quarter`) | `StatementsResponse` |
-| `GET /api/fundamentals/earnings` | `symbol` | `EarningsResponse` |
+| `GET /api/fundamentals/earnings` | `symbol`, optional `limit` (integer 1–`MAX_EARNINGS_LIMIT` (400), default `DEFAULT_EARNINGS_LIMIT` (40)) | `EarningsResponse` |
 
 - Unknown symbol → `UNKNOWN_SYMBOL` (404). Plan tier lacks the data → `UNAUTHORIZED`.
 - The overview is partial-success: unavailable sections are listed in `unavailable`.
@@ -379,4 +379,9 @@ record measured FMP behaviour that is not what you would guess.
   work. TTM values come from the TTM endpoints. Do not derive quarterly ratios.
 - Statements: annual returns up to 10 fiscal years, quarterly up to 8 quarters, newest first.
 - Cache: overview and statements 6 h, earnings 1 h. Successes only.
+- Earnings `limit` (added after Gate 6, user decision): the response holds the newest `limit`
+  events, upcoming reports included. Fewer events than `limit` means there are no more. The
+  cache keeps the provider's full list per symbol and the route cuts it, so a larger `limit`
+  costs no extra upstream call. A `limit` that is not an integer in range → `BAD_REQUEST`.
+  The client loads 40 first and offers "Show more", which asks for 40 more.
 - Real recorded responses for five symbols are in `server/fundamentals/__fixtures__/fmp/`.

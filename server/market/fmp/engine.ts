@@ -1,10 +1,11 @@
 /**
  * Financial Modeling Prep market engine (`DATA_PROVIDER=fmp`).
  *
- * WHAT THIS TIER CAN DO (measured against the free-trial key, not read from docs):
+ * WHAT THIS TIER CAN DO (measured, not read from docs):
  *   - daily bars, quotes, symbol search, profiles and splits work;
- *   - every intraday endpoint and `batch-quote-short` answer HTTP 402.
- * So this engine serves `1D` and `1W` only. `1W` is built here from daily bars rather
+ *   - Starter serves 5min, 15min and 1hour intraday; 1min and the batch quote
+ *     endpoints answer HTTP 402.
+ * So this engine serves `5m`, `15m`, `1h`, `1D` and `1W`. `1W` is built from daily bars rather
  * than fetched, which makes engine invariant 2 (1W over 1D) hold by construction.
  *
  * SEAM NOTE. `MarketEngine` (server/market/types.ts, frozen) is SYNCHRONOUS. A provider
@@ -14,14 +15,14 @@
  * the seam to allow `T | Promise<T>`; see the report that accompanies this change.
  */
 import type { SearchResult, Snapshot, Timeframe, UnixSeconds } from '@shared/types';
-import { mondayOf, nyDayOf } from '../calendar';
+import { SESSION_OPEN_SECOND, mondayOf, nyDayOf, nyWallToUnix, sessionMinutes, sessionOpenUnix } from '../calendar';
 import { UnknownSymbolError } from '../types';
 import type { EngineBarsRequest, EngineBarsResult, EngineSymbol, MarketEngine } from '../types';
 import { UnsupportedRequestError, UpstreamUnauthorizedError } from '../../provider/errors';
 import { FmpClient, FmpPaymentRequiredError } from './client';
 import type { FmpClientOptions } from './client';
-import { FMP_ROW_CAP, aggregateWeekly, eodRowsToBars, snapshotFromQuote } from './convert';
-import { eodResponseSchema, profileResponseSchema, quoteResponseSchema, searchResponseSchema } from './schemas';
+import { FMP_ROW_CAP, aggregateWeekly, eodRowsToBars, intradayRowsToBars, snapshotFromQuote } from './convert';
+import { eodResponseSchema, intradayResponseSchema, profileResponseSchema, quoteResponseSchema, searchResponseSchema } from './schemas';
 import type { ProfileRow, SearchRow } from './schemas';
 import { dateToNySeconds, dayNumberToDate } from './time';
 
@@ -41,7 +42,10 @@ export interface FmpEngineOptions extends Omit<FmpClientOptions, 'apiKey'> {
   now?: () => number;
 }
 
-const SUPPORTED: readonly Timeframe[] = ['1D', '1W'];
+/** 1min is HTTP 402 on FMP Starter (measured), so it is not served. */
+const SUPPORTED: readonly Timeframe[] = ['5m', '15m', '1h', '1D', '1W'];
+const INTRADAY_PATH = { '5m': '5min', '15m': '15min', '1h': '1hour' } as const;
+const INTRADAY_SPAN_SECONDS = { '5m': 300, '15m': 900, '1h': 3600 } as const;
 /** Largest Unix time we will turn into a date string (2100-01-01); the proxy clamps to now long before. */
 const MAX_UNIX = 4_102_444_800;
 /** Tickers we are willing to send upstream. Anything else cannot be a listed symbol. */
@@ -63,8 +67,9 @@ export class FmpEngine implements AsyncMarketEngine {
 
   /**
    * HOW `delayed` IS DECIDED. It is `true` unless the operator says otherwise, because:
-   *   1. This key cannot read any intraday endpoint (all HTTP 402), so there is no
-   *      real-time-quality feed behind it that we could have verified.
+   *   1. Starter serves 5min/15min/1hour intraday, but nobody has measured its lag
+   *      during market hours, so there is no verified real-time feed behind it.
+   *      (Written when the key was on the free tier, where intraday was all HTTP 402.)
    *   2. The one thing `quote` gives us to test freshness is its `timestamp`. Measured
    *      after the close it was 16:00:01 ET, i.e. the session's final print, which says
    *      nothing about lag. The measurement that would settle it needs a quote taken
@@ -175,6 +180,10 @@ export class FmpEngine implements AsyncMarketEngine {
     const to = Math.min(req.to, MAX_UNIX);
     if (to < from) return { bars: [], truncated: false };
 
+    if (req.timeframe === '5m' || req.timeframe === '15m' || req.timeframe === '1h') {
+      return this.getIntradayBars(req, from, to, limit);
+    }
+
     const weekly = req.timeframe === '1W';
     const fromDay = nyDayOf(from);
     const toDay = nyDayOf(to);
@@ -206,6 +215,54 @@ export class FmpEngine implements AsyncMarketEngine {
     bars = bars.filter((b) => b.time >= from && b.time <= to);
 
     let truncated = clipped;
+    if (bars.length > limit) {
+      bars = bars.slice(bars.length - limit); // keep the NEWEST `limit` bars
+      truncated = true;
+    }
+    return { bars, truncated };
+  }
+
+  /**
+   * Intraday bars. FMP keeps the NEWEST rows when it clips (5min: 624 rows per request,
+   * measured), so a clipped answer is missing its OLD end. Row caps for 15min and 1hour are
+   * not measured, so one rule covers all three: report `truncated` when ANY trading session
+   * that ends after `from` lies entirely before the oldest bar's NY day, i.e. a session we
+   * should have data for and got none. A session that closed at or before `from` does not
+   * count; weekends, holidays and early closes follow `../calendar`. The client then
+   * continues from the oldest bar. (A "more than one session" rule lost exactly one whole
+   * session silently.)
+   *
+   * Also `truncated` when FMP clipped INSIDE the oldest bar's day: the first expected bar of
+   * that day (the later of `from` and the session open) is missing, i.e. the oldest bar
+   * starts a whole bar or more after it. A bar that merely starts after `from` within its own
+   * span (from = 10:02, first 5m bar 10:05) is not a gap.
+   */
+  private async getIntradayBars(req: EngineBarsRequest, from: number, to: number, limit: number): Promise<EngineBarsResult> {
+    const timeframe = req.timeframe as keyof typeof INTRADAY_PATH;
+    const fromDay = nyDayOf(from);
+    const rows = intradayResponseSchema.parse(
+      await this.client.getJson(`/historical-chart/${INTRADAY_PATH[timeframe]}`, {
+        symbol: req.symbol,
+        from: dayNumberToDate(fromDay),
+        to: dayNumberToDate(nyDayOf(to)),
+      }),
+    );
+    // Whole NY days come back; the range is inclusive on bar time (CONTRACT guarantee 5).
+    let bars = intradayRowsToBars(rows).filter((b) => b.time >= from && b.time <= to);
+
+    let truncated = false;
+    const oldest = bars[0];
+    if (oldest) {
+      const oldestDay = nyDayOf(oldest.time);
+      for (let d = fromDay; d < oldestDay && !truncated; d++) {
+        const minutes = sessionMinutes(d);
+        if (minutes > 0 && nyWallToUnix(d, SESSION_OPEN_SECOND + minutes * 60) > from) truncated = true;
+      }
+      if (!truncated && sessionMinutes(oldestDay) > 0) {
+        const firstExpected = Math.max(from, sessionOpenUnix(oldestDay));
+        truncated = oldest.time >= firstExpected + INTRADAY_SPAN_SECONDS[timeframe];
+      }
+    }
     if (bars.length > limit) {
       bars = bars.slice(bars.length - limit); // keep the NEWEST `limit` bars
       truncated = true;

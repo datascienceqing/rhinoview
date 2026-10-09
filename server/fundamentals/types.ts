@@ -39,6 +39,12 @@ export interface FundamentalsProvider {
 //    The UI decides how to present these (see docs/PHASE5_PLAN.md, W6): non-positive
 //    valuation multiples as "NM", and margins for financial-sector issuers as "NM".
 //    Keeping the raw value lets the UI tell "not supplied" from "not meaningful".
+//    The provider supplies the EVIDENCE for the gross-margin case as
+//    `grossMarginNotMeaningful`: true when interest expense is at least 25% of the cost
+//    of revenue in the newest annual income statement. Measured on FMP: banks 0.87-0.93,
+//    broker-dealers 1.00, card lenders 0.43-0.61; card networks, payments, insurers and
+//    asset managers 0.00-0.09. A sector or industry rule cannot separate these: FMP puts
+//    Visa and Capital One in the same industry, and insurers have real gross margins.
 //
 // 2. RATIOS ARE FRACTIONS. 0.4512 means 45.12%. Measured on the recorded `ratios-ttm`
 //    and `key-metrics-ttm` responses, the margin, yield, payout and return fields are

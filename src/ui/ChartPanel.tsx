@@ -3,9 +3,10 @@ import type { ChartMarker } from '../chart/markers';
 import { INDICATOR_PLACEMENT, isIntraday } from '@shared/types';
 import type { ChartType, Timeframe } from '@shared/types';
 import { ChartView } from '../chart';
-import { useBarHistory } from '../data';
+import { useBarHistory, useCapabilities } from '../data';
 import { IndicatorLegendRow, IndicatorMenu, useComputedIndicators, useIndicators } from '../panes';
 import type { PaneLayout } from '../panes';
+import { effectiveTimeframe, useActiveChart, useWorkspaceStatus } from '../workspace';
 import { CrosshairLegend } from './CrosshairLegend';
 import { StatusMessage } from './StatusMessage';
 import { describeError } from './errorCopy';
@@ -18,11 +19,34 @@ export interface ChartPanelProps {
   markers?: readonly ChartMarker[];
 }
 
-/** The chart plus everything layered on it: legend, and loading/empty/error states. */
-export function ChartPanel({ symbol, timeframe, chartType, markers }: ChartPanelProps) {
+/**
+ * The chart plus everything layered on it: legend, and loading/empty/error states.
+ * Until the workspace has loaded there is no real symbol or timeframe yet, so it waits
+ * instead of fetching the placeholder chart and then the real one.
+ */
+export function ChartPanel(props: ChartPanelProps) {
+  const status = useWorkspaceStatus();
+  if (status === 'loading') {
+    return (
+      <div className="chart-panel">
+        <div className="chart-overlay-center">
+          <StatusMessage kind="loading" title="Loading layout…" />
+        </div>
+      </div>
+    );
+  }
+  return <LoadedChartPanel {...props} />;
+}
+
+function LoadedChartPanel({ symbol, timeframe: savedTimeframe, chartType, markers }: ChartPanelProps) {
+  // A saved timeframe the provider cannot serve is drawn as the nearest supported one.
+  // The layout itself is untouched until the user picks (see TimeframeSelector).
+  const timeframe = effectiveTimeframe(savedTimeframe, useCapabilities());
   const history = useBarHistory(symbol, timeframe);
   const [hoverTime, setHoverTime] = useState<number | null>(null);
-  const indicatorState = useIndicators(symbol);
+  // Indicators belong to the active layout, not to the symbol.
+  const { chart, setIndicators } = useActiveChart();
+  const indicatorState = useIndicators(chart.indicators, setIndicators);
   const computed = useComputedIndicators(history.bars, indicatorState.indicators);
   const [paneTops, setPaneTops] = useState<PaneLayout>({});
   // Measured on every layout pass; only a real change may cause a render.
@@ -128,13 +152,9 @@ export function ChartPanel({ symbol, timeframe, chartType, markers }: ChartPanel
   );
 }
 
-function ErrorBlock({
-  error,
-  retry,
-}: {
-  error: Parameters<typeof describeError>[0];
-  retry: React.ReactNode;
-}) {
+function ErrorBlock({ error, retry }: { error: Parameters<typeof describeError>[0]; retry: React.ReactNode }) {
   const copy = describeError(error, 'chart');
-  return <StatusMessage kind="error" title={copy.title} detail={copy.detail} action={copy.retryable ? retry : undefined} />;
+  return (
+    <StatusMessage kind="error" title={copy.title} detail={copy.detail} action={copy.retryable ? retry : undefined} />
+  );
 }

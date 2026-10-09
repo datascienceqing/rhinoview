@@ -10,9 +10,11 @@ export const SEARCH_DEBOUNCE_MS = 250;
 export interface SymbolSearchProps {
   onSelect: (result: SearchResult) => void;
   debounceMs?: number;
+  /** Accessible name. Give each instance on one page its own name, so they can be told apart. */
+  label?: string;
 }
 
-export function SymbolSearch({ onSelect, debounceMs = SEARCH_DEBOUNCE_MS }: SymbolSearchProps) {
+export function SymbolSearch({ onSelect, debounceMs = SEARCH_DEBOUNCE_MS, label = 'Search symbol' }: SymbolSearchProps) {
   const ds = useDataSource();
   const listId = useId();
   const [query, setQuery] = useState('');
@@ -94,7 +96,7 @@ export function SymbolSearch({ onSelect, debounceMs = SEARCH_DEBOUNCE_MS }: Symb
       <input
         type="text"
         role="combobox"
-        aria-label="Search symbol"
+        aria-label={label}
         aria-autocomplete="list"
         aria-expanded={showPanel}
         aria-controls={listId}
@@ -123,7 +125,7 @@ export function SymbolSearch({ onSelect, debounceMs = SEARCH_DEBOUNCE_MS }: Symb
               No symbols match “{debounced}”. Check the spelling, or try a ticker or part of the company name.
             </div>
           ) : (
-            <ul role="listbox" aria-label="Search results">
+            <ul role="listbox" aria-label={`${label} results`}>
               {results.map((r, i) => (
                 <li
                   key={r.symbol}

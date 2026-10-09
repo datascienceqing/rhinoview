@@ -57,7 +57,7 @@ Do not change these.
 
 Layout details that the orchestrator decided (the user can change them at review):
 
-- The watchlist is a fixed right sidebar, 300 px wide.
+- The watchlist is a right sidebar, 300 px wide by default. The user can drag its left edge to resize it (240–720 px). The browser keeps the width.
 - Financials is a full-width drawer below the chart. A "Financials" button in the
   toolbar opens and closes it. It has four tabs: Overview, Statements, Trends, Earnings.
 - The layout switcher is a dropdown at the left end of the toolbar.

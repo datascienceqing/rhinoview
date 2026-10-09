@@ -393,6 +393,7 @@ button:focus-visible {
 
 /* ── Phase 5 frame: chart + bottom drawer in the centre, watchlist on the right ── */
 .app-body {
+  position: relative; /* the Financials page covers this area */
   display: flex;
   flex: 1 1 auto;
   min-height: 0;
@@ -410,20 +411,48 @@ button:focus-visible {
   min-height: 0;
 }
 
+/* Width comes from the resize handle (src/ui/SidebarResizer.tsx); 300px is its default. */
 .sidebar-right {
   flex: 0 0 300px;
   min-width: 0;
-  border-left: 1px solid var(--border);
+  max-width: calc(100% - 360px); /* MIN_CHART_PX: the chart keeps this, even before a resize event */
   background: var(--bg-elevated);
   overflow: hidden;
 }
 
-.fundamentals-drawer {
-  flex: 0 0 40%;
-  min-height: 160px;
-  border-top: 1px solid var(--border);
-  background: var(--bg-elevated);
-  overflow: auto;
+/* The handle between chart and sidebar. It also draws the sidebar's left border. */
+.sidebar-resizer {
+  position: relative;
+  flex: 0 0 5px;
+  margin-right: -4px; /* 1px visible line; the rest of the grab area overlaps the sidebar edge */
+  z-index: 2;
+  cursor: col-resize;
+  touch-action: none;
+  outline: none;
+}
+.sidebar-resizer::after {
+  content: '';
+  position: absolute;
+  inset: 0 auto 0 0;
+  width: 1px;
+  background: var(--border);
+}
+.sidebar-resizer:hover::after,
+.sidebar-resizer:focus-visible::after,
+.sidebar-resizer.active::after {
+  width: 3px;
+  background: var(--accent);
+}
+
+/* Financials: a full page over the chart and the watchlist (src/fundamentals). */
+.fundamentals-page {
+  position: absolute;
+  inset: 0;
+  z-index: 20;
+  display: flex;
+  flex-direction: column;
+  background: var(--bg);
+  outline: none;
 }
 
 .panel-header {
@@ -465,4 +494,24 @@ button:focus-visible {
 .toolbar-toggle.active {
   border-color: var(--accent);
   color: var(--text);
+}
+
+/* Shown after a vertical drag moved the price axis (src/chart/verticalPan.ts). Click to
+   fit the axis to the data again, like TradingView's "A" button. */
+.chart-auto-scale {
+  position: absolute;
+  right: 76px; /* clear of the price scale */
+  bottom: 36px; /* clear of the time scale */
+  z-index: 5;
+  padding: 2px 8px;
+  border: 1px solid var(--accent);
+  border-radius: 4px;
+  background: var(--bg-elevated);
+  color: var(--text);
+  font-size: 12px;
+  cursor: pointer;
+}
+
+.chart-auto-scale:hover {
+  background: var(--accent);
 }

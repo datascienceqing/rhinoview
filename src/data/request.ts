@@ -22,6 +22,8 @@ export interface ApiRequestOptions {
   baseUrl?: string;
   /** Injectable for tests. Resolved lazily so a later-patched global fetch (MSW) is honoured. */
   fetch?: FetchLike | undefined;
+  /** Let the request outlive the page, for a final save on `pagehide`. The body must be small (under 64 KiB). */
+  keepalive?: boolean;
 }
 
 export async function apiRequest<T>(path: string, options: ApiRequestOptions = {}): Promise<T> {
@@ -30,6 +32,7 @@ export async function apiRequest<T>(path: string, options: ApiRequestOptions = {
 
   const headers: Record<string, string> = { Accept: 'application/json' };
   const init: RequestInit = { method, signal: signal ?? null, headers };
+  if (options.keepalive) init.keepalive = true;
   if (body !== undefined) {
     headers['Content-Type'] = 'application/json';
     init.body = JSON.stringify(body);

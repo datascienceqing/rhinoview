@@ -1,4 +1,4 @@
-import { render } from '@testing-library/react';
+import { act, fireEvent, render, screen } from '@testing-library/react';
 import { StrictMode } from 'react';
 import type { Bar } from '@shared/types';
 import { charts, fakeModule, lastChart, resetFakeCharts } from './testing/fakeLightweightCharts';
@@ -140,5 +140,62 @@ describe('ChartView markers (Phase 5 seam)', () => {
   it('attaches no markers plugin when there are no markers', () => {
     render(<ChartView bars={daily} chartType="candlestick" intraday={false} />);
     expect(priceSeries()?.markersApi).toBeUndefined();
+  });
+});
+
+describe('ChartView vertical pan and the Auto button', () => {
+  const DAY = 86_400;
+  const T0 = 1_790_000_000;
+  const daily = [0, 1, 2, 3].map((d) => bar(T0 + d * DAY));
+  const other = [0, 1, 2].map((d) => bar(T0 + 100 * DAY + d * DAY, 50));
+
+  // jsdom has no PointerEvent; the code reads only these fields.
+  const pointer = (type: string, x: number, y: number) => {
+    const e = new MouseEvent(type, { bubbles: true, cancelable: true, clientX: x, clientY: y, button: 0 });
+    Object.defineProperty(e, 'pointerId', { value: 1 });
+    Object.defineProperty(e, 'pointerType', { value: 'mouse' });
+    return e;
+  };
+
+  function verticalDrag() {
+    const pane = lastChart().paneList[0];
+    if (!pane) throw new Error('no pane');
+    pane.element.getBoundingClientRect = () =>
+      ({ top: 0, bottom: 400, left: 0, right: 800, width: 800, height: 400, x: 0, y: 0, toJSON: () => ({}) }) as DOMRect;
+    act(() => {
+      screen.getByTestId('chart-container').dispatchEvent(pointer('pointerdown', 300, 200));
+      window.dispatchEvent(pointer('pointermove', 300, 320));
+      window.dispatchEvent(pointer('pointerup', 300, 320));
+    });
+  }
+  const priceScale = () => lastChart().paneList[0]?.priceScale('right');
+
+  it('shows no Auto button while the axis is auto-fitted', () => {
+    render(<ChartView bars={daily} chartType="candlestick" intraday={false} />);
+    expect(screen.queryByRole('button', { name: 'Auto' })).toBeNull();
+  });
+
+  it('shows Auto after a vertical drag; a click fits the axis again and hides the button', () => {
+    render(<ChartView bars={daily} chartType="candlestick" intraday={false} />);
+    verticalDrag();
+    expect(priceScale()?.options().autoScale).toBe(false);
+    fireEvent.click(screen.getByRole('button', { name: 'Auto' }));
+    expect(priceScale()?.options().autoScale).toBe(true);
+    expect(screen.queryByRole('button', { name: 'Auto' })).toBeNull();
+  });
+
+  it('fits the axis again when the bars are replaced (new symbol or timeframe)', () => {
+    const { rerender } = render(<ChartView bars={daily} chartType="candlestick" intraday={false} />);
+    verticalDrag();
+    rerender(<ChartView bars={other} chartType="candlestick" intraday={false} />);
+    expect(priceScale()?.options().autoScale).toBe(true);
+    expect(screen.queryByRole('button', { name: 'Auto' })).toBeNull();
+  });
+
+  it('keeps the dragged axis when older history is prepended', () => {
+    const { rerender } = render(<ChartView bars={daily} chartType="candlestick" intraday={false} />);
+    verticalDrag();
+    rerender(<ChartView bars={[bar(T0 - DAY), ...daily]} chartType="candlestick" intraday={false} />);
+    expect(priceScale()?.options().autoScale).toBe(false);
   });
 });

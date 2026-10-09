@@ -36,8 +36,8 @@ const bars = (e: ReturnType<typeof engineWith>, timeframe: '1D' | '1W', from: st
   e.getBars({ symbol: 'AAPL', timeframe, from: T(from), to: T(to), adjusted: true, limit: 2000, ...extra });
 
 describe('capabilities', () => {
-  it('serves 1D and 1W only: what this tier can actually fetch', () => {
-    expect(engineWith(fakeFetch(() => responseOf({ status: 200, body: '[]' }))).supportedTimeframes).toEqual(['1D', '1W']);
+  it('serves 5m, 15m, 1h, 1D and 1W, but not 1m: what Starter can actually fetch', () => {
+    expect(engineWith(fakeFetch(() => responseOf({ status: 200, body: '[]' }))).supportedTimeframes).toEqual(['5m', '15m', '1h', '1D', '1W']);
   });
 });
 
@@ -172,7 +172,7 @@ describe('getBars 1W', () => {
 });
 
 describe('unsupported requests', () => {
-  it.each(['1m', '5m', '15m', '1h'] as const)('timeframe %s throws an error the provider layer maps to UNAUTHORIZED, without calling upstream', async (timeframe) => {
+  it.each(['1m'] as const)('timeframe %s throws an error the provider layer maps to UNAUTHORIZED, without calling upstream', async (timeframe) => {
     const fetch = eodFixtureFetch();
     const err = await engineWith(fetch)
       .getBars({ symbol: 'AAPL', timeframe, from: 0, to: 1, adjusted: true, limit: 10 })

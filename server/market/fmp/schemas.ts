@@ -23,6 +23,21 @@ export const eodRowSchema = z.object({
 export type EodRow = z.infer<typeof eodRowSchema>;
 export const eodResponseSchema = z.array(eodRowSchema);
 
+/**
+ * One row of `historical-chart/{5min,15min,1hour}`. `date` is a New York WALL-CLOCK string
+ * ("2026-10-02 09:30:00"), no zone. Note the key order differs from EOD; only names matter.
+ */
+export const intradayRowSchema = z.object({
+  date: z.string(),
+  open: finite,
+  high: finite,
+  low: finite,
+  close: finite,
+  volume: finite,
+});
+export type IntradayRow = z.infer<typeof intradayRowSchema>;
+export const intradayResponseSchema = z.array(intradayRowSchema);
+
 /** `quote` returns a one-element array. */
 export const quoteRowSchema = z.object({
   symbol: z.string(),

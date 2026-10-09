@@ -18,6 +18,17 @@ export interface FakePriceLine {
  * a pane that loses its last series is removed unless `preserveEmptyPane` is set, and
  * never when it is the only pane. `removePane` just drops the pane, orphaning its series.
  */
+/** A pane's price scale. Like the library: auto-scaled until told otherwise. */
+export class FakePriceScale {
+  opts: { autoScale: boolean } = { autoScale: true };
+  axisWidth = 60;
+  applyOptions = vi.fn((o: { autoScale?: boolean }) => {
+    this.opts = { ...this.opts, ...o };
+  });
+  options = (): { autoScale: boolean } => this.opts;
+  width = (): number => this.axisWidth;
+}
+
 export class FakePane {
   preserveEmpty = false;
   stretchFactor = 1;
@@ -33,6 +44,15 @@ export class FakePane {
     this.stretchFactor = factor;
   };
   getHTMLElement = (): HTMLElement => this.element;
+  private readonly scales = new Map<string, FakePriceScale>();
+  priceScale = (id: string): FakePriceScale => {
+    let s = this.scales.get(id);
+    if (!s) {
+      s = new FakePriceScale();
+      this.scales.set(id, s);
+    }
+    return s;
+  };
   addSeries = (definition: unknown, options?: unknown): FakeSeries =>
     this.chart.addSeries(definition, options, this.paneIndex());
 }

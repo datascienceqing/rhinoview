@@ -2,12 +2,15 @@ import { act, render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { resetFakeCharts, lastChart } from './chart/testing/fakeLightweightCharts';
 import { server } from '../mocks/server';
+import { resetMockWorkspace } from '../mocks/workspace';
 import { App } from './App';
 
 vi.mock('lightweight-charts', async () => (await import('./chart/testing/fakeLightweightCharts')).fakeModule);
 
 beforeEach(() => {
   resetFakeCharts();
+  // The workspace provider writes to the shared mock; start every test from the default workspace.
+  resetMockWorkspace();
   vi.useFakeTimers({ toFake: ['Date'] });
   vi.setSystemTime(new Date('2026-10-01T12:00:00Z'));
 });
@@ -27,7 +30,9 @@ afterEach(() => server.events.removeAllListeners());
 async function selectSymbol(user: ReturnType<typeof userEvent.setup>, query: string) {
   await user.clear(screen.getByRole('combobox', { name: 'Search symbol' }));
   await user.type(screen.getByRole('combobox', { name: 'Search symbol' }), query);
-  await screen.findAllByRole('option', undefined, { timeout: 2000 });
+  // Scope to the toolbar search: the watchlist panel also renders <option> elements.
+  const results = await screen.findByRole('listbox', { name: 'Search symbol results' }, { timeout: 2000 });
+  await within(results).findAllByRole('option');
   await user.keyboard('{Enter}');
 }
 
@@ -112,5 +117,21 @@ describe('App', () => {
     const before = seen.length;
     act(() => lastChart().scrollTo({ from: -10, to: 90 }));
     await waitFor(() => expect(seen.length).toBeGreaterThan(before));
+  });
+});
+
+describe('Financials page', () => {
+  it('opens over the chart, closes on Esc, and returns focus to the Financials button', async () => {
+    const user = userEvent.setup();
+    render(<App />);
+    const toggle = await screen.findByRole('button', { name: 'Financials' }, { timeout: 3000 });
+    await user.click(toggle);
+    const page = await screen.findByRole('region', { name: /Financials for / });
+    expect(page).toHaveFocus();
+    // The chart stays mounted underneath, so it keeps its position when the page closes.
+    expect(screen.getByTestId('chart-container')).toBeInTheDocument();
+    await user.keyboard('{Escape}');
+    expect(screen.queryByRole('region', { name: /Financials for / })).toBeNull();
+    expect(toggle).toHaveFocus();
   });
 });

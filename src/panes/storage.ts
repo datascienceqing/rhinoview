@@ -1,13 +1,26 @@
 import type { IndicatorConfig, IndicatorKind } from '@shared/types';
 import { INDICATOR_KINDS, isHexColor, pickColor, sanitizeParams } from './config';
 
-/** The slice of `Storage` we use, so tests can hand in a throwing or in-memory stand-in. */
+/** The slice of `Storage` we read, so tests can hand in a throwing or in-memory stand-in. */
 export interface StorageLike {
   getItem(key: string): string | null;
   setItem(key: string, value: string): void;
 }
 
-const VERSION = 1;
+/** What the one-time cleanup needs on top of StorageLike: enumerating and removing keys. */
+export interface EnumerableStorageLike extends StorageLike {
+  readonly length: number;
+  key(index: number): string | null;
+  removeItem(key: string): void;
+}
+
+/**
+ * Phase 5 retired per-symbol indicator persistence: indicators now live in the active
+ * layout on the server. This file only reads the old entries so they can be migrated
+ * once, then deletes them. Nothing here writes indicators any more.
+ */
+export const MIGRATED_FLAG_KEY = 'rhinoview:indicators-migrated';
+
 const KEY_PREFIX = 'charting-app:indicators:';
 
 export function storageKey(symbol: string): string {
@@ -47,7 +60,7 @@ function restore(raw: unknown, accepted: readonly IndicatorConfig[], seen: Set<s
 }
 
 /**
- * The indicators saved for `symbol`. Never throws: a missing, unreadable or corrupt
+ * The legacy indicators saved for `symbol`. Never throws: a missing, unreadable or corrupt
  * entry yields `[]` so the chart renders with defaults. Individually bad entries are
  * dropped while the good ones survive.
  */
@@ -73,12 +86,45 @@ export function loadIndicators(symbol: string, storage?: StorageLike): Indicator
   }
 }
 
-/** Best effort. Returns whether the write happened; a failure is never an error to the caller. */
-export function saveIndicators(symbol: string, indicators: readonly IndicatorConfig[], storage?: StorageLike): boolean {
+/** Whether the one-time migration already ran. An unreadable store counts as not migrated. */
+export function isMigrated(storage?: StorageLike): boolean {
   try {
-    (storage ?? defaultStorage()).setItem(storageKey(symbol), JSON.stringify({ version: VERSION, indicators }));
-    return true;
+    return (storage ?? defaultStorage()).getItem(MIGRATED_FLAG_KEY) === '1';
   } catch {
     return false;
+  }
+}
+
+/**
+ * Remove every `charting-app:indicators:*` key and set the migrated flag. Each step is
+ * guarded on its own, so a store that throws on one call still gets the others tried.
+ */
+export function retireLegacyIndicators(storage?: EnumerableStorageLike): void {
+  let store: EnumerableStorageLike;
+  try {
+    store = storage ?? (globalThis.localStorage as EnumerableStorageLike);
+  } catch {
+    return;
+  }
+  try {
+    const keys: string[] = [];
+    for (let i = 0; i < store.length; i += 1) {
+      const k = store.key(i);
+      if (k !== null && k.startsWith(KEY_PREFIX)) keys.push(k);
+    }
+    for (const k of keys) {
+      try {
+        store.removeItem(k);
+      } catch {
+        /* best effort */
+      }
+    }
+  } catch {
+    /* enumeration failed; the flag below still stops a second migration */
+  }
+  try {
+    store.setItem(MIGRATED_FLAG_KEY, '1');
+  } catch {
+    /* best effort */
   }
 }

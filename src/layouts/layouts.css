@@ -1,0 +1,159 @@
+/* Layout switcher and timeframe fallback. Uses the theme variables from :root in styles.css. */
+
+.layout-switcher {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.layout-button {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  max-width: 200px;
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  padding: 6px 10px;
+  cursor: pointer;
+}
+
+.layout-button:hover {
+  border-color: var(--accent);
+}
+
+.layout-name {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.layout-save {
+  font-size: 12px;
+  color: var(--text-dim);
+}
+
+.layout-save-error {
+  color: var(--down);
+}
+
+.layout-notice {
+  position: absolute;
+  top: calc(100% + 6px);
+  left: 0;
+  z-index: 20;
+  width: max-content;
+  max-width: 360px;
+  padding: 6px 10px;
+  background: var(--bg-elevated);
+  border: 1px solid var(--accent);
+  border-radius: 4px;
+  font-size: 12px;
+}
+
+.layout-panel {
+  position: absolute;
+  top: calc(100% + 4px);
+  left: 0;
+  z-index: 30;
+  width: 260px;
+  padding: 8px;
+  background: var(--bg-elevated);
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.4);
+}
+
+.layout-list {
+  list-style: none;
+  margin: 0 0 8px;
+  padding: 0;
+  max-height: 240px;
+  overflow-y: auto;
+}
+
+.layout-item {
+  display: block;
+  width: 100%;
+  text-align: left;
+  background: none;
+  border: 0;
+  border-radius: 3px;
+  padding: 6px 8px;
+  cursor: pointer;
+}
+
+.layout-item:hover {
+  background: var(--bg);
+}
+
+.layout-item[aria-current='true'] {
+  color: var(--accent);
+  font-weight: 600;
+}
+
+.layout-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  padding-top: 8px;
+  border-top: 1px solid var(--border);
+}
+
+.layout-actions button,
+.layout-plain {
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  padding: 4px 8px;
+  cursor: pointer;
+}
+
+.layout-actions button:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
+
+.layout-form {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.layout-form label {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  font-size: 12px;
+  color: var(--text-dim);
+}
+
+.layout-form input[type='text'] {
+  width: 100%;
+}
+
+.layout-form-actions {
+  display: flex;
+  gap: 6px;
+}
+
+.layout-confirm p {
+  margin: 0 0 8px;
+}
+
+.layout-danger {
+  background: var(--down);
+}
+
+.layout-error {
+  margin: 8px 0 0;
+  font-size: 12px;
+  color: var(--down);
+}
+
+/* An unsupported timeframe is disabled, not hidden: the user sees what exists and what does not. */
+.segmented .seg:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
