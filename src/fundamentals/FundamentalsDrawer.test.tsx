@@ -1,7 +1,7 @@
 import { act, render, renderHook, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { http } from 'msw';
-import { beforeEach, describe, expect, it } from 'vitest';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 import type { EarningsResponse, FundamentalsOverview } from '@shared/types';
 import { fail, ok } from '../../mocks/envelope';
 import { overviewFor } from '../../mocks/fundamentalsData';
@@ -426,5 +426,45 @@ describe('Earnings tab: Show more', () => {
     view.rerender(<EarningsTab symbol="AAPL" />);
     await waitFor(() => expect(screen.getByTestId('earnings-2026-10-29')).toBeInTheDocument());
     expect(rows()).toBe(40);
+  });
+});
+
+describe('full page', () => {
+  const page = (onClose = vi.fn()) => {
+    renderWithDataSource(<FundamentalsDrawer symbol="AAPL" onClose={onClose} />);
+    return onClose;
+  };
+
+  it('moves focus into the page when it opens, so Esc works at once', () => {
+    page();
+    expect(screen.getByTestId('fundamentals-drawer')).toHaveFocus();
+  });
+
+  it('closes with the Back to chart button', async () => {
+    const onClose = page();
+    await userEvent.click(screen.getByRole('button', { name: 'Back to chart' }));
+    expect(onClose).toHaveBeenCalledTimes(1);
+  });
+
+  it('closes on Esc while focus is inside the page', async () => {
+    const onClose = page();
+    await userEvent.keyboard('{Escape}');
+    expect(onClose).toHaveBeenCalledTimes(1);
+  });
+
+  it('does not close on an Esc that a control inside the page already used', () => {
+    const onClose = page();
+    const tab = screen.getByRole('tab', { name: 'Trends' });
+    tab.addEventListener('keydown', (e) => e.preventDefault()); // e.g. an open list closing first
+    act(() => {
+      tab.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true, cancelable: true }));
+    });
+    expect(onClose).not.toHaveBeenCalled();
+  });
+
+  it('names the page after the symbol and shows it as a heading', () => {
+    page();
+    expect(screen.getByRole('region', { name: 'Financials for AAPL' })).toBeInTheDocument();
+    expect(screen.getByRole('heading', { name: /Financials\s*AAPL/ })).toBeInTheDocument();
   });
 });

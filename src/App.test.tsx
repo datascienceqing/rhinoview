@@ -119,3 +119,19 @@ describe('App', () => {
     await waitFor(() => expect(seen.length).toBeGreaterThan(before));
   });
 });
+
+describe('Financials page', () => {
+  it('opens over the chart, closes on Esc, and returns focus to the Financials button', async () => {
+    const user = userEvent.setup();
+    render(<App />);
+    const toggle = await screen.findByRole('button', { name: 'Financials' }, { timeout: 3000 });
+    await user.click(toggle);
+    const page = await screen.findByRole('region', { name: /Financials for / });
+    expect(page).toHaveFocus();
+    // The chart stays mounted underneath, so it keeps its position when the page closes.
+    expect(screen.getByTestId('chart-container')).toBeInTheDocument();
+    await user.keyboard('{Escape}');
+    expect(screen.queryByRole('region', { name: /Financials for / })).toBeNull();
+    expect(toggle).toHaveFocus();
+  });
+});

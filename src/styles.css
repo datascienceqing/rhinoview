@@ -393,6 +393,7 @@ button:focus-visible {
 
 /* ── Phase 5 frame: chart + bottom drawer in the centre, watchlist on the right ── */
 .app-body {
+  position: relative; /* the Financials page covers this area */
   display: flex;
   flex: 1 1 auto;
   min-height: 0;
@@ -418,12 +419,15 @@ button:focus-visible {
   overflow: hidden;
 }
 
-.fundamentals-drawer {
-  flex: 0 0 40%;
-  min-height: 160px;
-  border-top: 1px solid var(--border);
-  background: var(--bg-elevated);
-  overflow: auto;
+/* Financials: a full page over the chart and the watchlist (src/fundamentals). */
+.fundamentals-page {
+  position: absolute;
+  inset: 0;
+  z-index: 20;
+  display: flex;
+  flex-direction: column;
+  background: var(--bg);
+  outline: none;
 }
 
 .panel-header {

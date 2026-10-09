@@ -1,31 +1,35 @@
-/* Financials drawer. Lives here, not in src/styles.css (owned elsewhere). */
-.fund-tabs { display: flex; gap: 2px; padding: 0 10px; border-bottom: 1px solid var(--border); }
+/* Financials page (full page over the chart). Lives here, not in src/styles.css. */
+.fund-tabs { display: flex; gap: 4px; padding: 0 24px; border-bottom: 1px solid var(--border); background: var(--bg-elevated); }
 .fund-tabs button {
-  padding: 6px 12px; border: 0; border-bottom: 2px solid transparent;
-  background: transparent; color: var(--text-dim); cursor: pointer; font-size: 13px;
+  padding: 10px 16px; border: 0; border-bottom: 2px solid transparent;
+  background: transparent; color: var(--text-dim); cursor: pointer; font-size: 14px;
 }
 .fund-tabs button[aria-selected='true'] { color: var(--text); border-bottom-color: var(--accent); }
 .fund-tabs button:focus-visible, .fund-seg button:focus-visible { outline: 2px solid var(--accent); }
-.fund-body { padding: 10px; font-size: 12px; color: var(--text); }
-.fund-controls { display: flex; gap: 12px; margin-bottom: 8px; flex-wrap: wrap; }
+.fund-body { flex: 1 1 auto; min-height: 0; overflow: auto; padding: 20px 24px 40px; font-size: 13px; color: var(--text); }
+/* Wide screens: keep lines readable instead of stretching tables edge to edge. */
+.fund-body-inner { max-width: 1440px; margin: 0 auto; }
+.fund-controls { display: flex; gap: 12px; margin-bottom: 14px; flex-wrap: wrap; }
 .fund-seg { display: inline-flex; border: 1px solid var(--border); border-radius: 4px; overflow: hidden; }
-.fund-seg button { padding: 3px 10px; border: 0; background: transparent; color: var(--text-dim); cursor: pointer; font-size: 12px; }
+.fund-seg button { padding: 5px 14px; border: 0; background: transparent; color: var(--text-dim); cursor: pointer; font-size: 12px; }
 .fund-seg button[aria-pressed='true'] { background: var(--accent); color: #fff; }
 .fund-retry { margin-top: 6px; }
-.fund-overview { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 10px; }
-.fund-card { border: 1px solid var(--border); border-radius: 4px; padding: 8px 10px; background: var(--bg); min-width: 0; }
-.fund-card h3 { margin: 0 0 6px; font-size: 13px; }
+.fund-overview { display: grid; grid-template-columns: repeat(auto-fit, minmax(340px, 1fr)); gap: 16px; }
+.fund-card { border: 1px solid var(--border); border-radius: 6px; padding: 14px 18px; background: var(--bg-elevated); min-width: 0; }
+.fund-card h3 { margin: 0 0 10px; font-size: 15px; }
 .fund-card h4 { margin: 8px 0 4px; font-size: 11px; color: var(--text-dim); text-transform: uppercase; }
 .fund-profile { grid-column: 1 / -1; }
-.fund-description { color: var(--text-dim); max-height: 4.5em; overflow: auto; margin: 6px 0 0; }
-.fund-groups { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 0 16px; }
+/* Full width on the page, so the metric groups sit side by side instead of one tall column. */
+.fund-metrics { grid-column: 1 / -1; }
+.fund-description { color: var(--text-dim); max-height: 9em; overflow: auto; margin: 10px 0 0; line-height: 1.5; }
+.fund-groups { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 0 28px; }
 .fund-facts { margin: 0; display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 2px 16px; }
 .fund-group .fund-facts { grid-template-columns: 1fr; }
-.fund-fact { display: flex; justify-content: space-between; gap: 8px; }
+.fund-fact { display: flex; justify-content: space-between; gap: 8px; padding: 3px 0; }
 .fund-fact dt { color: var(--text-dim); }
 .fund-fact dd { margin: 0; font-variant-numeric: tabular-nums; }
 .fund-unavailable { color: var(--text-dim); font-style: italic; margin: 4px 0; }
-.fund-consensus { font-size: 16px; font-weight: 600; margin: 0 0 4px; }
+.fund-consensus { font-size: 20px; font-weight: 600; margin: 0 0 4px; }
 .fund-counts { display: flex; gap: 10px; flex-wrap: wrap; list-style: none; padding: 0; margin: 0 0 8px; color: var(--text-dim); }
 .fund-target-labels { display: flex; justify-content: space-between; gap: 6px; flex-wrap: wrap; color: var(--text-dim); }
 .fund-target-bar { position: relative; height: 8px; margin: 8px 0; border-radius: 4px; background: var(--border); }
@@ -35,17 +39,26 @@
 .fund-currency { color: var(--text-dim); margin: 0 0 6px; }
 .fund-table-wrap { overflow: auto; }
 .fund-table { border-collapse: collapse; width: 100%; font-variant-numeric: tabular-nums; }
-.fund-table th, .fund-table td { padding: 3px 8px; text-align: right; white-space: nowrap; border-bottom: 1px solid var(--border); }
-.fund-table th:first-child { text-align: left; position: sticky; left: 0; background: var(--bg-elevated); }
+.fund-table th, .fund-table td { padding: 7px 14px; text-align: right; white-space: nowrap; border-bottom: 1px solid var(--border); }
+.fund-table th:first-child { text-align: left; position: sticky; left: 0; background: var(--bg); }
 .fund-table thead th { color: var(--text-dim); font-weight: 600; }
 .fund-outcome { font-weight: 600; }
 .fund-beat { color: var(--up); }
 .fund-miss { color: var(--down); }
 .fund-upcoming, .fund-inline, .fund-unknown { color: var(--text-dim); }
-.fund-chart-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 10px; }
-.fund-chart { margin: 0; border: 1px solid var(--border); border-radius: 4px; padding: 6px 8px; background: var(--bg); }
-.fund-chart figcaption { display: flex; justify-content: space-between; font-weight: 600; margin-bottom: 4px; }
+.fund-chart-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(400px, 1fr)); gap: 16px; }
+.fund-chart { margin: 0; border: 1px solid var(--border); border-radius: 6px; padding: 12px 14px; background: var(--bg-elevated); }
+.fund-chart figcaption { display: flex; justify-content: space-between; font-weight: 600; font-size: 14px; margin-bottom: 8px; }
 .fund-legend { display: inline-flex; gap: 8px; font-weight: 400; }
 .fund-chart svg { width: 100%; height: auto; display: block; }
 .fund-axis { stroke: var(--border); }
 .fund-axis-label { fill: var(--text-dim); font-size: 9px; }
+
+/* Page header. */
+.fund-page-header { display: flex; align-items: center; gap: 18px; padding: 12px 24px; border-bottom: 1px solid var(--border); background: var(--bg-elevated); }
+.fund-back { padding: 6px 12px; border: 1px solid var(--border); border-radius: 4px; background: transparent; color: var(--text); cursor: pointer; font-size: 13px; }
+.fund-back:hover { border-color: var(--accent); }
+.fund-back:focus-visible { outline: 2px solid var(--accent); }
+.fund-page-title { margin: 0; font-size: 18px; font-weight: 600; color: var(--text); }
+.fund-page-symbol { margin-left: 8px; color: var(--text-dim); font-weight: 500; }
+.fund-page-hint { margin-left: auto; color: var(--text-dim); font-size: 12px; }

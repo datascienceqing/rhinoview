@@ -128,7 +128,7 @@ function OverviewBody({ overview: o }: { overview: FundamentalsOverview }) {
         {o.profile.description && <p className="fund-description">{o.profile.description}</p>}
       </section>
 
-      <section className="fund-card" aria-label="Key metrics">
+      <section className="fund-card fund-metrics" aria-label="Key metrics">
         <h3>Key metrics (trailing twelve months)</h3>
         {gone('metrics') ? (
           <NotAvailable what="metrics" />
