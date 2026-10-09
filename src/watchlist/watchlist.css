@@ -28,8 +28,9 @@
 .wl-table tbody tr.drop { box-shadow: inset 0 2px 0 var(--accent); }
 .sr-only { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
 
-/* Narrow panel (the 300px sidebar): keep symbol, last, change % and remove on screen.
-   Change, volume and day range are hidden here; the row's tooltip still carries them. */
+/* Narrow panel (the default 300px sidebar): keep symbol, last, change % and remove on screen.
+   Change, volume and day range are hidden here; the row's tooltip still carries them.
+   Drag the sidebar handle wider than this to show them. */
 @container (max-width: 420px) {
   .wl-extra { display: none; }
   .wl-table .wl-reason { white-space: normal; }
