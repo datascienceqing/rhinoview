@@ -20,12 +20,12 @@ export interface FakePriceLine {
  */
 /** A pane's price scale. Like the library: auto-scaled until told otherwise. */
 export class FakePriceScale {
-  opts: { autoScale: boolean } = { autoScale: true };
+  opts: { autoScale: boolean; scaleMargins?: { top: number; bottom: number } } = { autoScale: true };
   axisWidth = 60;
-  applyOptions = vi.fn((o: { autoScale?: boolean }) => {
+  applyOptions = vi.fn((o: { autoScale?: boolean; scaleMargins?: { top: number; bottom: number } }) => {
     this.opts = { ...this.opts, ...o };
   });
-  options = (): { autoScale: boolean } => this.opts;
+  options = (): FakePriceScale['opts'] => this.opts;
   width = (): number => this.axisWidth;
 }
 
@@ -68,6 +68,8 @@ export interface FakeSeries {
   createPriceLine: ReturnType<typeof vi.fn>;
   priceLines: FakePriceLine[];
   getPane: () => FakePane;
+  /** Like the library: the scale named by the series' `priceScaleId` (default 'right') on its pane. */
+  priceScale: () => FakePriceScale;
   removed: boolean;
   /** Set by createSeriesMarkers: the markers currently drawn on this series. */
   markersApi?: { markers: unknown[]; setMarkers: ReturnType<typeof vi.fn>; detach: ReturnType<typeof vi.fn> };
@@ -123,6 +125,7 @@ export class FakeChart {
         this.assertLive();
         return s.pane;
       },
+      priceScale: () => s.pane.priceScale((options as { priceScaleId?: string } | undefined)?.priceScaleId ?? 'right'),
       removed: false,
     };
     this.series.push(s);

@@ -332,3 +332,72 @@ describe('disposal', () => {
     expect(chart.series.map((s) => s.setData.mock.calls.length)).toEqual(calls);
   });
 });
+
+describe('volume', () => {
+  /** Alternating candles: even bars close up, odd bars close down. */
+  const mixed = makeBars(40).map((b, i) => (i % 2 === 0 ? b : { ...b, open: b.close + 0.5 }));
+
+  function setupVolume(source = mixed) {
+    const price = new PriceChart(document.createElement('div'));
+    price.setChartType('candlestick');
+    price.setBars(source);
+    const panes = new IndicatorPanes(price);
+    const chart = lastChart();
+    const cache = new ComputeCache(fakeComputeIndicator);
+    return { price, chart, sync: (configs: IndicatorConfig[]) => panes.sync(cache.resolve(source, configs)) };
+  }
+
+  it('draws on the price pane, with no new pane: a histogram plus its MA line', () => {
+    const { chart, sync } = setupVolume();
+    sync([indicator('volume')]);
+    expect(chart.paneList).toHaveLength(1);
+    expect(tags(chart.paneContents[0] ?? [])).toEqual(['Candlestick', 'Histogram', 'Line']);
+  });
+
+  it('uses its own scale in the bottom fifth of the pane, never the price scale', () => {
+    const { chart, sync } = setupVolume();
+    const config = indicator('volume');
+    sync([config]);
+    const [, hist, ma] = chart.paneContents[0] ?? [];
+    const scaleId = `volume:${config.id}`;
+    expect((hist?.options as { priceScaleId?: string }).priceScaleId).toBe(scaleId);
+    expect((ma?.options as { priceScaleId?: string }).priceScaleId).toBe(scaleId);
+    expect(chart.paneList[0]?.priceScale(scaleId).options().scaleMargins).toEqual({ top: 0.8, bottom: 0 });
+    // The price axis is untouched, so vertical pan and auto-scale still act on prices only.
+    expect(chart.paneList[0]?.priceScale('right').applyOptions).not.toHaveBeenCalled();
+  });
+
+  it('colours each bar by its candle, like TradingView: close at or above open is up', () => {
+    const { price, chart, sync } = setupVolume();
+    sync([indicator('volume')]);
+    const hist = chart.paneContents[0]?.[1];
+    const data = hist?.setData.mock.calls.at(-1)?.[0] as { time: number; value?: number; color?: string }[];
+    expect(data.map((d) => d.value)).toEqual(mixed.map((b) => b.volume));
+    const up = data[0]?.color;
+    const down = data[1]?.color;
+    expect(up).not.toBe(down);
+    expect(up).toContain('rgba');
+    data.forEach((d, i) => expect(d.color).toBe(i % 2 === 0 ? up : down));
+    // Built from the chart's own theme colours.
+    expect(price.colors.up).toBeTruthy();
+  });
+
+  it('a recolour moves only the MA line; the bars keep their candle colours', () => {
+    const { chart, sync } = setupVolume();
+    const config = indicator('volume');
+    sync([config]);
+    const [, hist, ma] = chart.paneContents[0] ?? [];
+    sync([{ ...config, color: '#123456' }]);
+    expect(ma?.applyOptions).toHaveBeenLastCalledWith(expect.objectContaining({ color: '#123456' }));
+    expect(hist?.applyOptions).toHaveBeenLastCalledWith({ visible: true });
+  });
+
+  it('two volume indicators get two scales', () => {
+    const { chart, sync } = setupVolume();
+    const a = indicator('volume');
+    const b = indicator('volume', [a]);
+    sync([a, b]);
+    const ids = (chart.paneContents[0] ?? []).slice(1).map((s) => (s.options as { priceScaleId?: string }).priceScaleId);
+    expect(new Set(ids)).toEqual(new Set([`volume:${a.id}`, `volume:${b.id}`]));
+  });
+});

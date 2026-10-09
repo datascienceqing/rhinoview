@@ -7,6 +7,11 @@ export interface ComputedIndicator {
   series: IndicatorSeries | null;
   /** Why `series` is null despite there being bars; shown in the editor rather than swallowed. */
   error: string | null;
+  /**
+   * The bars `series` was computed from. Volume colours each bar by its candle (close
+   * against open), which is not in the series. Absent in hand-built test items.
+   */
+  bars?: readonly Bar[];
 }
 
 interface Entry {
@@ -32,11 +37,11 @@ export class ComputeCache {
       live.add(config.id);
       const cached = this.entries.get(config.id);
       if (cached && cached.bars === bars && cached.params === config.params) {
-        return { config, ...cached.result };
+        return { config, ...cached.result, bars };
       }
       const result = this.run(bars, config);
       this.entries.set(config.id, { bars, params: config.params, result });
-      return { config, ...result };
+      return { config, ...result, bars };
     });
     for (const id of this.entries.keys()) if (!live.has(id)) this.entries.delete(id);
     return out;

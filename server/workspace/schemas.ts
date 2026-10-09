@@ -5,10 +5,10 @@
  */
 import { z } from 'zod';
 import { TIMEFRAMES } from '@shared/types';
-import type { IndicatorParams } from '@shared/types';
+import type { IndicatorKind, IndicatorParams } from '@shared/types';
 
 const CHART_TYPES = ['candlestick', 'line', 'area'] as const;
-const KINDS = ['sma', 'ema', 'rsi', 'macd'] as const;
+const KINDS = ['sma', 'ema', 'rsi', 'macd', 'volume'] as const satisfies readonly IndicatorKind[];
 
 const timeframe = z.enum(TIMEFRAMES as readonly [string, ...string[]]) as unknown as z.ZodType<
   (typeof TIMEFRAMES)[number]

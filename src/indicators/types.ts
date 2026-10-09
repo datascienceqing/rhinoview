@@ -18,6 +18,7 @@ import type {
   MacdParams,
   MovingAverageParams,
   RsiParams,
+  VolumeParams,
 } from '@shared/types';
 
 /**
@@ -40,11 +41,13 @@ export const DEFAULT_PARAMS: {
   ema: MovingAverageParams;
   rsi: RsiParams;
   macd: MacdParams;
+  volume: VolumeParams;
 } = {
   sma: { period: 20, source: 'close' },
   ema: { period: 20, source: 'close' },
   rsi: { period: 14 },
   macd: { fastPeriod: 12, slowPeriod: 26, signalPeriod: 9 },
+  volume: { period: 20 },
 };
 
 /**
@@ -61,6 +64,7 @@ export const LINE_KEYS: Record<IndicatorKind, readonly string[]> = {
   ema: ['value'],
   rsi: ['value'],
   macd: ['macd', 'signal', 'histogram'],
+  volume: ['volume', 'ma'],
 };
 
 /** Thrown for parameters outside the bounds above, or a MACD with `fast >= slow`. */
@@ -109,4 +113,8 @@ export class InvalidIndicatorParamsError extends Error {
 //    defined value; the renderer zips against the price series by index.
 //
 // 6. `source` ON SMA/EMA defaults to 'close' when absent.
+//
+// 7. VOLUME: the 'volume' line is each bar's volume, defined from the first bar, so
+//    warmup is 0. The 'ma' line is the SMA(period) of the volume, null for the first
+//    `period - 1` bars. Volume takes no `source`.
 // ───────────────────────────────────────────────────────────────────────────────

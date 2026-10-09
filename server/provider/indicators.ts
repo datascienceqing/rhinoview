@@ -14,12 +14,13 @@
  *              losses; first value at index n. Flat series (no gains, no losses) = 50.
  *   MACD     — EMA(fast) - EMA(slow) from index slow-1; signal = EMA(signalPeriod) of
  *              the MACD line, seeded with its SMA; histogram = macd - signal.
+ *   VOLUME(n) — line 'volume' = each bar's volume (no warmup); line 'ma' = SMA(n) of it.
  */
 import type { Bar, IndicatorLine, IndicatorPoint, IndicatorSeries } from '@shared/types';
 import { INDICATOR_PLACEMENT } from '@shared/types';
 
 export type IndicatorRequest =
-  | { kind: 'sma' | 'ema' | 'rsi'; period: number }
+  | { kind: 'sma' | 'ema' | 'rsi' | 'volume'; period: number }
   | { kind: 'macd'; fastPeriod: number; slowPeriod: number; signalPeriod: number };
 
 type Series = (number | null)[];
@@ -138,6 +139,18 @@ export function computeIndicator(bars: Bar[], req: IndicatorRequest): IndicatorS
       ],
       // Leading bars where NO line has a value. The signal/histogram lines start later.
       warmup: firstDefined(macd),
+    };
+  }
+
+  if (req.kind === 'volume') {
+    const volume: Series = bars.map((b) => b.volume);
+    const ma = sma(volume, req.period);
+    return {
+      kind: 'volume',
+      placement,
+      params: { period: req.period },
+      lines: [line('volume', 'Volume', bars, volume), line('ma', `Volume MA (${req.period})`, bars, ma)],
+      warmup: Math.min(firstDefined(volume), firstDefined(ma)),
     };
   }
 

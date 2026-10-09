@@ -38,7 +38,7 @@ export function checkIndicatorParams(kind: IndicatorKind, params: IndicatorParam
   const p = params as Partial<MovingAverageParams & RsiParams>;
   const err = periodError('period', p.period);
   if (err) return err;
-  if (kind !== 'rsi' && p.source !== undefined && !SOURCES.includes(p.source)) {
+  if ((kind === 'sma' || kind === 'ema') && p.source !== undefined && !SOURCES.includes(p.source)) {
     return `source must be one of ${SOURCES.join(', ')}`;
   }
   return null;

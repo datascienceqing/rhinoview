@@ -87,4 +87,14 @@ describe('computeIndicator', () => {
     const s = computeIndicator(bars([1, 2, 3]), { kind: 'sma', period: 1 });
     expect(s.lines[0]?.points.map((p) => p.time)).toEqual([1_000, 1_060, 1_120]);
   });
+
+  it('VOLUME gives the bar volumes, then an SMA of them', () => {
+    const vbars = bars([1, 2, 3, 4, 5]).map((b, i) => ({ ...b, volume: [10, 20, 30, 40, 50][i] ?? 0 }));
+    const s = computeIndicator(vbars, { kind: 'volume', period: 3 });
+    expect(s.lines.map((l) => l.key)).toEqual(['volume', 'ma']);
+    expect(values(s, 'volume')).toEqual([10, 20, 30, 40, 50]);
+    expect(values(s, 'ma')).toEqual([null, null, 20, 30, 40]);
+    expect(s.warmup).toBe(0);
+    expect(s.placement).toBe('overlay');
+  });
 });

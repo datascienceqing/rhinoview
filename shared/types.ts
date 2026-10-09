@@ -89,7 +89,7 @@ export interface Snapshot {
 
 // ───────────────────────────── Indicators ─────────────────────────────
 
-export type IndicatorKind = 'sma' | 'ema' | 'rsi' | 'macd';
+export type IndicatorKind = 'sma' | 'ema' | 'rsi' | 'macd' | 'volume';
 
 /** Where an indicator draws: on the price pane, or in its own pane below. */
 export type IndicatorPlacement = 'overlay' | 'separate';
@@ -99,6 +99,8 @@ export const INDICATOR_PLACEMENT: Record<IndicatorKind, IndicatorPlacement> = {
   ema: 'overlay',
   rsi: 'separate',
   macd: 'separate',
+  // On the price pane like TradingView, but on its own scale in the bottom part of the pane.
+  volume: 'overlay',
 };
 
 export interface MovingAverageParams {
@@ -111,13 +113,18 @@ export interface RsiParams {
   period: number;
 }
 
+/** Volume bars plus a simple moving average of the volume over `period` bars. */
+export interface VolumeParams {
+  period: number;
+}
+
 export interface MacdParams {
   fastPeriod: number;
   slowPeriod: number;
   signalPeriod: number;
 }
 
-export type IndicatorParams = MovingAverageParams | RsiParams | MacdParams;
+export type IndicatorParams = MovingAverageParams | RsiParams | MacdParams | VolumeParams;
 
 /**
  * One point of a computed indicator line.
@@ -132,7 +139,7 @@ export interface IndicatorPoint {
   value: number | null;
 }
 
-/** A single named line. MACD yields three of these; SMA/EMA/RSI yield one. */
+/** A single named line. MACD yields three of these; Volume two ('volume', 'ma'); SMA/EMA/RSI one. */
 export interface IndicatorLine {
   /** Stable key within the indicator, e.g. 'macd' | 'signal' | 'histogram' | 'value'. */
   key: string;
