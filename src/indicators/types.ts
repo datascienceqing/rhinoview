@@ -19,6 +19,7 @@ import type {
   MovingAverageParams,
   RsiParams,
   VolumeParams,
+  VpvrParams,
 } from '@shared/types';
 
 /**
@@ -42,12 +43,21 @@ export const DEFAULT_PARAMS: {
   rsi: RsiParams;
   macd: MacdParams;
   volume: VolumeParams;
+  vpvr: VpvrParams;
 } = {
   sma: { period: 20, source: 'close' },
   ema: { period: 20, source: 'close' },
   rsi: { period: 14 },
   macd: { fastPeriod: 12, slowPeriod: 26, signalPeriod: 9 },
   volume: { period: 20 },
+  vpvr: { rows: 24, widthPct: 30, valueAreaPct: 70 },
+};
+
+/** Bounds of the VPVR fields. VPVR params are not periods, so PERIOD_MIN/MAX do not apply. */
+export const VPVR_BOUNDS: Record<keyof VpvrParams, { min: number; max: number }> = {
+  rows: { min: 2, max: 400 },
+  widthPct: { min: 5, max: 90 },
+  valueAreaPct: { min: 0, max: 100 },
 };
 
 /**
@@ -65,6 +75,7 @@ export const LINE_KEYS: Record<IndicatorKind, readonly string[]> = {
   rsi: ['value'],
   macd: ['macd', 'signal', 'histogram'],
   volume: ['volume', 'ma'],
+  vpvr: [],
 };
 
 /** Thrown for parameters outside the bounds above, or a MACD with `fast >= slow`. */
@@ -117,4 +128,8 @@ export class InvalidIndicatorParamsError extends Error {
 // 7. VOLUME: the 'volume' line is each bar's volume, defined from the first bar, so
 //    warmup is 0. The 'ma' line is the SMA(period) of the volume, null for the first
 //    `period - 1` bars. Volume takes no `source`.
+//
+// 8. VPVR HAS NO LINES. Its profile depends on the VISIBLE range, which changes on every
+//    pan and zoom, so it is computed at draw time from the bars (see `vpvr.ts`), not
+//    here. `computeIndicator` validates the params and returns `lines: []`, warmup 0.
 // ───────────────────────────────────────────────────────────────────────────────

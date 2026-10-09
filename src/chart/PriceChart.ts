@@ -7,7 +7,15 @@ import {
   createChart,
   createSeriesMarkers,
 } from 'lightweight-charts';
-import type { IChartApi, ISeriesApi, ISeriesMarkersPluginApi, MouseEventParams, Time, UTCTimestamp } from 'lightweight-charts';
+import type {
+  IChartApi,
+  ISeriesApi,
+  ISeriesMarkersPluginApi,
+  ISeriesPrimitive,
+  MouseEventParams,
+  Time,
+  UTCTimestamp,
+} from 'lightweight-charts';
 import { snapMarkers } from './markers';
 import type { ChartMarker } from './markers';
 import type { Bar, ChartType } from '@shared/types';
@@ -54,6 +62,8 @@ export class PriceChart {
   private markers: readonly ChartMarker[] = [];
   /** Bound to the current price series; recreated whenever the series is replaced. */
   private markersApi: ISeriesMarkersPluginApi<Time> | null = null;
+  /** Drawings on the price series (the volume profile). Attached again to each new series. */
+  private readonly pricePrimitives = new Set<ISeriesPrimitive<Time>>();
   private intraday = false;
   private readonly theme: ChartTheme;
 
@@ -117,6 +127,21 @@ export class PriceChart {
     return this.chart;
   }
 
+  /**
+   * Attach a drawing to the price series. It survives a chart type change: it is
+   * detached from the old series and attached to the new one.
+   */
+  attachPricePrimitive(primitive: ISeriesPrimitive<Time>): void {
+    if (!this.chart || this.pricePrimitives.has(primitive)) return;
+    this.pricePrimitives.add(primitive);
+    this.series?.api.attachPrimitive(primitive);
+  }
+
+  detachPricePrimitive(primitive: ISeriesPrimitive<Time>): void {
+    if (!this.pricePrimitives.delete(primitive) || !this.chart) return;
+    this.series?.api.detachPrimitive(primitive);
+  }
+
   /** Resolved theme colours, for layers that draw on this chart (indicator panes). */
   get colors(): ChartTheme {
     return this.theme;
@@ -134,13 +159,18 @@ export class PriceChart {
     const chart = this.chart;
     if (!chart || this.series?.type === type) return;
     const range = chart.timeScale().getVisibleLogicalRange();
-    if (this.series) chart.removeSeries(this.series.api);
+    if (this.series) {
+      // removeSeries does not call `detached` on the primitives (v5.2.1 source), so do it here.
+      for (const p of this.pricePrimitives) this.series.api.detachPrimitive(p);
+      chart.removeSeries(this.series.api);
+    }
     // The markers plugin was attached to the removed series and went with it. Without
     // this reset, writeMarkers would keep writing to the dead plugin and the new series
     // would show no flags — ChartView.test.tsx "keeps the markers when the chart type
     // changes" fails exactly that way.
     this.markersApi = null;
     this.series = this.addSeriesFor(chart, type);
+    for (const p of this.pricePrimitives) this.series.api.attachPrimitive(p);
     this.writeData();
     if (range && this.bars.length > 0) chart.timeScale().setVisibleLogicalRange(range);
   }
@@ -188,6 +218,7 @@ export class PriceChart {
     this.chart = null;
     this.series = null;
     this.markersApi = null;
+    this.pricePrimitives.clear();
     this.verticalPan.dispose();
     chart.unsubscribeCrosshairMove(this.onCrosshair);
     chart.timeScale().unsubscribeVisibleLogicalRangeChange(this.onRange);

@@ -419,7 +419,7 @@ describe('metadata', () => {
     expect(computeIndicator(bars, 'macd', DEFAULT_PARAMS.macd).params).toEqual(DEFAULT_PARAMS.macd);
   });
   it('every default parameter set is valid', () => {
-    for (const kind of ['sma', 'ema', 'rsi', 'macd', 'volume'] as const) {
+    for (const kind of ['sma', 'ema', 'rsi', 'macd', 'volume', 'vpvr'] as const) {
       expect(checkIndicatorParams(kind, DEFAULT_PARAMS[kind])).toBeNull();
     }
   });
@@ -517,5 +517,28 @@ describe('volume', () => {
   it('rejects a period out of bounds, like the other kinds', () => {
     expect(() => computeIndicator(bars, 'volume', { period: 0 })).toThrow(InvalidIndicatorParamsError);
     expect(() => computeIndicator(bars, 'volume', { period: PERIOD_MAX + 1 })).toThrow(InvalidIndicatorParamsError);
+  });
+});
+
+describe('vpvr', () => {
+  it('has no lines: the profile is drawn from the visible bars (convention 8)', () => {
+    const s = computeIndicator(makeBars(walk(30)), 'vpvr', DEFAULT_PARAMS.vpvr);
+    expect(s).toEqual({ kind: 'vpvr', placement: 'overlay', params: DEFAULT_PARAMS.vpvr, lines: [], warmup: 0 });
+  });
+
+  it.each([
+    [{ rows: 1, widthPct: 30, valueAreaPct: 70 }, /rows/],
+    [{ rows: 401, widthPct: 30, valueAreaPct: 70 }, /rows/],
+    [{ rows: 24, widthPct: 4, valueAreaPct: 70 }, /widthPct/],
+    [{ rows: 24, widthPct: 30, valueAreaPct: 101 }, /valueAreaPct/],
+    [{ rows: 24.5, widthPct: 30, valueAreaPct: 70 }, /rows/],
+  ])('rejects %j', (params, message) => {
+    expect(checkIndicatorParams('vpvr', params)).toMatch(message);
+    expect(() => computeIndicator(makeBars(walk(5)), 'vpvr', params)).toThrow(InvalidIndicatorParamsError);
+  });
+
+  it('accepts the bounds themselves', () => {
+    expect(checkIndicatorParams('vpvr', { rows: 2, widthPct: 5, valueAreaPct: 0 })).toBeNull();
+    expect(checkIndicatorParams('vpvr', { rows: 400, widthPct: 90, valueAreaPct: 100 })).toBeNull();
   });
 });

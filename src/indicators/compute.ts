@@ -5,7 +5,7 @@
  * in `math.ts`; this file validates, picks the source series, and shapes the result into
  * the frozen `IndicatorSeries` (one point per bar, same times, `null` through warmup).
  */
-import type { Bar, IndicatorLine, IndicatorSeries, MacdParams, MovingAverageParams, RsiParams, VolumeParams } from '@shared/types';
+import type { Bar, IndicatorLine, IndicatorSeries, MacdParams, MovingAverageParams, RsiParams, VolumeParams, VpvrParams } from '@shared/types';
 import { INDICATOR_PLACEMENT } from '@shared/types';
 import { macd as macdKernel, ema, rsi as rsiKernel, sma } from './math';
 import { assertValidParams } from './params';
@@ -61,6 +61,12 @@ export const computeIndicator: ComputeIndicator = (bars, kind, params): Indicato
       // The MACD line is the earliest-defined of the three; signal/histogram start later.
       warmup: warmupOf(n, macd, signal, histogram),
     };
+  }
+
+  if (kind === 'vpvr') {
+    // Drawn from the visible bars at draw time (convention 8); nothing to compute here.
+    const { rows, widthPct, valueAreaPct } = params as VpvrParams;
+    return { kind, placement, params: { rows, widthPct, valueAreaPct }, lines: [], warmup: 0 };
   }
 
   if (kind === 'volume') {

@@ -89,7 +89,7 @@ export interface Snapshot {
 
 // ───────────────────────────── Indicators ─────────────────────────────
 
-export type IndicatorKind = 'sma' | 'ema' | 'rsi' | 'macd' | 'volume';
+export type IndicatorKind = 'sma' | 'ema' | 'rsi' | 'macd' | 'volume' | 'vpvr';
 
 /** Where an indicator draws: on the price pane, or in its own pane below. */
 export type IndicatorPlacement = 'overlay' | 'separate';
@@ -101,6 +101,8 @@ export const INDICATOR_PLACEMENT: Record<IndicatorKind, IndicatorPlacement> = {
   macd: 'separate',
   // On the price pane like TradingView, but on its own scale in the bottom part of the pane.
   volume: 'overlay',
+  // Drawn over the right side of the price pane; never on the price scale.
+  vpvr: 'overlay',
 };
 
 export interface MovingAverageParams {
@@ -118,13 +120,24 @@ export interface VolumeParams {
   period: number;
 }
 
+/**
+ * Visible-range volume profile: the volume of the visible bars, bucketed by price into
+ * `rows` horizontal rows. `widthPct` is the share of the pane width the largest row
+ * takes; `valueAreaPct` is the share of the volume the highlighted value area covers.
+ */
+export interface VpvrParams {
+  rows: number;
+  widthPct: number;
+  valueAreaPct: number;
+}
+
 export interface MacdParams {
   fastPeriod: number;
   slowPeriod: number;
   signalPeriod: number;
 }
 
-export type IndicatorParams = MovingAverageParams | RsiParams | MacdParams | VolumeParams;
+export type IndicatorParams = MovingAverageParams | RsiParams | MacdParams | VolumeParams | VpvrParams;
 
 /**
  * One point of a computed indicator line.
@@ -139,7 +152,7 @@ export interface IndicatorPoint {
   value: number | null;
 }
 
-/** A single named line. MACD yields three of these; Volume two ('volume', 'ma'); SMA/EMA/RSI one. */
+/** A single named line. MACD yields three of these; Volume two ('volume', 'ma'); SMA/EMA/RSI one; VPVR none. */
 export interface IndicatorLine {
   /** Stable key within the indicator, e.g. 'macd' | 'signal' | 'histogram' | 'value'. */
   key: string;
