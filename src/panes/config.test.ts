@@ -10,7 +10,7 @@ import {
 
 describe('validateParams', () => {
   it('accepts the defaults for every kind', () => {
-    for (const kind of ['sma', 'ema', 'rsi', 'macd'] as const) {
+    for (const kind of ['sma', 'ema', 'rsi', 'macd', 'volume'] as const) {
       const p = defaultParams(kind) as unknown as Record<string, number>;
       expect(validateParams(kind, p)).toEqual({});
     }
@@ -111,5 +111,18 @@ describe('createIndicator', () => {
     expect(indicatorTitle({ kind: 'macd', params: { fastPeriod: 12, slowPeriod: 26, signalPeriod: 9 } })).toBe(
       'MACD (12, 26, 9)',
     );
+  });
+});
+
+describe('volume config', () => {
+  it('defaults to a 20-bar MA, titled "Volume (20)"', () => {
+    const v = createIndicator('volume', []);
+    expect(v.params).toEqual({ period: 20 });
+    expect(indicatorTitle(v)).toBe('Volume (20)');
+  });
+
+  it('sanitizes stored params to `{ period }`: volume has no price source', () => {
+    expect(sanitizeParams('volume', { period: 30, source: 'low' })).toEqual({ period: 30 });
+    expect(sanitizeParams('volume', { period: 0 })).toBeNull();
   });
 });

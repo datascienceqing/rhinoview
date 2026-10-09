@@ -8,13 +8,14 @@ import type {
 } from '@shared/types';
 import { DEFAULT_PARAMS, PERIOD_MAX, PERIOD_MIN } from '../indicators/types';
 
-export const INDICATOR_KINDS: readonly IndicatorKind[] = ['sma', 'ema', 'rsi', 'macd'];
+export const INDICATOR_KINDS: readonly IndicatorKind[] = ['sma', 'ema', 'rsi', 'macd', 'volume'];
 
 export const KIND_LABEL: Record<IndicatorKind, string> = {
   sma: 'SMA',
   ema: 'EMA',
   rsi: 'RSI',
   macd: 'MACD',
+  volume: 'Volume',
 };
 
 export const MA_SOURCES = ['open', 'high', 'low', 'close'] as const;
@@ -60,6 +61,7 @@ export const PARAM_FIELDS: Record<IndicatorKind, readonly { key: string; label: 
     { key: 'slowPeriod', label: 'Slow' },
     { key: 'signalPeriod', label: 'Signal' },
   ],
+  volume: [{ key: 'period', label: 'MA length' }],
 };
 
 export function defaultParams(kind: IndicatorKind): IndicatorParams {
@@ -73,6 +75,8 @@ export function defaultParams(kind: IndicatorKind): IndicatorParams {
       return { ...DEFAULT_PARAMS.rsi };
     case 'macd':
       return { ...DEFAULT_PARAMS.macd };
+    case 'volume':
+      return { ...DEFAULT_PARAMS.volume };
   }
 }
 
@@ -147,7 +151,7 @@ export function sanitizeParams(kind: IndicatorKind, raw: unknown): IndicatorPara
       signalPeriod: nums['signalPeriod'] ?? 0,
     };
   }
-  if (kind === 'rsi') return { period: nums['period'] ?? 0 };
+  if (kind === 'rsi' || kind === 'volume') return { period: nums['period'] ?? 0 };
   const source = rec['source'];
   const valid = MA_SOURCES.find((s) => s === source);
   return { period: nums['period'] ?? 0, source: valid ?? 'close' };

@@ -6,7 +6,7 @@ import { withAlpha } from '../chart/theme';
 import type { ChartTheme } from '../chart/theme';
 import { LINE_KEYS } from '../indicators/types';
 import { MACD_SIGNAL_COLOR } from './config';
-import { toHistogramData, toLineData } from './convert';
+import { toHistogramData, toLineData, toVolumeData } from './convert';
 import type { ComputedIndicator } from './computeCache';
 
 /** What the layer needs from the chart that owns it. `api` is null once that chart is disposed. */
@@ -22,6 +22,14 @@ export type PaneLayout = Record<string, number>;
 const PRICE_PANE_STRETCH = 3;
 const SUB_PANE_STRETCH = 1;
 const RSI_LEVELS = [30, 70] as const;
+/**
+ * Volume sits in the bottom part of the price pane, on its own hidden scale, like
+ * TradingView: the top margin is the share of the pane height left above the bars.
+ */
+const VOLUME_SCALE_MARGINS = { top: 0.8, bottom: 0 } as const;
+const VOLUME_ALPHA = 0.5;
+/** Line keys drawn as histograms. */
+const HISTOGRAM_KEYS: ReadonlySet<string> = new Set(['histogram', 'volume']);
 
 type LineHandle = { type: 'line'; api: ISeriesApi<'Line'> } | { type: 'histogram'; api: ISeriesApi<'Histogram'> };
 
@@ -118,11 +126,11 @@ export class IndicatorPanes {
     };
     const separate = INDICATOR_PLACEMENT[config.kind] === 'separate';
     const addLine = (key: string, type: LineHandle['type']) => {
-      const handle = this.addSeries(chart, entry, config.kind, key, type, separate);
+      const handle = this.addSeries(chart, entry, config, key, type, separate);
       entry.lines.set(key, handle);
     };
     for (const key of LINE_KEYS[config.kind]) {
-      addLine(key, key === 'histogram' ? 'histogram' : 'line');
+      addLine(key, HISTOGRAM_KEYS.has(key) ? 'histogram' : 'line');
     }
     if (config.kind === 'rsi') {
       const rsi = entry.lines.get('value');
@@ -145,12 +153,13 @@ export class IndicatorPanes {
   private addSeries(
     chart: IChartApi,
     entry: Entry,
-    kind: IndicatorKind,
+    config: IndicatorConfig,
     key: string,
     type: LineHandle['type'],
     separate: boolean,
   ): LineHandle {
     // First series of a separate indicator opens a new pane at the bottom; the rest join it.
+    const { kind } = config;
     const paneIndex = !separate ? 0 : entry.pane ? entry.pane.paneIndex() : chart.panes().length;
     const options = {
       priceLineVisible: false,
@@ -161,15 +170,18 @@ export class IndicatorPanes {
         priceFormat: { type: 'price' as const, precision: 2, minMove: 0.01 },
       }),
       ...(kind === 'macd' && { priceFormat: { type: 'price' as const, precision: 3, minMove: 0.001 } }),
+      // Own scale per volume indicator, so volume never stretches the price axis.
+      ...(kind === 'volume' && { priceScaleId: `volume:${config.id}`, priceFormat: { type: 'volume' as const } }),
     };
     let handle: LineHandle;
     if (type === 'histogram') {
       handle = { type, api: chart.addSeries(HistogramSeries, { ...options, lastValueVisible: false }, paneIndex) };
+      if (kind === 'volume') handle.api.priceScale().applyOptions({ scaleMargins: VOLUME_SCALE_MARGINS });
     } else {
       const color = key === 'signal' ? MACD_SIGNAL_COLOR : undefined;
       handle = {
         type,
-        api: chart.addSeries(LineSeries, { ...options, lineWidth: 2, ...(color && { color }) }, paneIndex),
+        api: chart.addSeries(LineSeries, { ...options, lineWidth: kind === 'volume' ? 1 : 2, ...(color && { color }) }, paneIndex),
       };
     }
     if (separate && !entry.pane) {
@@ -184,7 +196,7 @@ export class IndicatorPanes {
   // ───────────── update ─────────────
 
   private update(entry: Entry, item: ComputedIndicator): void {
-    const { config, series } = item;
+    const { config, series, bars } = item;
 
     if (entry.color !== config.color || entry.visible !== config.visible) {
       for (const [key, line] of entry.lines) {
@@ -208,7 +220,9 @@ export class IndicatorPanes {
       const downTint = withAlpha(down, 0.7);
       for (const [key, line] of entry.lines) {
         const points = series?.lines.find((l) => l.key === key)?.points ?? [];
-        if (line.type === 'histogram') line.api.setData(toHistogramData(points, upTint, downTint));
+        if (line.type === 'histogram' && key === 'volume') {
+          line.api.setData(toVolumeData(points, bars, withAlpha(up, VOLUME_ALPHA), withAlpha(down, VOLUME_ALPHA)));
+        } else if (line.type === 'histogram') line.api.setData(toHistogramData(points, upTint, downTint));
         else line.api.setData(toLineData(points));
       }
       entry.written = series;

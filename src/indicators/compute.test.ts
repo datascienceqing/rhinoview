@@ -419,7 +419,7 @@ describe('metadata', () => {
     expect(computeIndicator(bars, 'macd', DEFAULT_PARAMS.macd).params).toEqual(DEFAULT_PARAMS.macd);
   });
   it('every default parameter set is valid', () => {
-    for (const kind of ['sma', 'ema', 'rsi', 'macd'] as const) {
+    for (const kind of ['sma', 'ema', 'rsi', 'macd', 'volume'] as const) {
       expect(checkIndicatorParams(kind, DEFAULT_PARAMS[kind])).toBeNull();
     }
   });
@@ -476,5 +476,46 @@ describe('performance', () => {
     const t0 = performance.now();
     run();
     expect(performance.now() - t0).toBeLessThan(250);
+  });
+});
+
+describe('volume', () => {
+  // makeBars gives volume 1000 + i, so the MA has a closed form: the mean of a run of
+  // consecutive integers is its midpoint.
+  const bars = makeBars(walk(30));
+
+  it('the volume line is each bar\'s volume, defined from the first bar', () => {
+    const s = computeIndicator(bars, 'volume', { period: 5 });
+    expect(lineValues(s, 'volume')).toEqual(bars.map((b) => b.volume));
+    expect(s.warmup).toBe(0);
+    expect(s.placement).toBe('overlay');
+    expect(s.lines.map((l) => [l.key, l.label])).toEqual([
+      ['volume', 'Volume'],
+      ['ma', 'Volume MA (5)'],
+    ]);
+  });
+
+  it('the ma line is the SMA of the volume: null for period - 1 bars, then the window mean', () => {
+    const ma = lineValues(computeIndicator(bars, 'volume', { period: 5 }), 'ma');
+    expect(ma.slice(0, 4)).toEqual([null, null, null, null]);
+    // Bars 0..4 have volumes 1000..1004; their mean is 1002. Bar i's window mean is 1000 + i - 2.
+    ma.slice(4).forEach((v, k) => expect(v).toBeCloseTo(1000 + (k + 4) - 2, 9));
+  });
+
+  it('uses volume, not price: a change of closes leaves it alone', () => {
+    const other = bars.map((b) => ({ ...b, open: b.open * 3, high: b.high * 3, low: b.low * 3, close: b.close * 3 }));
+    expect(computeIndicator(other, 'volume', { period: 5 }).lines).toEqual(computeIndicator(bars, 'volume', { period: 5 }).lines);
+  });
+
+  it('with fewer bars than the period, the volume still shows and the MA is all null', () => {
+    const s = computeIndicator(makeBars(walk(3)), 'volume', { period: 5 });
+    expect(lineValues(s, 'volume')).toEqual([1000, 1001, 1002]);
+    expect(lineValues(s, 'ma')).toEqual([null, null, null]);
+    expect(s.warmup).toBe(0);
+  });
+
+  it('rejects a period out of bounds, like the other kinds', () => {
+    expect(() => computeIndicator(bars, 'volume', { period: 0 })).toThrow(InvalidIndicatorParamsError);
+    expect(() => computeIndicator(bars, 'volume', { period: PERIOD_MAX + 1 })).toThrow(InvalidIndicatorParamsError);
   });
 });

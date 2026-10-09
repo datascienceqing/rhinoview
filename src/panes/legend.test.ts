@@ -12,6 +12,10 @@ describe('formatIndicatorValue', () => {
     expect(formatIndicatorValue('sma', 101.456)).toBe('101.46');
     expect(formatIndicatorValue('rsi', 63.2178)).toBe('63.22');
   });
+  it('shows volume compactly, like the OHLCV legend', () => {
+    expect(formatIndicatorValue('volume', 7_720_000)).toBe('7.72M');
+    expect(formatIndicatorValue('volume', 512)).toBe('512');
+  });
   it('gives small MACD values more precision than large ones', () => {
     expect(formatIndicatorValue('macd', 0.01234)).toBe('0.0123');
     expect(formatIndicatorValue('macd', -1.2345)).toBe('-1.23');
@@ -71,5 +75,27 @@ describe('buildIndicatorLegend', () => {
     const model = buildIndicatorLegend({ config: rsi, series: null, error: 'boom' }, null);
     expect(model.lines).toEqual([]);
     expect(model.error).toBe('boom');
+  });
+});
+
+describe('volume legend', () => {
+  const mixed = makeBars(30).map((b, i) => (i % 2 === 0 ? b : { ...b, open: b.close + 0.5 }));
+  const [item] = computeAll(mixed, [indicator('volume')]);
+  if (!item) throw new Error('unreachable');
+
+  it('names the lines Vol and MA, and gives the bar no line colour', () => {
+    const m = buildIndicatorLegend(item, null);
+    expect(m.lines.map((l) => [l.name, l.text])).toEqual([
+      ['Vol', '1.03K'],
+      ['MA', '1.02K'],
+    ]);
+    expect(m.lines[0]?.color).toBeNull();
+    expect(m.lines[1]?.color).toBe(item.config.color);
+  });
+
+  it('tones the volume value by the candle under the crosshair', () => {
+    expect(buildIndicatorLegend(item, mixed[10]?.time ?? null).lines[0]?.tone).toBe('up');
+    expect(buildIndicatorLegend(item, mixed[11]?.time ?? null).lines[0]?.tone).toBe('down');
+    expect(buildIndicatorLegend(item, mixed[11]?.time ?? null).lines[1]?.tone).toBeNull();
   });
 });

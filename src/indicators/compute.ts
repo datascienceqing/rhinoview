@@ -1,17 +1,17 @@
 /**
- * `ComputeIndicator` — SMA, EMA, RSI, MACD as pure functions of bars and params.
+ * `ComputeIndicator` — SMA, EMA, RSI, MACD and Volume as pure functions of bars and params.
  *
  * No React, DOM, network, clock or randomness. Same input, same output. The math lives
  * in `math.ts`; this file validates, picks the source series, and shapes the result into
  * the frozen `IndicatorSeries` (one point per bar, same times, `null` through warmup).
  */
-import type { Bar, IndicatorLine, IndicatorSeries, MacdParams, MovingAverageParams, RsiParams } from '@shared/types';
+import type { Bar, IndicatorLine, IndicatorSeries, MacdParams, MovingAverageParams, RsiParams, VolumeParams } from '@shared/types';
 import { INDICATOR_PLACEMENT } from '@shared/types';
 import { macd as macdKernel, ema, rsi as rsiKernel, sma } from './math';
 import { assertValidParams } from './params';
 import type { ComputeIndicator } from './types';
 
-type PriceSource = NonNullable<MovingAverageParams['source']>;
+type PriceSource = NonNullable<MovingAverageParams['source']> | 'volume';
 
 function extract(bars: readonly Bar[], source: PriceSource): Float64Array {
   const out = new Float64Array(bars.length);
@@ -60,6 +60,20 @@ export const computeIndicator: ComputeIndicator = (bars, kind, params): Indicato
       ],
       // The MACD line is the earliest-defined of the three; signal/histogram start later.
       warmup: warmupOf(n, macd, signal, histogram),
+    };
+  }
+
+  if (kind === 'volume') {
+    const { period } = params as VolumeParams;
+    const volume = extract(bars, 'volume');
+    const ma = sma(volume, period);
+    return {
+      kind,
+      placement,
+      params: { period },
+      lines: [toLine('volume', 'Volume', bars, volume), toLine('ma', `Volume MA (${period})`, bars, ma)],
+      // The volume line is defined from the first bar (convention 7).
+      warmup: warmupOf(n, volume, ma),
     };
   }
 

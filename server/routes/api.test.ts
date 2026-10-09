@@ -369,6 +369,18 @@ describe('GET /api/indicator (oracle/debug)', () => {
     expect(pts[4]?.value).toBe(102);
   });
 
+  it('returns volume and its MA for kind=volume, on the price pane', async () => {
+    const { status, body } = await get<IndicatorSeries>(server(fakeEngine()), url('kind=volume&period=5'));
+    expect(status).toBe(200);
+    const data = expectOk(body);
+    expect(data).toMatchObject({ kind: 'volume', placement: 'overlay', params: { period: 5 }, warmup: 0 });
+    expect(data.lines.map((l) => l.key)).toEqual(['volume', 'ma']);
+    const volume = data.lines[0]?.points ?? [];
+    expect(volume).toHaveLength(30);
+    expect(volume.every((p) => p.value !== null)).toBe(true);
+    expect(data.lines[1]?.points.slice(0, 4).every((p) => p.value === null)).toBe(true);
+  });
+
   it('returns macd lines keyed macd, signal, histogram in that order', async () => {
     const data = expectOk((await get<IndicatorSeries>(server(fakeEngine()), url('kind=macd&fastPeriod=3&slowPeriod=6&signalPeriod=3'))).body);
     expect(data.kind).toBe('macd');
@@ -421,6 +433,7 @@ describe('input validation (zod → BAD_REQUEST/400, naming the parameter)', () 
     ['indicator unknown kind', `/api/indicator?symbol=AAPL&timeframe=1D&from=${T0}&to=${T0 + 1}&kind=bollinger&period=5`, 'kind'],
     ['indicator without kind', `/api/indicator?symbol=AAPL&timeframe=1D&from=${T0}&to=${T0 + 1}&period=5`, 'kind'],
     ['indicator sma without period', `/api/indicator?symbol=AAPL&timeframe=1D&from=${T0}&to=${T0 + 1}&kind=sma`, 'period'],
+    ['indicator volume without period', `/api/indicator?symbol=AAPL&timeframe=1D&from=${T0}&to=${T0 + 1}&kind=volume`, 'period'],
     ['indicator period 0', `/api/indicator?symbol=AAPL&timeframe=1D&from=${T0}&to=${T0 + 1}&kind=sma&period=0`, 'period'],
     ['indicator period too large', `/api/indicator?symbol=AAPL&timeframe=1D&from=${T0}&to=${T0 + 1}&kind=sma&period=501`, 'period'],
     ['indicator macd missing signalPeriod', `/api/indicator?symbol=AAPL&timeframe=1D&from=${T0}&to=${T0 + 1}&kind=macd&fastPeriod=3&slowPeriod=6`, 'signalPeriod'],

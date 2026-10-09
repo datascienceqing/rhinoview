@@ -177,5 +177,17 @@ export const fakeComputeIndicator: ComputeIndicator = (bars, kind: IndicatorKind
       };
       return series;
     }
+    case 'volume': {
+      const p = params as RsiParams; // `{ period }`, the same shape
+      checkPeriod('period', p.period);
+      const volume: Values = bars.map((b) => b.volume);
+      return {
+        kind,
+        placement,
+        params,
+        lines: [line('volume', 'Volume', bars, volume), line('ma', `Volume MA (${p.period})`, bars, sma(volume, p.period))],
+        warmup: 0,
+      };
+    }
   }
 };

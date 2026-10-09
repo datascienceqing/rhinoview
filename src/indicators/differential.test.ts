@@ -40,7 +40,7 @@ function engineBars(symbol: string, timeframe: Timeframe, from: number, to: numb
 type Case = { name: string; kind: IndicatorRequest['kind']; params: Record<string, number>; req: IndicatorRequest };
 const cases: Case[] = [
   ...[1, 2, 5, 14, 20, 50, 200, 500].flatMap((period): Case[] =>
-    (['sma', 'ema', 'rsi'] as const).map((kind) => ({ name: `${kind}(${period})`, kind, params: { period }, req: { kind, period } })),
+    (['sma', 'ema', 'rsi', 'volume'] as const).map((kind) => ({ name: `${kind}(${period})`, kind, params: { period }, req: { kind, period } })),
   ),
   ...(
     [

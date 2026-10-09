@@ -404,11 +404,21 @@ describe('layout contents (invariant 10)', () => {
     expect(l.indicators).toEqual([sma]);
   });
 
+  it('stores a volume indicator, and keeps it after a reopen', async () => {
+    const volume: IndicatorConfig = { id: 'v1', kind: 'volume', params: { period: 20 }, color: '#2962ff', visible: true };
+    const store = await open();
+    const l = await store.createLayout({ name: 'V', indicators: [volume] });
+    expect(l.indicators).toEqual([volume]);
+    const again = (await (await open()).getWorkspace()).layouts.find((x) => x.id === l.id);
+    expect(again?.indicators).toEqual([volume]);
+  });
+
   it.each<[string, IndicatorConfig]>([
     ['period 0', { ...sma, params: { period: 0, source: 'close' } }],
     ['period 501', { ...sma, params: { period: 501 } }],
     ['a fractional period', { ...sma, params: { period: 2.5 } }],
     ['a bad source', { ...sma, params: { period: 5, source: 'median' as never } }],
+    ['volume with period 0', { ...sma, kind: 'volume', params: { period: 0 } }],
     ['macd with fast >= slow', { ...sma, kind: 'macd', params: { fastPeriod: 26, slowPeriod: 12, signalPeriod: 9 } }],
     ['macd with a missing period', { ...sma, kind: 'macd', params: { fastPeriod: 12, slowPeriod: 26 } as never }],
     ['an unknown kind', { ...sma, kind: 'bollinger' as never }],

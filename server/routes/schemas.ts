@@ -11,7 +11,7 @@ import { ApiFailure } from '../provider/errors';
 const MAX_UNIX_SECONDS = 4_102_444_800;
 const MAX_PERIOD = 500;
 
-const INDICATOR_KINDS = ['sma', 'ema', 'rsi', 'macd'] as const satisfies readonly IndicatorKind[];
+const INDICATOR_KINDS = ['sma', 'ema', 'rsi', 'macd', 'volume'] as const satisfies readonly IndicatorKind[];
 
 // Query values are strings (or string[] when repeated). Parse integers strictly:
 // `z.coerce.number()` would accept "" as 0 and "1e3" as 1000.

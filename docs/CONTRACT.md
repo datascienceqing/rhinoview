@@ -271,16 +271,17 @@ cached bars.
 |---|---|---|---|
 | `symbol` | string | yes | |
 | `timeframe` | `Timeframe` | yes | |
-| `kind` | `IndicatorKind` | yes | `sma` \| `ema` \| `rsi` \| `macd` |
+| `kind` | `IndicatorKind` | yes | `sma` \| `ema` \| `rsi` \| `macd` \| `volume` |
 | `from`, `to` | int | yes | Unix seconds |
-| `period` | int | for `sma`/`ema`/`rsi` | |
+| `period` | int | for `sma`/`ema`/`rsi`/`volume` | For `volume`, the moving-average length |
 | `fastPeriod`, `slowPeriod`, `signalPeriod` | int | for `macd` | |
 
 **Success:** `ApiResult<IndicatorSeries>`.
 
 For `macd`, upstream returns value/signal/histogram; map them to `lines` with keys
-`macd`, `signal`, `histogram` in that order. For the others, a single line with key
-`value`.
+`macd`, `signal`, `histogram` in that order. For `volume`, two lines: `volume` (each
+bar's volume) and `ma` (the SMA of the volume over `period` bars). For the others, a
+single line with key `value`.
 
 Upstream: `/rest/stocks/technical-indicators/{sma,ema,macd,rsi}`.
 
