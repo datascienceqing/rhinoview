@@ -466,3 +466,23 @@ button:focus-visible {
   border-color: var(--accent);
   color: var(--text);
 }
+
+/* Shown after a vertical drag moved the price axis (src/chart/verticalPan.ts). Click to
+   fit the axis to the data again, like TradingView's "A" button. */
+.chart-auto-scale {
+  position: absolute;
+  right: 76px; /* clear of the price scale */
+  bottom: 36px; /* clear of the time scale */
+  z-index: 5;
+  padding: 2px 8px;
+  border: 1px solid var(--accent);
+  border-radius: 4px;
+  background: var(--bg-elevated);
+  color: var(--text);
+  font-size: 12px;
+  cursor: pointer;
+}
+
+.chart-auto-scale:hover {
+  background: var(--accent);
+}

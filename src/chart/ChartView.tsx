@@ -1,4 +1,4 @@
-import { useEffect, useRef } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import type { Bar, ChartType } from '@shared/types';
 import { IndicatorPanes } from '../panes/IndicatorPanes';
 import type { PaneLayout } from '../panes/IndicatorPanes';
@@ -44,6 +44,8 @@ export function ChartView({
 }: ChartViewProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const chartRef = useRef<PriceChart | null>(null);
+  // False after a vertical drag moved the price axis; the "Auto" button then shows.
+  const [autoScaled, setAutoScaled] = useState(true);
   const panesRef = useRef<IndicatorPanes | null>(null);
   // Callbacks are read through refs so changing them never recreates the chart.
   const handlers = useRef({ onCrosshairTime, onNearStart, onPaneLayout });
@@ -57,7 +59,9 @@ export function ChartView({
     const chart = new PriceChart(container, {
       onCrosshairTime: (t) => handlers.current.onCrosshairTime?.(t),
       onNearStart: () => handlers.current.onNearStart?.(),
+      onAutoScaleChange: setAutoScaled,
     });
+    setAutoScaled(true); // a new chart starts auto-fitted
     const panes = new IndicatorPanes(chart, (layout) => handlers.current.onPaneLayout?.(layout));
     chartRef.current = chart;
     panesRef.current = panes;
@@ -90,5 +94,20 @@ export function ChartView({
     chartRef.current?.setMarkers(markers);
   }, [markers]);
 
-  return <div ref={containerRef} className="chart-container" data-testid="chart-container" />;
+  return (
+    <>
+      <div ref={containerRef} className="chart-container" data-testid="chart-container" />
+      {/* A sibling of the container, never inside it: the library owns that element's DOM. */}
+      {!autoScaled && (
+        <button
+          type="button"
+          className="chart-auto-scale"
+          onClick={() => chartRef.current?.resetAutoScale()}
+          title="Fit the price axis to the visible bars again"
+        >
+          Auto
+        </button>
+      )}
+    </>
+  );
 }
