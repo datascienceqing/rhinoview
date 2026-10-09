@@ -67,8 +67,9 @@ export class FmpEngine implements AsyncMarketEngine {
 
   /**
    * HOW `delayed` IS DECIDED. It is `true` unless the operator says otherwise, because:
-   *   1. This key cannot read any intraday endpoint (all HTTP 402), so there is no
-   *      real-time-quality feed behind it that we could have verified.
+   *   1. Starter serves 5min/15min/1hour intraday, but nobody has measured its lag
+   *      during market hours, so there is no verified real-time feed behind it.
+   *      (Written when the key was on the free tier, where intraday was all HTTP 402.)
    *   2. The one thing `quote` gives us to test freshness is its `timestamp`. Measured
    *      after the close it was 16:00:01 ET, i.e. the session's final print, which says
    *      nothing about lag. The measurement that would settle it needs a quote taken
