@@ -27,7 +27,7 @@ import { UnknownSymbolError } from '../../market/types';
 import { FmpPaymentRequiredError, FmpUpstreamError } from '../../market/fmp/client';
 import type { FundamentalsProvider } from '../types';
 import { MAX_STATEMENT_ROWS } from '../lineItems';
-import { mapEarnings, mapOverview, mapStatements } from './mapper';
+import { grossMarginIsInterestSpread, mapEarnings, mapOverview, mapStatements } from './mapper';
 import type { FmpOverviewParts } from './mapper';
 import {
   earningsResponse,
@@ -39,7 +39,7 @@ import {
   scoresResponse,
   statementResponse,
 } from './schemas';
-import type { FmpProfileRow } from './schemas';
+import type { FmpProfileRow, FmpStatementRow } from './schemas';
 import type { ZodType, ZodTypeDef } from 'zod';
 
 /** What the provider needs from an HTTP client. `FmpClient` satisfies it; the fixture source does too. */
@@ -80,12 +80,13 @@ export class FmpFundamentalsProvider implements FundamentalsProvider {
     const profile = await this.fetchProfile(symbol);
     const sym = profile.symbol.toUpperCase();
 
-    const [ratios, keyMetrics, scores, priceTarget, grades] = await Promise.all([
+    const [ratios, keyMetrics, scores, priceTarget, grades, latestIncome] = await Promise.all([
       this.section('/ratios-ttm', sym, ratiosTtmResponse),
       this.section('/key-metrics-ttm', sym, keyMetricsTtmResponse),
       this.section('/financial-scores', sym, scoresResponse),
       this.section('/price-target-consensus', sym, priceTargetResponse),
       this.section('/grades-consensus', sym, gradesResponse),
+      this.latestAnnualIncome(sym),
     ]);
 
     const parts: FmpOverviewParts = {
@@ -95,7 +96,9 @@ export class FmpFundamentalsProvider implements FundamentalsProvider {
       scores,
       priceTarget,
       grades,
-      reportedCurrency: scores?.reportedCurrency ?? (await this.currencyFromStatements(sym)) ?? profile.currency,
+      // The listing currency is the last resort: it is wrong for a company like TSM.
+      reportedCurrency: scores?.reportedCurrency ?? latestIncome?.reportedCurrency ?? profile.currency,
+      grossMarginNotMeaningful: grossMarginIsInterestSpread(latestIncome),
     };
     return mapOverview(parts, Math.floor(this.now() / 1000));
   }
@@ -144,14 +147,14 @@ export class FmpFundamentalsProvider implements FundamentalsProvider {
   }
 
   /**
-   * `financial-scores` carries the reporting currency but may be gated. Fall back to the
-   * newest annual income statement, which always states it. The listing currency is the
-   * last resort and is wrong for a company like TSM, so it is tried only after both.
+   * The newest annual income statement, or null when it is gated. Two uses: it always
+   * states the reporting currency (`financial-scores` may be gated), and it shows whether
+   * the cost of revenue is mostly interest (`grossMarginIsInterestSpread`).
    */
-  private async currencyFromStatements(symbol: string): Promise<string | null> {
+  private async latestAnnualIncome(symbol: string): Promise<FmpStatementRow | null> {
     try {
       const body = await this.source.getJson(STATEMENT_PATH.income, { symbol, period: 'annual', limit: 1 });
-      return parseRows(statementResponse, STATEMENT_PATH.income, body)[0]?.reportedCurrency ?? null;
+      return parseRows(statementResponse, STATEMENT_PATH.income, body)[0] ?? null;
     } catch (err) {
       if (err instanceof FmpPaymentRequiredError) return null;
       throw err;

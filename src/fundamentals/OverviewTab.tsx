@@ -7,7 +7,6 @@ import {
   formatFraction,
   formatLarge,
   formatNumber,
-  isFinancialSector,
   marginCell,
   multipleCell,
 } from './format';
@@ -74,12 +73,12 @@ const GROUPS: Group[] = [
   },
 ];
 
-function metricCell(row: MetricRow, value: number | null, financial: boolean): Cell {
+function metricCell(row: MetricRow, value: number | null, grossNotMeaningful: boolean): Cell {
   switch (row.kind) {
     case 'multiple':
       return multipleCell(value);
     case 'margin':
-      return marginCell(value, financial);
+      return marginCell(value, row.key === 'grossMargin' && grossNotMeaningful);
     case 'fraction':
       return { text: formatFraction(value) };
     default:
@@ -105,7 +104,7 @@ function NotAvailable({ what }: { what: string }) {
 }
 
 function OverviewBody({ overview: o }: { overview: FundamentalsOverview }) {
-  const financial = isFinancialSector(o.profile.sector);
+  const grossNotMeaningful = o.grossMarginNotMeaningful;
   const gone = (s: 'metrics' | 'scores' | 'analyst') => o.unavailable.includes(s);
   return (
     <div className="fund-overview">
@@ -139,7 +138,7 @@ function OverviewBody({ overview: o }: { overview: FundamentalsOverview }) {
                 <h4>{g.title === 'Per share' ? `Per share (${o.reportedCurrency})` : g.title}</h4>
                 <dl className="fund-facts">
                   {g.rows.map((row) => {
-                    const cell = metricCell(row, o.metrics[row.key], financial);
+                    const cell = metricCell(row, o.metrics[row.key], grossNotMeaningful);
                     return (
                       <div key={row.key} className="fund-fact">
                         <dt title={row.hint}>{row.label}</dt>

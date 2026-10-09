@@ -470,6 +470,14 @@ export interface FundamentalsOverview {
    * The overview succeeds when at least the profile is available.
    */
   unavailable: ('metrics' | 'scores' | 'analyst')[];
+  /**
+   * True when the issuer's "cost of revenue" is mostly interest expense: banks,
+   * broker-dealers and card lenders. Its gross margin is then a lending spread, not a
+   * gross margin, and the UI shows "NM" for it. Operating and net margin stay meaningful.
+   * The provider decides from the income statement, not from the sector: FMP puts Visa
+   * (interest 7% of cost of revenue) in the same industry as Capital One (43%).
+   */
+  grossMarginNotMeaningful: boolean;
 }
 
 /**

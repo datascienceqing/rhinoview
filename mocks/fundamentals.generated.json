@@ -56,7 +56,8 @@
    },
    "reportedCurrency": "USD",
    "asOf": 1790971200,
-   "unavailable": []
+   "unavailable": [],
+   "grossMarginNotMeaningful": false
   },
   "MSFT": {
    "profile": {
@@ -114,7 +115,8 @@
    },
    "reportedCurrency": "USD",
    "asOf": 1790971200,
-   "unavailable": []
+   "unavailable": [],
+   "grossMarginNotMeaningful": false
   },
   "JPM": {
    "profile": {
@@ -172,7 +174,8 @@
    },
    "reportedCurrency": "USD",
    "asOf": 1790971200,
-   "unavailable": []
+   "unavailable": [],
+   "grossMarginNotMeaningful": true
   },
   "TSM": {
    "profile": {
@@ -230,7 +233,8 @@
    },
    "reportedCurrency": "TWD",
    "asOf": 1790971200,
-   "unavailable": []
+   "unavailable": [],
+   "grossMarginNotMeaningful": false
   },
   "RIVN": {
    "profile": {
@@ -288,7 +292,8 @@
    },
    "reportedCurrency": "USD",
    "asOf": 1790971200,
-   "unavailable": []
+   "unavailable": [],
+   "grossMarginNotMeaningful": false
   }
  },
  "statements": {

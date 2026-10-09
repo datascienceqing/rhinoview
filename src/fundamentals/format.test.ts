@@ -28,8 +28,8 @@ describe('format', () => {
     expect(multipleCell(28.9).text).toBe('28.90x');
   });
 
-  it('shows margins as NM for a financial-sector issuer only', () => {
-    expect(marginCell(0.626, true).text).toBe('NM');
+  it('shows NM, with the reason, only when the server marks the margin as not meaningful', () => {
+    expect(marginCell(0.626, true)).toEqual({ text: 'NM', title: expect.stringMatching(/interest expense/) });
     expect(marginCell(0.626, false).text).toBe('62.60%');
   });
 

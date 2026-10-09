@@ -31,11 +31,32 @@ describe('Overview tab', () => {
     expect(await metric('grossMargin')).not.toHaveTextContent('NM');
   });
 
-  it('shows margins as NM for a financial-sector issuer (JPM) but keeps returns', async () => {
+  it('shows NM for a lender\u2019s gross margin only (JPM), with the reason, and keeps operating and net margin', async () => {
     drawer('JPM');
-    for (const k of ['grossMargin', 'operatingMargin', 'netMargin']) expect(await metric(k)).toHaveTextContent('NM');
-    expect(await metric('returnOnEquity')).toHaveTextContent('%');
+    const gross = await metric('grossMargin');
+    expect(gross).toHaveTextContent('NM');
+    expect(gross.getAttribute('title')).toMatch(/interest expense/);
+    for (const k of ['operatingMargin', 'netMargin', 'returnOnEquity']) {
+      const cell = await metric(k);
+      expect(cell).toHaveTextContent('%');
+      expect(cell).not.toHaveTextContent('NM');
+    }
     expect(await metric('peRatio')).toHaveTextContent('14.29x');
+  });
+
+  it('shows every margin for a Financial Services company that is not a lender (like Visa)', async () => {
+    // The old rule hid all margins for the whole sector. The sector alone must not matter now.
+    const jpm = overviewFor('JPM');
+    const visaLike: FundamentalsOverview = {
+      ...jpm,
+      profile: { ...jpm.profile, sector: 'Financial Services', industry: 'Financial - Credit Services' },
+      grossMarginNotMeaningful: false,
+    };
+    server.use(http.get('*/api/fundamentals/overview', () => ok(visaLike)));
+    drawer('JPM');
+    for (const k of ['grossMargin', 'operatingMargin', 'netMargin']) {
+      expect(await metric(k)).not.toHaveTextContent('NM');
+    }
   });
 
   it('shows fractions as percentages (AAPL gross margin)', async () => {
@@ -176,13 +197,16 @@ describe('Trends tab', () => {
     unmount();
   });
 
-  it('shows margins as NM for a financial-sector issuer (JPM)', async () => {
+  it('leaves out only the gross line for a lender (JPM), and says why', async () => {
     const user = userEvent.setup();
     drawer('JPM');
     await user.click(screen.getByRole('tab', { name: 'Trends' }));
-    expect(await screen.findByTestId('chart-Margins')).toHaveTextContent('NM');
-    expect(screen.getByTestId('chart-Margins').querySelector('svg')).toBeNull();
-    expect(screen.getByTestId('chart-Revenue').querySelector('svg')).not.toBeNull();
+    const chart = await screen.findByTestId('chart-Margins');
+    expect(chart.querySelector('svg')).not.toBeNull();
+    expect(chart.querySelectorAll('path').length).toBe(2); // operating and net
+    expect(chart).toHaveTextContent('Operating');
+    expect(chart).not.toHaveTextContent('Gross');
+    expect(screen.getByTestId('gross-margin-note')).toHaveTextContent(/interest expense/);
   });
 
   it('switches to quarterly periods', async () => {

@@ -335,6 +335,11 @@ export interface SyntheticFundamentalsOptions {
   now?: () => number;
 }
 
+/** Synthetic stand-in for the FMP evidence: banks and broker-dealers are lenders. */
+function lenderIndustry(industry: string | null): boolean {
+  return industry !== null && (industry.startsWith('Banks') || industry === 'Capital Markets');
+}
+
 export class SyntheticFundamentalsProvider implements FundamentalsProvider {
   readonly available = true;
   private readonly now: () => number;
@@ -420,6 +425,9 @@ export class SyntheticFundamentalsProvider implements FundamentalsProvider {
     const base = {
       reportedCurrency: CURRENCY,
       asOf: Math.floor(this.now() / 1000),
+      // The synthetic statements do not model a lender's interest-heavy cost of revenue,
+      // so the industry stands in for that evidence here. The FMP provider measures it.
+      grossMarginNotMeaningful: lenderIndustry(industry),
     };
     const profile: FundamentalsOverview['profile'] = {
       symbol: model.symbol,

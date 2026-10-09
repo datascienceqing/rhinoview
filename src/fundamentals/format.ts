@@ -3,7 +3,7 @@
  *
  *   null                         -> "—"            (the provider did not supply it)
  *   valuation multiple <= 0      -> "NM"           (negative earnings; reads as "cheap" otherwise)
- *   margin, financial issuer     -> "NM"           (a bank has no real gross margin)
+ *   gross margin of a lender     -> "NM"           (the cost of revenue is mostly interest)
  *   fraction                     -> percent        (0.4865 -> 48.65%)
  *
  * The raw value stays raw all the way down; only these functions decide what is shown.
@@ -11,7 +11,7 @@
 export const DASH = '—';
 export const NM = 'NM';
 export const NM_NEGATIVE_EARNINGS = 'not meaningful: negative earnings';
-export const NM_FINANCIAL = 'not meaningful for financial-sector issuers';
+export const NM_INTEREST_SPREAD = 'not meaningful: the cost of revenue is mostly interest expense, so this is a lending spread';
 
 /** A displayed value plus an optional tooltip explaining it. */
 export interface Cell {
@@ -56,15 +56,15 @@ export function multipleCell(v: number | null | undefined): Cell {
   return { text: `${formatNumber(v)}x` };
 }
 
-/** A margin. Not meaningful when the issuer is a financial-sector company. */
-export function marginCell(v: number | null | undefined, financial: boolean): Cell {
-  if (financial) return { text: NM, title: NM_FINANCIAL };
+/**
+ * A margin. `notMeaningful` comes from the server's `grossMarginNotMeaningful` and applies
+ * to the GROSS margin only: a lender's operating and net margins are real numbers.
+ */
+export function marginCell(v: number | null | undefined, notMeaningful: boolean): Cell {
+  if (notMeaningful) return { text: NM, title: NM_INTEREST_SPREAD };
   return { text: formatFraction(v) };
 }
 
-export function isFinancialSector(sector: string | null | undefined): boolean {
-  return sector === 'Financial Services';
-}
 
 /** "FY2026" for annual rows, "Q1 FY2026" for quarterly rows. Never a calendar year. */
 export function fiscalLabel(row: { fiscalYear: number; fiscalPeriod: string }): string {

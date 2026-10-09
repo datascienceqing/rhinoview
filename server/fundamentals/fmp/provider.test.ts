@@ -8,6 +8,8 @@ import { RateLimitedError, UpstreamUnauthorizedError } from '../../provider/erro
 import { FmpPaymentRequiredError, FmpUpstreamError } from '../../market/fmp/client';
 import { UnknownSymbolError } from '../../market/types';
 import { createFixtureFundamentals } from './fixtureSource';
+import { INTEREST_COST_SHARE_THRESHOLD, grossMarginIsInterestSpread } from './mapper';
+import type { FmpStatementRow } from './schemas';
 import { fixtureFetch, fixtureRows, json, providerOver, readFixture, TEST_KEY } from './testing';
 
 const PAYMENT_BODY = "Restricted Endpoint: This endpoint is not available under your current subscription";
@@ -472,5 +474,43 @@ describe('the mapper over every recorded symbol', () => {
 
   it('treats a symbol without a fixture as unknown, like FMP does', async () => {
     await expect(createFixtureFundamentals().getOverview('NOPE')).rejects.toBeInstanceOf(UnknownSymbolError);
+  });
+});
+
+describe('gross margin of a lender (grossMarginNotMeaningful)', () => {
+  // Only the two fields the rule reads; the cast keeps the test about the rule.
+  const row = (costOfRevenue: unknown, interestExpense: unknown) =>
+    ({ costOfRevenue, interestExpense }) as unknown as FmpStatementRow;
+
+  it('flags JPM, whose cost of revenue is mostly interest (recorded fixture)', async () => {
+    expect((await createFixtureFundamentals().getOverview('JPM')).grossMarginNotMeaningful).toBe(true);
+  });
+
+  it('does not flag the non-lenders in the fixtures', async () => {
+    for (const s of ['AAPL', 'MSFT', 'TSM', 'RIVN']) {
+      expect((await createFixtureFundamentals().getOverview(s)).grossMarginNotMeaningful, s).toBe(false);
+    }
+  });
+
+  it('separates the measured groups: lenders 0.43 and up, everyone else 0.09 and down', () => {
+    expect(grossMarginIsInterestSpread(row(100, 87))).toBe(true); // JPM 0.87
+    expect(grossMarginIsInterestSpread(row(100, 43))).toBe(true); // COF 0.43
+    expect(grossMarginIsInterestSpread(row(100, 7))).toBe(false); // V 0.07
+    expect(grossMarginIsInterestSpread(row(100, 9))).toBe(false); // AON 0.09
+  });
+
+  it('flags a share exactly at the threshold', () => {
+    expect(grossMarginIsInterestSpread(row(100, INTEREST_COST_SHARE_THRESHOLD * 100))).toBe(true);
+  });
+
+  it('treats a missing or zero cost of revenue as no evidence (MA reports none)', () => {
+    expect(grossMarginIsInterestSpread(row(0, 50))).toBe(false);
+    expect(grossMarginIsInterestSpread(row(null, 50))).toBe(false);
+    expect(grossMarginIsInterestSpread(row(100, null))).toBe(false);
+    expect(grossMarginIsInterestSpread(null)).toBe(false);
+  });
+
+  it('reads the size of the interest expense, whatever its sign', () => {
+    expect(grossMarginIsInterestSpread(row(100, -87))).toBe(true);
   });
 });

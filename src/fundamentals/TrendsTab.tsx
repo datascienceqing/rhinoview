@@ -3,7 +3,7 @@ import type { StatementPeriod } from '@shared/types';
 import { useAsync } from '../data';
 import { fetchOverview, fetchStatements } from './api';
 import { AsyncBlock } from './AsyncBlock';
-import { NM, NM_FINANCIAL, formatFraction, formatLarge, formatNumber, isFinancialSector } from './format';
+import { formatFraction, formatLarge, formatNumber } from './format';
 import { PeriodToggle } from './StatementsTab';
 import { TrendChart } from './TrendChart';
 import { buildTrend } from './trends';
@@ -15,13 +15,13 @@ export function TrendsTab({ symbol }: { symbol: string }) {
     const [income, cashflow, overview] = await Promise.all([
       fetchStatements(symbol, 'income', period),
       fetchStatements(symbol, 'cashflow', period),
-      // The sector decides whether margins mean anything. Overview is shared with its tab.
+      // The server says whether the gross margin means anything. Overview is shared with its tab.
       fetchOverview(symbol).catch(() => null),
     ]);
     return {
       points: buildTrend(income, cashflow),
       currency: income.rows[0]?.reportedCurrency ?? overview?.reportedCurrency ?? '',
-      financial: isFinancialSector(overview?.profile.sector),
+      grossNotMeaningful: overview?.grossMarginNotMeaningful === true,
     };
   });
   return (
@@ -30,19 +30,24 @@ export function TrendsTab({ symbol }: { symbol: string }) {
         <PeriodToggle value={period} onChange={setPeriod} />
       </div>
       <AsyncBlock state={state} loading="Loading trends…">
-        {(d) => <Charts points={d.points} currency={d.currency} financial={d.financial} />}
+        {(d) => <Charts points={d.points} currency={d.currency} grossNotMeaningful={d.grossNotMeaningful} />}
       </AsyncBlock>
     </div>
   );
 }
 
-function Charts({ points, currency, financial }: { points: TrendPoint[]; currency: string; financial: boolean }) {
+function Charts({ points, currency, grossNotMeaningful }: { points: TrendPoint[]; currency: string; grossNotMeaningful: boolean }) {
   if (points.length === 0) return <p className="fund-unavailable">No periods reported.</p>;
   const labels = points.map((p) => p.label);
   const money = (v: number | null) => `${formatLarge(v)} ${currency}`.trim();
   return (
     <>
       <p className="fund-currency">Amounts in {currency || 'the reporting currency'}.</p>
+      {grossNotMeaningful && (
+        <p className="fund-currency" data-testid="gross-margin-note">
+          Gross margin is not shown: the cost of revenue is mostly interest expense, so it is a lending spread.
+        </p>
+      )}
       <div className="fund-chart-grid">
         <TrendChart
           title="Revenue"
@@ -65,26 +70,20 @@ function Charts({ points, currency, financial }: { points: TrendPoint[]; currenc
           format={(v) => `${formatNumber(v)} ${currency}`.trim()}
           series={[{ name: 'EPS', color: 'var(--accent)', values: points.map((p) => p.eps) }]}
         />
-        {financial ? (
-          <figure className="fund-chart" data-testid="chart-Margins">
-            <figcaption>Margins</figcaption>
-            <p className="fund-unavailable" title={NM_FINANCIAL}>
-              {NM}: {NM_FINANCIAL}
-            </p>
-          </figure>
-        ) : (
-          <TrendChart
-            title="Margins"
-            kind="line"
-            labels={labels}
-            format={formatFraction}
-            series={[
-              { name: 'Gross', color: 'var(--accent)', values: points.map((p) => p.grossMargin) },
-              { name: 'Operating', color: 'var(--up)', values: points.map((p) => p.operatingMargin) },
-              { name: 'Net', color: 'var(--text-dim)', values: points.map((p) => p.netMargin) },
-            ]}
-          />
-        )}
+        <TrendChart
+          title="Margins"
+          kind="line"
+          labels={labels}
+          format={formatFraction}
+          series={[
+            // A lender's gross margin is a lending spread: leave out only that line.
+            ...(grossNotMeaningful
+              ? []
+              : [{ name: 'Gross', color: 'var(--accent)', values: points.map((p) => p.grossMargin) }]),
+            { name: 'Operating', color: 'var(--up)', values: points.map((p) => p.operatingMargin) },
+            { name: 'Net', color: 'var(--text-dim)', values: points.map((p) => p.netMargin) },
+          ]}
+        />
         <TrendChart
           title="Free cash flow"
           kind="bar"

@@ -88,6 +88,25 @@ export function mapMetrics(ratios: FmpRatiosTtm | null, keyMetrics: FmpKeyMetric
   };
 }
 
+/** Interest expense at or above this share of the cost of revenue makes gross margin a lending spread. */
+export const INTEREST_COST_SHARE_THRESHOLD = 0.25;
+
+/**
+ * Whether FMP's gross margin for this issuer is really a lending spread. FMP books a
+ * lender's interest expense as "cost of revenue" (JPM: 87% of it), so revenue minus that
+ * cost is net interest income, not gross profit. Measured gap: lenders 0.43 and up,
+ * everyone else 0.09 and down. A missing or zero cost of revenue is not evidence (MA has
+ * none and a real 100% gross margin from FMP), so it answers false.
+ */
+export function grossMarginIsInterestSpread(row: FmpStatementRow | null): boolean {
+  if (!row) return false;
+  const cost = row['costOfRevenue'];
+  const interest = row['interestExpense'];
+  if (typeof cost !== 'number' || typeof interest !== 'number') return false;
+  if (!Number.isFinite(cost) || !Number.isFinite(interest) || cost <= 0) return false;
+  return Math.abs(interest) / cost >= INTEREST_COST_SHARE_THRESHOLD;
+}
+
 export function mapScores(row: FmpScores | null): FinancialScores {
   return { piotroskiScore: row?.piotroskiScore ?? null, altmanZScore: row?.altmanZScore ?? null };
 }
@@ -117,6 +136,8 @@ export interface FmpOverviewParts {
   grades: FmpGrades | null;
   /** The currency the issuer REPORTS in; the provider resolves it (see `FmpProvider`). */
   reportedCurrency: string;
+  /** From `grossMarginIsInterestSpread` on the newest annual income statement. */
+  grossMarginNotMeaningful: boolean;
 }
 
 export function mapOverview(parts: FmpOverviewParts, asOf: number): FundamentalsOverview {
@@ -132,6 +153,7 @@ export function mapOverview(parts: FmpOverviewParts, asOf: number): Fundamentals
     reportedCurrency: parts.reportedCurrency,
     asOf,
     unavailable,
+    grossMarginNotMeaningful: parts.grossMarginNotMeaningful,
   };
 }
 
