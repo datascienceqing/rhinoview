@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import type { Bar } from '@shared/types';
-import { aggregateWeekly, eodRowsToBars, snapshotFromQuote } from './convert';
+import { aggregateWeekly, eodRowsToBars, intradayRowsToBars, snapshotFromQuote, wholeShares } from './convert';
 import { eodResponseSchema, quoteResponseSchema } from './schemas';
 import { fixtureRows } from './testing';
 import { dateToNySeconds } from './time';
@@ -180,5 +180,35 @@ describe('snapshotFromQuote', () => {
     if (!sparse) throw new Error('unreachable');
     const snap = snapshotFromQuote(sparse, true);
     expect(snap).toMatchObject({ symbol: 'AAPL', price: null, changePercent: null, updated: null });
+  });
+});
+
+describe('volume is whole shares', () => {
+  // Values measured from FMP on 2026-10-09 (AAPL 5min and 1hour).
+  it('rounds the fractional intraday volume FMP sends', () => {
+    const bars = intradayRowsToBars([
+      { date: '2026-10-08 15:45:00', open: 1, high: 2, low: 1, close: 2, volume: 320128.0681499988 },
+      { date: '2026-10-08 15:50:00', open: 1, high: 2, low: 1, close: 2, volume: 584047 },
+      { date: '2026-08-14 09:30:00', open: 1, high: 2, low: 1, close: 2, volume: 5125954.5 },
+    ]);
+    expect(bars.map((b) => b.volume)).toEqual([5125955, 320128, 584047]);
+  });
+
+  it('rounds daily volume too', () => {
+    expect(eodRowsToBars([row('2026-10-08', 1, 2, 1, 2, 1000.4)])[0]?.volume).toBe(1000);
+  });
+
+  it('rounds the quote day volume, and keeps an absent one null', () => {
+    const [q] = quoteResponseSchema.parse([{ symbol: 'AAPL', volume: 34459897.6 }]);
+    if (!q) throw new Error('unreachable');
+    expect(snapshotFromQuote(q, true).dayVolume).toBe(34459898);
+    const [none] = quoteResponseSchema.parse([{ symbol: 'AAPL' }]);
+    if (!none) throw new Error('unreachable');
+    expect(snapshotFromQuote(none, true).dayVolume).toBeNull();
+  });
+
+  it('leaves a whole number as it is', () => {
+    expect(wholeShares(7_720_000)).toBe(7_720_000);
+    expect(wholeShares(0)).toBe(0);
   });
 });
