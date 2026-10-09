@@ -283,6 +283,10 @@ For `macd`, upstream returns value/signal/histogram; map them to `lines` with ke
 bar's volume) and `ma` (the SMA of the volume over `period` bars). For the others, a
 single line with key `value`.
 
+`vpvr` (visible-range volume profile) is a valid `IndicatorKind` for layouts, but this
+endpoint does not serve it: its profile depends on the chart's visible range, so the
+client computes it at draw time.
+
 Upstream: `/rest/stocks/technical-indicators/{sma,ema,macd,rsi}`.
 
 ---

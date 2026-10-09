@@ -5,10 +5,11 @@ import type {
   MacdParams,
   MovingAverageParams,
   RsiParams,
+  VpvrParams,
 } from '@shared/types';
-import { DEFAULT_PARAMS, PERIOD_MAX, PERIOD_MIN } from '../indicators/types';
+import { DEFAULT_PARAMS, PERIOD_MAX, PERIOD_MIN, VPVR_BOUNDS } from '../indicators/types';
 
-export const INDICATOR_KINDS: readonly IndicatorKind[] = ['sma', 'ema', 'rsi', 'macd', 'volume'];
+export const INDICATOR_KINDS: readonly IndicatorKind[] = ['sma', 'ema', 'rsi', 'macd', 'volume', 'vpvr'];
 
 export const KIND_LABEL: Record<IndicatorKind, string> = {
   sma: 'SMA',
@@ -16,6 +17,7 @@ export const KIND_LABEL: Record<IndicatorKind, string> = {
   rsi: 'RSI',
   macd: 'MACD',
   volume: 'Volume',
+  vpvr: 'VRVP',
 };
 
 export const MA_SOURCES = ['open', 'high', 'low', 'close'] as const;
@@ -51,8 +53,16 @@ export function newIndicatorId(): string {
 
 // ───────────────────────────── params ─────────────────────────────
 
+/** One editable numeric field. Bounds default to PERIOD_MIN..PERIOD_MAX. */
+export interface ParamField {
+  key: string;
+  label: string;
+  min?: number;
+  max?: number;
+}
+
 /** Editable numeric fields per kind, in display order. */
-export const PARAM_FIELDS: Record<IndicatorKind, readonly { key: string; label: string }[]> = {
+export const PARAM_FIELDS: Record<IndicatorKind, readonly ParamField[]> = {
   sma: [{ key: 'period', label: 'Period' }],
   ema: [{ key: 'period', label: 'Period' }],
   rsi: [{ key: 'period', label: 'Period' }],
@@ -62,7 +72,17 @@ export const PARAM_FIELDS: Record<IndicatorKind, readonly { key: string; label: 
     { key: 'signalPeriod', label: 'Signal' },
   ],
   volume: [{ key: 'period', label: 'MA length' }],
+  vpvr: [
+    { key: 'rows', label: 'Rows', ...VPVR_BOUNDS.rows },
+    { key: 'widthPct', label: 'Width %', ...VPVR_BOUNDS.widthPct },
+    { key: 'valueAreaPct', label: 'Value area %', ...VPVR_BOUNDS.valueAreaPct },
+  ],
 };
+
+/** The bounds of a field: its own, or the period bounds. */
+export function fieldBounds(field: ParamField): { min: number; max: number } {
+  return { min: field.min ?? PERIOD_MIN, max: field.max ?? PERIOD_MAX };
+}
 
 export function defaultParams(kind: IndicatorKind): IndicatorParams {
   // Copies, so an edit can never mutate the frozen-by-convention defaults.
@@ -77,15 +97,17 @@ export function defaultParams(kind: IndicatorKind): IndicatorParams {
       return { ...DEFAULT_PARAMS.macd };
     case 'volume':
       return { ...DEFAULT_PARAMS.volume };
+    case 'vpvr':
+      return { ...DEFAULT_PARAMS.vpvr };
   }
 }
 
 export type ParamErrors = Partial<Record<string, string>>;
 
-function periodError(label: string, value: number): string | null {
+function periodError(label: string, value: number, min = PERIOD_MIN, max = PERIOD_MAX): string | null {
   if (!Number.isInteger(value)) return `${label} must be a whole number.`;
-  if (value < PERIOD_MIN || value > PERIOD_MAX) {
-    return `${label} must be between ${PERIOD_MIN} and ${PERIOD_MAX}.`;
+  if (value < min || value > max) {
+    return `${label} must be between ${min} and ${max}.`;
   }
   return null;
 }
@@ -97,9 +119,11 @@ function periodError(label: string, value: number): string | null {
  */
 export function validateParams(kind: IndicatorKind, params: Record<string, number>): ParamErrors {
   const errors: ParamErrors = {};
-  for (const { key, label } of PARAM_FIELDS[kind]) {
+  for (const field of PARAM_FIELDS[kind]) {
+    const { key, label } = field;
+    const { min, max } = fieldBounds(field);
     const value = params[key];
-    const message = value === undefined ? `${label} is required.` : periodError(label, value);
+    const message = value === undefined ? `${label} is required.` : periodError(label, value, min, max);
     if (message) errors[key] = message;
   }
   if (kind === 'macd') {
@@ -132,6 +156,9 @@ export function isMacdParams(p: IndicatorParams): p is MacdParams {
 export function isMovingAverageParams(p: IndicatorParams): p is MovingAverageParams {
   return 'period' in p;
 }
+export function isVpvrParams(p: IndicatorParams): p is VpvrParams {
+  return 'rows' in p;
+}
 
 /** A params object shaped for `kind` built from untrusted input, or null if it is not valid for it. */
 export function sanitizeParams(kind: IndicatorKind, raw: unknown): IndicatorParams | null {
@@ -152,6 +179,9 @@ export function sanitizeParams(kind: IndicatorKind, raw: unknown): IndicatorPara
     };
   }
   if (kind === 'rsi' || kind === 'volume') return { period: nums['period'] ?? 0 };
+  if (kind === 'vpvr') {
+    return { rows: nums['rows'] ?? 0, widthPct: nums['widthPct'] ?? 0, valueAreaPct: nums['valueAreaPct'] ?? 0 };
+  }
   const source = rec['source'];
   const valid = MA_SOURCES.find((s) => s === source);
   return { period: nums['period'] ?? 0, source: valid ?? 'close' };
@@ -164,12 +194,18 @@ export function pickColor(existing: readonly IndicatorConfig[]): string {
   return PALETTE.find((c) => !used.has(c)) ?? PALETTE[existing.length % PALETTE.length] ?? '#2962ff';
 }
 
+/**
+ * VRVP's colour is its up colour, against the theme's red for down. It always starts
+ * blue, like Vela: a palette pick could give pink, which is hard to tell from red.
+ */
+export const VPVR_DEFAULT_COLOR = '#2962ff';
+
 export function createIndicator(kind: IndicatorKind, existing: readonly IndicatorConfig[]): IndicatorConfig {
   return {
     id: newIndicatorId(),
     kind,
     params: defaultParams(kind),
-    color: pickColor(existing),
+    color: kind === 'vpvr' ? VPVR_DEFAULT_COLOR : pickColor(existing),
     visible: true,
   };
 }
@@ -179,6 +215,7 @@ export function indicatorTitle(config: Pick<IndicatorConfig, 'kind' | 'params'>)
   const p = config.params;
   const name = KIND_LABEL[config.kind];
   if (isMacdParams(p)) return `${name} (${p.fastPeriod}, ${p.slowPeriod}, ${p.signalPeriod})`;
+  if (isVpvrParams(p)) return `${name} (${p.rows} rows)`;
   if (isMovingAverageParams(p) && p.source && p.source !== 'close') return `${name} (${p.period}, ${p.source})`;
   return `${name} (${(p as RsiParams).period})`;
 }

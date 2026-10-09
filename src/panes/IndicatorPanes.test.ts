@@ -6,6 +6,7 @@ import { IndicatorPanes } from './IndicatorPanes';
 import type { PaneLayout } from './IndicatorPanes';
 import { MACD_SIGNAL_COLOR } from './config';
 import { ComputeCache } from './computeCache';
+import type { VpvrPrimitive } from './vpvr/VpvrPrimitive';
 import { fakeComputeIndicator } from './testing/fakeCompute';
 import { indicator, makeBars } from './testing/testHelpers';
 
@@ -399,5 +400,69 @@ describe('volume', () => {
     sync([a, b]);
     const ids = (chart.paneContents[0] ?? []).slice(1).map((s) => (s.options as { priceScaleId?: string }).priceScaleId);
     expect(new Set(ids)).toEqual(new Set([`volume:${a.id}`, `volume:${b.id}`]));
+  });
+});
+
+describe('vpvr', () => {
+  const priceSeries = (chart: ReturnType<typeof setup>['chart']) => chart.paneContents[0]?.[0];
+
+  it('adds no series and no pane: it is a drawing attached to the price series', () => {
+    const { chart, sync } = setup();
+    sync([indicator('vpvr')]);
+    expect(chart.paneList).toHaveLength(1);
+    expect(tags(chart.paneContents[0] ?? [])).toEqual(['Candlestick']);
+    expect(priceSeries(chart)?.primitives).toHaveLength(1);
+  });
+
+  it('draws the visible bars with the indicator colour for up volume and the theme for the rest', () => {
+    const { price, chart, sync } = setup();
+    const config = indicator('vpvr');
+    sync([config]);
+    const prim = priceSeries(chart)?.primitives[0] as unknown as VpvrPrimitive;
+    chart.visibleRange = { from: 100, to: 119 };
+    const profile = prim.profile();
+    expect(profile?.rows).toHaveLength(24);
+    const visible = bars.slice(100, 120);
+    expect(profile?.min).toBe(Math.min(...visible.map((b) => b.low)));
+    const style = (prim as unknown as { style: { upColor: string; downColor: string; widthFrac: number } }).style;
+    expect(style).toMatchObject({ upColor: config.color, downColor: price.colors.down, widthFrac: 0.3 });
+  });
+
+  it('detaches the drawing when the indicator is removed', () => {
+    const { chart, sync } = setup();
+    sync([indicator('vpvr')]);
+    sync([]);
+    expect(priceSeries(chart)?.primitives).toHaveLength(0);
+  });
+
+  it('keeps the drawing when the chart type changes: detached from the old series, attached to the new', () => {
+    const { price, chart, sync } = setup();
+    sync([indicator('vpvr')]);
+    const old = priceSeries(chart);
+    const prim = old?.primitives[0];
+    price.setChartType('line');
+    expect(old?.primitives).toHaveLength(0);
+    const fresh = chart.liveSeries.find((s) => (s.definition as { tag: string }).tag === 'Line');
+    expect(fresh?.primitives).toEqual([prim]);
+  });
+
+  it('passes new params, colour and visibility to the drawing', () => {
+    const { chart, sync } = setup();
+    const config = indicator('vpvr');
+    sync([config]);
+    const prim = priceSeries(chart)?.primitives[0] as unknown as VpvrPrimitive;
+    const update = vi.spyOn(prim, 'update');
+    sync([{ ...config, params: { rows: 50, widthPct: 40, valueAreaPct: 60 }, visible: false }]);
+    expect(update).toHaveBeenLastCalledWith(bars, expect.objectContaining({ rows: 50, widthFrac: 0.4, valueAreaFrac: 0.6, visible: false }));
+  });
+
+  it('does not redraw when synced again with identical input', () => {
+    const { chart, sync } = setup();
+    const config = indicator('vpvr');
+    sync([config]);
+    const prim = priceSeries(chart)?.primitives[0] as unknown as VpvrPrimitive;
+    const update = vi.spyOn(prim, 'update');
+    sync([config]);
+    expect(update).not.toHaveBeenCalled();
   });
 });

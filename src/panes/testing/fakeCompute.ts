@@ -189,5 +189,8 @@ export const fakeComputeIndicator: ComputeIndicator = (bars, kind: IndicatorKind
         warmup: 0,
       };
     }
+    case 'vpvr':
+      // Drawn from the visible bars at draw time; no lines.
+      return { kind, placement, params, lines: [], warmup: 0 };
   }
 };

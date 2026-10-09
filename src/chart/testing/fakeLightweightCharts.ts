@@ -70,9 +70,20 @@ export interface FakeSeries {
   getPane: () => FakePane;
   /** Like the library: the scale named by the series' `priceScaleId` (default 'right') on its pane. */
   priceScale: () => FakePriceScale;
+  /** Primitives attached now. Like the library, attach calls `attached` and detach calls `detached`. */
+  primitives: FakePrimitive[];
+  attachPrimitive: ReturnType<typeof vi.fn>;
+  detachPrimitive: ReturnType<typeof vi.fn>;
+  /** A fixed linear scale for tests: y = 1000 - 2 * price. */
+  priceToCoordinate: (price: number) => number;
   removed: boolean;
   /** Set by createSeriesMarkers: the markers currently drawn on this series. */
   markersApi?: { markers: unknown[]; setMarkers: ReturnType<typeof vi.fn>; detach: ReturnType<typeof vi.fn> };
+}
+
+export interface FakePrimitive {
+  attached?(param: { chart: unknown; series: unknown; requestUpdate: () => void }): void;
+  detached?(): void;
 }
 
 export class FakeChart {
@@ -126,6 +137,19 @@ export class FakeChart {
         return s.pane;
       },
       priceScale: () => s.pane.priceScale((options as { priceScaleId?: string } | undefined)?.priceScaleId ?? 'right'),
+      primitives: [],
+      attachPrimitive: vi.fn((p: FakePrimitive) => {
+        this.assertLive();
+        s.primitives.push(p);
+        p.attached?.({ chart: this, series: s, requestUpdate: () => undefined });
+      }),
+      detachPrimitive: vi.fn((p: FakePrimitive) => {
+        this.assertLive();
+        const i = s.primitives.indexOf(p);
+        if (i >= 0) s.primitives.splice(i, 1);
+        p.detached?.();
+      }),
+      priceToCoordinate: (price: number) => 1000 - 2 * price,
       removed: false,
     };
     this.series.push(s);
@@ -136,6 +160,7 @@ export class FakeChart {
     this.assertLive();
     if (s.removed) throw new Error('Series already removed');
     s.removed = true;
+    // Like the library (v5.2.1): removing a series does NOT call `detached` on its primitives.
     const pane = s.pane;
     if (!pane.preserveEmpty && pane.getSeries().length === 0 && this.paneList.length > 1) {
       this.paneList.splice(this.paneList.indexOf(pane), 1);

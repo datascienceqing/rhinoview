@@ -1,14 +1,14 @@
-import type { IndicatorKind, IndicatorParams, MacdParams, MovingAverageParams, RsiParams } from '@shared/types';
-import { InvalidIndicatorParamsError, LINE_KEYS, PERIOD_MAX, PERIOD_MIN } from './types';
+import type { IndicatorKind, IndicatorParams, MacdParams, MovingAverageParams, RsiParams, VpvrParams } from '@shared/types';
+import { InvalidIndicatorParamsError, LINE_KEYS, PERIOD_MAX, PERIOD_MIN, VPVR_BOUNDS } from './types';
 
 const SOURCES: readonly string[] = ['open', 'high', 'low', 'close'];
 
-function periodError(name: string, value: unknown): string | null {
+function periodError(name: string, value: unknown, min = PERIOD_MIN, max = PERIOD_MAX): string | null {
   if (typeof value !== 'number' || !Number.isInteger(value)) {
-    return `${name} must be an integer between ${PERIOD_MIN} and ${PERIOD_MAX}`;
+    return `${name} must be an integer between ${min} and ${max}`;
   }
-  if (value < PERIOD_MIN || value > PERIOD_MAX) {
-    return `${name} must be between ${PERIOD_MIN} and ${PERIOD_MAX}, got ${value}`;
+  if (value < min || value > max) {
+    return `${name} must be between ${min} and ${max}, got ${value}`;
   }
   return null;
 }
@@ -23,6 +23,15 @@ function periodError(name: string, value: unknown): string | null {
 export function checkIndicatorParams(kind: IndicatorKind, params: IndicatorParams): string | null {
   if (!Object.hasOwn(LINE_KEYS, kind)) return `unknown indicator kind: ${String(kind)}`;
   if (typeof params !== 'object' || params === null) return 'params must be an object';
+  if (kind === 'vpvr') {
+    const p = params as Partial<VpvrParams>;
+    for (const key of Object.keys(VPVR_BOUNDS) as (keyof VpvrParams)[]) {
+      const { min, max } = VPVR_BOUNDS[key];
+      const err = periodError(key, p[key], min, max);
+      if (err) return err;
+    }
+    return null;
+  }
   if (kind === 'macd') {
     const p = params as Partial<MacdParams>;
     const err =

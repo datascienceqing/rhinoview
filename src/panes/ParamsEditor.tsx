@@ -4,6 +4,7 @@ import { PERIOD_MAX, PERIOD_MIN } from '../indicators/types';
 import {
   MA_SOURCES,
   PARAM_FIELDS,
+  fieldBounds,
   isMovingAverageParams,
   numericParams,
   parseWholeNumber,
@@ -63,12 +64,17 @@ export function ParamsEditor({ config, onChange }: ParamsEditorProps) {
   /** Last valid number for a field, to place its slider and bound the others. */
   const current = (key: string): number => {
     const draft = parseWholeNumber(drafts[key] ?? '');
-    if (draft !== null && draft >= PERIOD_MIN && draft <= PERIOD_MAX) return draft;
-    return numericParams(params)[key] ?? PERIOD_MIN;
+    const field = PARAM_FIELDS[kind].find((f) => f.key === key);
+    const own = field ? fieldBounds(field) : { min: PERIOD_MIN, max: PERIOD_MAX };
+    if (draft !== null && draft >= own.min && draft <= own.max) return draft;
+    return numericParams(params)[key] ?? own.min;
   };
 
   function bounds(key: string): { min: number; max: number } {
-    if (kind !== 'macd') return { min: PERIOD_MIN, max: PERIOD_MAX };
+    if (kind !== 'macd') {
+      const field = PARAM_FIELDS[kind].find((f) => f.key === key);
+      return field ? fieldBounds(field) : { min: PERIOD_MIN, max: PERIOD_MAX };
+    }
     if (key === 'fastPeriod') return { min: PERIOD_MIN, max: Math.max(PERIOD_MIN, Math.min(PERIOD_MAX, current('slowPeriod') - 1)) };
     if (key === 'slowPeriod') return { min: Math.min(PERIOD_MAX, current('fastPeriod') + 1), max: PERIOD_MAX };
     return { min: PERIOD_MIN, max: PERIOD_MAX };
@@ -88,8 +94,8 @@ export function ParamsEditor({ config, onChange }: ParamsEditorProps) {
               type="number"
               inputMode="numeric"
               step={1}
-              min={PERIOD_MIN}
-              max={PERIOD_MAX}
+              min={kind === 'macd' ? PERIOD_MIN : min}
+              max={kind === 'macd' ? PERIOD_MAX : max}
               value={drafts[key] ?? ''}
               aria-invalid={error ? true : undefined}
               aria-describedby={error ? `${id}-error` : undefined}

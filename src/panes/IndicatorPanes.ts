@@ -1,6 +1,6 @@
 import { HistogramSeries, LineSeries, LineStyle } from 'lightweight-charts';
-import type { IChartApi, IPaneApi, ISeriesApi, Time } from 'lightweight-charts';
-import type { IndicatorConfig, IndicatorKind, IndicatorSeries } from '@shared/types';
+import type { IChartApi, IPaneApi, ISeriesApi, ISeriesPrimitive, Time } from 'lightweight-charts';
+import type { Bar, IndicatorConfig, IndicatorKind, IndicatorSeries, VpvrParams } from '@shared/types';
 import { INDICATOR_PLACEMENT } from '@shared/types';
 import { withAlpha } from '../chart/theme';
 import type { ChartTheme } from '../chart/theme';
@@ -8,11 +8,16 @@ import { LINE_KEYS } from '../indicators/types';
 import { MACD_SIGNAL_COLOR } from './config';
 import { toHistogramData, toLineData, toVolumeData } from './convert';
 import type { ComputedIndicator } from './computeCache';
+import { VpvrPrimitive } from './vpvr/VpvrPrimitive';
+import type { VpvrStyle } from './vpvr/VpvrPrimitive';
 
 /** What the layer needs from the chart that owns it. `api` is null once that chart is disposed. */
 export interface ChartHost {
   readonly api: IChartApi | null;
   readonly colors: Pick<ChartTheme, 'up' | 'down' | 'text'>;
+  /** Drawings on the price series (the volume profile). The host keeps them across chart type changes. */
+  attachPricePrimitive?(primitive: ISeriesPrimitive<Time>): void;
+  detachPricePrimitive?(primitive: ISeriesPrimitive<Time>): void;
 }
 
 /** Top offset in px of each separate indicator's pane, relative to the chart container, by indicator id. */
@@ -38,6 +43,10 @@ interface Entry {
   lines: Map<string, LineHandle>;
   /** Pane of a `separate` indicator. Held by reference, never by index: indices shift when a pane below is removed. */
   pane: IPaneApi<Time> | null;
+  /** The drawing of a VPVR, which has no series. */
+  primitive: VpvrPrimitive | null;
+  /** The bars last given to `primitive`. */
+  bars: readonly Bar[] | undefined;
   /** The series last written to the lines; `undefined` = never written. Identity is the "did it change" test. */
   written: IndicatorSeries | null | undefined;
   color: string | undefined;
@@ -82,6 +91,7 @@ export class IndicatorPanes {
     for (const [id, entry] of this.entries) {
       if (wanted.has(id)) continue;
       for (const line of entry.lines.values()) chart.removeSeries(line.api);
+      if (entry.primitive) this.host.detachPricePrimitive?.(entry.primitive);
       this.entries.delete(id);
     }
 
@@ -120,6 +130,8 @@ export class IndicatorPanes {
       kind: config.kind,
       lines: new Map(),
       pane: null,
+      primitive: null,
+      bars: undefined,
       written: undefined,
       color: undefined,
       visible: undefined,
@@ -131,6 +143,10 @@ export class IndicatorPanes {
     };
     for (const key of LINE_KEYS[config.kind]) {
       addLine(key, HISTOGRAM_KEYS.has(key) ? 'histogram' : 'line');
+    }
+    if (config.kind === 'vpvr') {
+      entry.primitive = new VpvrPrimitive(this.vpvrStyle(config));
+      this.host.attachPricePrimitive?.(entry.primitive);
     }
     if (config.kind === 'rsi') {
       const rsi = entry.lines.get('value');
@@ -195,8 +211,29 @@ export class IndicatorPanes {
 
   // ───────────── update ─────────────
 
+  private vpvrStyle(config: IndicatorConfig): VpvrStyle {
+    const p = config.params as VpvrParams;
+    return {
+      rows: p.rows,
+      widthFrac: p.widthPct / 100,
+      valueAreaFrac: p.valueAreaPct / 100,
+      upColor: config.color,
+      downColor: this.host.colors.down,
+      pocColor: this.host.colors.text,
+      visible: config.visible,
+    };
+  }
+
   private update(entry: Entry, item: ComputedIndicator): void {
     const { config, series, bars } = item;
+
+    if (entry.primitive) {
+      // Bars, params (they come with a new series), colour or visibility changed.
+      if (entry.written !== series || entry.bars !== bars || entry.color !== config.color || entry.visible !== config.visible) {
+        entry.primitive.update(series ? (bars ?? []) : [], this.vpvrStyle(config));
+      }
+      entry.bars = bars;
+    }
 
     if (entry.color !== config.color || entry.visible !== config.visible) {
       for (const [key, line] of entry.lines) {

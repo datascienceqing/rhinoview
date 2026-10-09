@@ -10,7 +10,7 @@ import {
 
 describe('validateParams', () => {
   it('accepts the defaults for every kind', () => {
-    for (const kind of ['sma', 'ema', 'rsi', 'macd', 'volume'] as const) {
+    for (const kind of ['sma', 'ema', 'rsi', 'macd', 'volume', 'vpvr'] as const) {
       const p = defaultParams(kind) as unknown as Record<string, number>;
       expect(validateParams(kind, p)).toEqual({});
     }
@@ -124,5 +124,34 @@ describe('volume config', () => {
   it('sanitizes stored params to `{ period }`: volume has no price source', () => {
     expect(sanitizeParams('volume', { period: 30, source: 'low' })).toEqual({ period: 30 });
     expect(sanitizeParams('volume', { period: 0 })).toBeNull();
+  });
+});
+
+describe('vpvr config', () => {
+  it('always starts blue, even when another indicator has blue', () => {
+    const volume = createIndicator('volume', []);
+    expect(volume.color).toBe('#2962ff');
+    expect(createIndicator('vpvr', [volume]).color).toBe('#2962ff');
+  });
+
+  it('defaults to 24 rows, 30% width and a 70% value area, like Vela', () => {
+    const v = createIndicator('vpvr', []);
+    expect(v.params).toEqual({ rows: 24, widthPct: 30, valueAreaPct: 70 });
+    expect(indicatorTitle(v)).toBe('VRVP (24 rows)');
+  });
+
+  it('checks each field against its own bounds, not the period bounds', () => {
+    expect(validateParams('vpvr', { rows: 400, widthPct: 90, valueAreaPct: 0 })).toEqual({});
+    expect(validateParams('vpvr', { rows: 2, widthPct: 5, valueAreaPct: 100 })).toEqual({});
+    const bad = validateParams('vpvr', { rows: 1, widthPct: 91, valueAreaPct: 101 });
+    expect(bad.rows).toMatch(/between 2 and 400/);
+    expect(bad.widthPct).toMatch(/between 5 and 90/);
+    expect(bad.valueAreaPct).toMatch(/between 0 and 100/);
+  });
+
+  it('sanitizes stored params, and rejects out-of-bounds ones', () => {
+    expect(sanitizeParams('vpvr', { rows: 30, widthPct: 25, valueAreaPct: 68, extra: 1 })).toEqual({ rows: 30, widthPct: 25, valueAreaPct: 68 });
+    expect(sanitizeParams('vpvr', { rows: 30, widthPct: 95, valueAreaPct: 68 })).toBeNull();
+    expect(sanitizeParams('vpvr', { period: 20 })).toBeNull();
   });
 });
