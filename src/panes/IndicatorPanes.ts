@@ -1,5 +1,5 @@
 import { HistogramSeries, LineSeries, LineStyle } from 'lightweight-charts';
-import type { IChartApi, IPaneApi, ISeriesApi, ISeriesPrimitive, Time } from 'lightweight-charts';
+import type { IChartApi, IPaneApi, IPriceLine, ISeriesApi, ISeriesPrimitive, Time } from 'lightweight-charts';
 import type { Bar, IndicatorConfig, IndicatorKind, IndicatorSeries, VpvrParams } from '@shared/types';
 import { INDICATOR_PLACEMENT } from '@shared/types';
 import { withAlpha } from '../chart/theme';
@@ -47,6 +47,8 @@ interface Entry {
   primitive: VpvrPrimitive | null;
   /** The bars last given to `primitive`. */
   bars: readonly Bar[] | undefined;
+  /** RSI's 30/70 guides, kept so a theme change can recolour them. */
+  priceLines: IPriceLine[];
   /** The series last written to the lines; `undefined` = never written. Identity is the "did it change" test. */
   written: IndicatorSeries | null | undefined;
   color: string | undefined;
@@ -69,6 +71,8 @@ interface Entry {
  */
 export class IndicatorPanes {
   private readonly entries = new Map<string, Entry>();
+  /** The items of the last sync, for a theme refresh. */
+  private items: readonly ComputedIndicator[] = [];
   private observer: ResizeObserver | null = null;
   private frame: number | null = null;
   private disposed = false;
@@ -86,6 +90,7 @@ export class IndicatorPanes {
   sync(items: readonly ComputedIndicator[]): void {
     const chart = this.chart();
     if (!chart) return;
+    this.items = items;
 
     const wanted = new Set(items.map((i) => i.config.id));
     for (const [id, entry] of this.entries) {
@@ -106,6 +111,28 @@ export class IndicatorPanes {
     }
 
     this.measureSoon();
+  }
+
+  /**
+   * The host's theme colours changed: write every indicator again with them. Histogram
+   * bars carry their colour in the data, and the drawings carry it in their style, so a
+   * changed option alone is not enough.
+   */
+  refreshTheme(): void {
+    if (!this.chart()) return;
+    for (const entry of this.entries.values()) {
+      entry.written = undefined;
+      entry.color = undefined;
+      for (const line of entry.priceLines) line.applyOptions({ color: this.guideColor() });
+    }
+    for (const item of this.items) {
+      const entry = this.entries.get(item.config.id);
+      if (entry) this.update(entry, item);
+    }
+  }
+
+  private guideColor(): string {
+    return withAlpha(this.host.colors.text, 0.5);
   }
 
   dispose(): void {
@@ -132,6 +159,7 @@ export class IndicatorPanes {
       pane: null,
       primitive: null,
       bars: undefined,
+      priceLines: [],
       written: undefined,
       color: undefined,
       visible: undefined,
@@ -152,14 +180,15 @@ export class IndicatorPanes {
       const rsi = entry.lines.get('value');
       if (rsi?.type === 'line') {
         for (const price of RSI_LEVELS) {
-          rsi.api.createPriceLine({
+          const line = rsi.api.createPriceLine({
             price,
-            color: withAlpha(this.host.colors.text, 0.5),
+            color: this.guideColor(),
             lineWidth: 1,
             lineStyle: LineStyle.Dashed,
             axisLabelVisible: true,
             title: '',
           });
+          entry.priceLines.push(line);
         }
       }
     }

@@ -4,6 +4,8 @@ import type { Bar } from '@shared/types';
 import { charts, fakeModule, lastChart, resetFakeCharts } from './testing/fakeLightweightCharts';
 import { ChartView } from './ChartView';
 import { PriceChart } from './PriceChart';
+import { ThemeProvider } from '../theme';
+import { ThemeToggle } from '../ui/ThemeToggle';
 
 vi.mock('lightweight-charts', async () => (await import('./testing/fakeLightweightCharts')).fakeModule);
 
@@ -197,5 +199,54 @@ describe('ChartView vertical pan and the Auto button', () => {
     verticalDrag();
     rerender(<ChartView bars={[bar(T0 - DAY), ...daily]} chartType="candlestick" intraday={false} />);
     expect(priceScale()?.options().autoScale).toBe(false);
+  });
+});
+
+describe('theme change', () => {
+  // jsdom does not inherit CSS variables, so the light values go on the container itself.
+  const sheet = document.createElement('style');
+  sheet.textContent =
+    "[data-theme='light'] [data-testid='chart-container'] { --bg: #ffffff; --text: #131722; --border: #e0e3eb; --up: #00796b; --down: #cc2936; --accent: #2962ff; }";
+  beforeAll(() => document.head.appendChild(sheet));
+  afterAll(() => sheet.remove());
+  afterEach(() => {
+    delete document.documentElement.dataset.theme;
+  });
+
+  const memory = () => {
+    const data: Record<string, string> = {};
+    return () => ({ getItem: (k: string) => data[k] ?? null, setItem: (k: string, v: string) => void (data[k] = v) });
+  };
+
+  it('repaints the chart and the price series in the new colours', () => {
+    render(
+      <ThemeProvider storage={memory()}>
+        <ThemeToggle />
+        <ChartView bars={mk(1, 2)} chartType="candlestick" intraday={false} />
+      </ThemeProvider>,
+    );
+    const chart = lastChart();
+    const candles = chart.liveSeries[0];
+    act(() => screen.getByRole('button', { name: 'Switch to light theme' }).click());
+    expect(chart.applyOptions).toHaveBeenLastCalledWith(
+      expect.objectContaining({ layout: expect.objectContaining({ background: expect.objectContaining({ color: '#ffffff' }), textColor: '#131722' }) }),
+    );
+    expect(candles?.applyOptions).toHaveBeenLastCalledWith(expect.objectContaining({ upColor: '#00796b', downColor: '#cc2936' }));
+  });
+
+  it('does not touch the chart when the colours did not change', () => {
+    const { rerender } = render(
+      <ThemeProvider storage={memory()}>
+        <ChartView bars={mk(1, 2)} chartType="candlestick" intraday={false} />
+      </ThemeProvider>,
+    );
+    const chart = lastChart();
+    const calls = chart.applyOptions.mock.calls.length;
+    rerender(
+      <ThemeProvider storage={memory()}>
+        <ChartView bars={mk(1, 2)} chartType="candlestick" intraday={false} />
+      </ThemeProvider>,
+    );
+    expect(chart.applyOptions.mock.calls.length).toBe(calls);
   });
 });

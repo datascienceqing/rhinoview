@@ -8,7 +8,27 @@
   --up: #26a69a;
   --down: #ef5350;
   --accent: #2962ff;
+  --warn: #f5a623;
+  --shadow: rgba(0, 0, 0, 0.4);
   font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+}
+
+/* Light theme (src/theme). The same tokens, so every component follows. The chart canvas
+   reads these through src/chart/theme.ts. --text-dim, --up, --down and --warn are darker
+   than in the dark theme: small text in them keeps at least 4.5:1 contrast on both
+   --bg and --bg-elevated (measured: 4.75 or more). */
+:root[data-theme='light'] {
+  color-scheme: light;
+  --bg: #ffffff;
+  --bg-elevated: #f0f3fa;
+  --border: #e0e3eb;
+  --text: #131722;
+  --text-dim: #5d606b;
+  --up: #00796b;
+  --down: #cc2936;
+  --accent: #2962ff;
+  --warn: #9a5200;
+  --shadow: rgba(19, 23, 34, 0.15);
 }
 
 * {
@@ -132,7 +152,7 @@ button:focus-visible {
   background: var(--bg-elevated);
   border: 1px solid var(--border);
   border-radius: 4px;
-  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.4);
+  box-shadow: 0 8px 24px var(--shadow);
 }
 
 .search-panel ul {
@@ -233,9 +253,9 @@ button:focus-visible {
 .badge-delayed {
   align-self: center;
   padding: 2px 6px;
-  border: 1px solid #f5a623;
+  border: 1px solid var(--warn);
   border-radius: 3px;
-  color: #f5a623;
+  color: var(--warn);
   font-size: 11px;
   font-weight: 700;
   letter-spacing: 0.06em;
@@ -489,6 +509,13 @@ button:focus-visible {
   background: transparent;
   color: var(--text-dim);
   cursor: pointer;
+}
+
+.theme-toggle {
+  display: inline-flex;
+  align-items: center;
+  align-self: stretch;
+  color: var(--text);
 }
 
 .toolbar-toggle.active {

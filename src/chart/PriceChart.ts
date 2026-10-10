@@ -65,7 +65,7 @@ export class PriceChart {
   /** Drawings on the price series (the volume profile). Attached again to each new series. */
   private readonly pricePrimitives = new Set<ISeriesPrimitive<Time>>();
   private intraday = false;
-  private readonly theme: ChartTheme;
+  private theme: ChartTheme;
 
   private readonly onCrosshair = (param: MouseEventParams<Time>) => {
     const t = param.time;
@@ -77,7 +77,7 @@ export class PriceChart {
   };
 
   constructor(
-    container: HTMLElement,
+    private readonly container: HTMLElement,
     private readonly handlers: PriceChartHandlers = {},
   ) {
     this.theme = readTheme(container);
@@ -85,17 +85,15 @@ export class PriceChart {
     this.chart = createChart(container, {
       // Resizes with its container via the library's own ResizeObserver.
       autoSize: true,
+      ...this.chartColors(),
       layout: {
-        background: { type: ColorType.Solid, color: t.background },
-        textColor: t.text,
+        ...this.chartColors().layout,
         // The on-chart logo is OFF, which the library permits only when the attribution
         // requirement is met another way. It is: see NOTICE at the repo root, and the
         // user-visible credit link rendered in the app footer. Do not remove either of
         // those — together they are what makes turning this off licence-compliant.
         attributionLogo: false,
       },
-      grid: { vertLines: { color: t.grid }, horzLines: { color: t.grid } },
-      rightPriceScale: { borderColor: t.border },
       timeScale: {
         borderColor: t.border,
         rightOffset: RIGHT_PADDING_BARS,
@@ -140,6 +138,23 @@ export class PriceChart {
   detachPricePrimitive(primitive: ISeriesPrimitive<Time>): void {
     if (!this.pricePrimitives.delete(primitive) || !this.chart) return;
     this.series?.api.detachPrimitive(primitive);
+  }
+
+  /**
+   * Read the theme colours again (the app theme changed) and apply them to the chart and
+   * the price series. Returns false, and does nothing, when the colours did not change.
+   * Layers that draw on this chart (indicator panes) must refresh after it.
+   */
+  refreshTheme(): boolean {
+    const chart = this.chart;
+    if (!chart) return false;
+    const next = readTheme(this.container);
+    if (JSON.stringify(next) === JSON.stringify(this.theme)) return false;
+    this.theme = next;
+    chart.applyOptions(this.chartColors());
+    if (this.series) this.series.api.applyOptions(this.seriesColors(this.series.type));
+    this.writeMarkers(); // the default marker colour is the accent
+    return true;
   }
 
   /** Resolved theme colours, for layers that draw on this chart (indicator panes). */
@@ -276,33 +291,45 @@ export class PriceChart {
     );
   }
 
-  private addSeriesFor(chart: IChartApi, type: ChartType): ActiveSeries {
+  /** The theme-dependent chart options: used at creation and on a theme change. */
+  private chartColors() {
+    const t = this.theme;
+    return {
+      layout: { background: { type: ColorType.Solid, color: t.background }, textColor: t.text },
+      grid: { vertLines: { color: t.grid }, horzLines: { color: t.grid } },
+      rightPriceScale: { borderColor: t.border },
+      timeScale: { borderColor: t.border },
+    } as const;
+  }
+
+  /** The theme-dependent options of the price series of each type. */
+  private seriesColors(type: ChartType) {
     const t = this.theme;
     switch (type) {
       case 'candlestick':
         return {
-          type,
-          api: chart.addSeries(CandlestickSeries, {
-            upColor: t.up,
-            downColor: t.down,
-            borderUpColor: t.up,
-            borderDownColor: t.down,
-            wickUpColor: t.up,
-            wickDownColor: t.down,
-          }),
+          upColor: t.up,
+          downColor: t.down,
+          borderUpColor: t.up,
+          borderDownColor: t.down,
+          wickUpColor: t.up,
+          wickDownColor: t.down,
         };
       case 'line':
-        return { type, api: chart.addSeries(LineSeries, { color: t.accent, lineWidth: 2 }) };
+        return { color: t.accent };
       case 'area':
-        return {
-          type,
-          api: chart.addSeries(AreaSeries, {
-            lineColor: t.accent,
-            lineWidth: 2,
-            topColor: withAlpha(t.accent, 0.4),
-            bottomColor: withAlpha(t.accent, 0),
-          }),
-        };
+        return { lineColor: t.accent, topColor: withAlpha(t.accent, 0.4), bottomColor: withAlpha(t.accent, 0) };
+    }
+  }
+
+  private addSeriesFor(chart: IChartApi, type: ChartType): ActiveSeries {
+    switch (type) {
+      case 'candlestick':
+        return { type, api: chart.addSeries(CandlestickSeries, this.seriesColors(type)) };
+      case 'line':
+        return { type, api: chart.addSeries(LineSeries, { ...this.seriesColors(type), lineWidth: 2 }) };
+      case 'area':
+        return { type, api: chart.addSeries(AreaSeries, { ...this.seriesColors(type), lineWidth: 2 }) };
     }
   }
 }
