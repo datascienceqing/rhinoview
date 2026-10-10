@@ -76,7 +76,14 @@ const entityBase = {
 
 export const FILE_VERSION = 1;
 
-/** The file as stored. Strict: a field we did not write means the file is not ours. */
+/**
+ * The file as stored. Strict: a field we did not write means the file is not ours.
+ *
+ * Indicators are the exception: they are checked one by one in `store.ts`, which drops
+ * an invalid one instead of rejecting the whole file. A file written by a newer branch
+ * can hold an indicator kind this code does not know, and that must not cost the user
+ * every layout and watchlist (invariant 4).
+ */
 export const workspaceFileSchema = z
   .object({
     version: z.literal(FILE_VERSION),
@@ -88,7 +95,7 @@ export const workspaceFileSchema = z
             symbol: z.string(),
             timeframe,
             chartType,
-            indicators: z.array(indicatorConfigSchema),
+            indicators: z.array(z.unknown()),
           })
           .strict(),
       )
