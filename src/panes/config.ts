@@ -3,11 +3,20 @@ import type {
   IndicatorKind,
   IndicatorParams,
   MacdParams,
+  LiquidityParams,
   MovingAverageParams,
   RsiParams,
   VpvrParams,
 } from '@shared/types';
-import { DEFAULT_PARAMS, PERIOD_MAX, PERIOD_MIN, VPVR_BOUNDS } from '../indicators/types';
+import {
+  DEFAULT_PARAMS,
+  LIQUIDITY_BOUNDS,
+  LIQUIDITY_SWEEP_MODES,
+  LIQUIDITY_ZONE_MODES,
+  PERIOD_MAX,
+  PERIOD_MIN,
+  VPVR_BOUNDS,
+} from '../indicators/types';
 
 export const INDICATOR_KINDS: readonly IndicatorKind[] = ['sma', 'ema', 'rsi', 'macd', 'volume', 'vpvr'];
 
@@ -18,6 +27,7 @@ export const KIND_LABEL: Record<IndicatorKind, string> = {
   macd: 'MACD',
   volume: 'Volume',
   vpvr: 'VRVP',
+  liquidity: 'Liquidity',
 };
 
 export const MA_SOURCES = ['open', 'high', 'low', 'close'] as const;
@@ -77,6 +87,12 @@ export const PARAM_FIELDS: Record<IndicatorKind, readonly ParamField[]> = {
     { key: 'widthPct', label: 'Width %', ...VPVR_BOUNDS.widthPct },
     { key: 'valueAreaPct', label: 'Value area %', ...VPVR_BOUNDS.valueAreaPct },
   ],
+  liquidity: [
+    { key: 'lookback', label: 'Pivot lookback', ...LIQUIDITY_BOUNDS.lookback },
+    { key: 'minTouches', label: 'Min touches', ...LIQUIDITY_BOUNDS.minTouches },
+    { key: 'maxAge', label: 'Max age (bars)', ...LIQUIDITY_BOUNDS.maxAge },
+    { key: 'sweepExtend', label: 'Sweep length (bars)', ...LIQUIDITY_BOUNDS.sweepExtend },
+  ],
 };
 
 /** The bounds of a field: its own, or the period bounds. */
@@ -99,6 +115,8 @@ export function defaultParams(kind: IndicatorKind): IndicatorParams {
       return { ...DEFAULT_PARAMS.volume };
     case 'vpvr':
       return { ...DEFAULT_PARAMS.vpvr };
+    case 'liquidity':
+      return { ...DEFAULT_PARAMS.liquidity };
   }
 }
 
@@ -159,6 +177,9 @@ export function isMovingAverageParams(p: IndicatorParams): p is MovingAveragePar
 export function isVpvrParams(p: IndicatorParams): p is VpvrParams {
   return 'rows' in p;
 }
+export function isLiquidityParams(p: IndicatorParams): p is LiquidityParams {
+  return 'lookback' in p;
+}
 
 /** A params object shaped for `kind` built from untrusted input, or null if it is not valid for it. */
 export function sanitizeParams(kind: IndicatorKind, raw: unknown): IndicatorParams | null {
@@ -181,6 +202,19 @@ export function sanitizeParams(kind: IndicatorKind, raw: unknown): IndicatorPara
   if (kind === 'rsi' || kind === 'volume') return { period: nums['period'] ?? 0 };
   if (kind === 'vpvr') {
     return { rows: nums['rows'] ?? 0, widthPct: nums['widthPct'] ?? 0, valueAreaPct: nums['valueAreaPct'] ?? 0 };
+  }
+  if (kind === 'liquidity') {
+    const zoneMode = LIQUIDITY_ZONE_MODES.find((m) => m === rec['zoneMode']);
+    const sweepMode = LIQUIDITY_SWEEP_MODES.find((m) => m === rec['sweepMode']);
+    if (!zoneMode || !sweepMode) return null;
+    return {
+      lookback: nums['lookback'] ?? 0,
+      zoneMode,
+      sweepMode,
+      minTouches: nums['minTouches'] ?? 0,
+      maxAge: nums['maxAge'] ?? 0,
+      sweepExtend: nums['sweepExtend'] ?? 0,
+    };
   }
   const source = rec['source'];
   const valid = MA_SOURCES.find((s) => s === source);
@@ -216,6 +250,8 @@ export function indicatorTitle(config: Pick<IndicatorConfig, 'kind' | 'params'>)
   const name = KIND_LABEL[config.kind];
   if (isMacdParams(p)) return `${name} (${p.fastPeriod}, ${p.slowPeriod}, ${p.signalPeriod})`;
   if (isVpvrParams(p)) return `${name} (${p.rows} rows)`;
+  // D2: "Liquidity" in the menu, "LIQ (10)" as the title.
+  if (isLiquidityParams(p)) return `LIQ (${p.lookback})`;
   if (isMovingAverageParams(p) && p.source && p.source !== 'close') return `${name} (${p.period}, ${p.source})`;
   return `${name} (${(p as RsiParams).period})`;
 }

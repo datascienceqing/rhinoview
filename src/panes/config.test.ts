@@ -1,5 +1,6 @@
 import { PERIOD_MAX, PERIOD_MIN } from '../indicators/types';
 import {
+  KIND_LABEL,
   createIndicator,
   defaultParams,
   indicatorTitle,
@@ -10,7 +11,7 @@ import {
 
 describe('validateParams', () => {
   it('accepts the defaults for every kind', () => {
-    for (const kind of ['sma', 'ema', 'rsi', 'macd', 'volume', 'vpvr'] as const) {
+    for (const kind of ['sma', 'ema', 'rsi', 'macd', 'volume', 'vpvr', 'liquidity'] as const) {
       const p = defaultParams(kind) as unknown as Record<string, number>;
       expect(validateParams(kind, p)).toEqual({});
     }
@@ -155,3 +156,32 @@ describe('vpvr config', () => {
     expect(sanitizeParams('vpvr', { period: 20 })).toBeNull();
   });
 });
+
+describe('liquidity config', () => {
+  it('is named "Liquidity" and titled "LIQ (lookback)" (decision D2)', () => {
+    const l = createIndicator('liquidity', []);
+    expect(KIND_LABEL.liquidity).toBe('Liquidity');
+    expect(l.params).toEqual({ lookback: 10, zoneMode: 'wick', sweepMode: 'wicks', minTouches: 0, maxAge: 300, sweepExtend: 20 });
+    expect(indicatorTitle(l)).toBe('LIQ (10)');
+  });
+
+  it('checks each number field against its own bounds', () => {
+    expect(validateParams('liquidity', { lookback: 2, minTouches: 0, maxAge: 10, sweepExtend: 1 })).toEqual({});
+    expect(validateParams('liquidity', { lookback: 100, minTouches: 100, maxAge: 5000, sweepExtend: 500 })).toEqual({});
+    const bad = validateParams('liquidity', { lookback: 1, minTouches: 101, maxAge: 9, sweepExtend: 0 });
+    expect(bad.lookback).toMatch(/between 2 and 100/);
+    expect(bad.minTouches).toMatch(/between 0 and 100/);
+    expect(bad.maxAge).toMatch(/between 10 and 5000/);
+    expect(bad.sweepExtend).toMatch(/between 1 and 500/);
+  });
+
+  it('sanitizes stored params, keeps the enum fields, and rejects bad ones', () => {
+    const ok = { lookback: 5, zoneMode: 'range', sweepMode: 'both', minTouches: 2, maxAge: 100, sweepExtend: 10 };
+    expect(sanitizeParams('liquidity', { ...ok, extra: 1 })).toEqual(ok);
+    expect(sanitizeParams('liquidity', { ...ok, zoneMode: 'body' })).toBeNull();
+    expect(sanitizeParams('liquidity', { ...ok, sweepMode: undefined })).toBeNull();
+    expect(sanitizeParams('liquidity', { ...ok, lookback: 1 })).toBeNull();
+    expect(sanitizeParams('liquidity', { period: 20 })).toBeNull();
+  });
+});
+

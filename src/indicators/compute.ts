@@ -5,7 +5,7 @@
  * in `math.ts`; this file validates, picks the source series, and shapes the result into
  * the frozen `IndicatorSeries` (one point per bar, same times, `null` through warmup).
  */
-import type { Bar, IndicatorLine, IndicatorSeries, MacdParams, MovingAverageParams, RsiParams, VolumeParams, VpvrParams } from '@shared/types';
+import type { Bar, IndicatorLine, IndicatorSeries, LiquidityParams, MacdParams, MovingAverageParams, RsiParams, VolumeParams, VpvrParams } from '@shared/types';
 import { INDICATOR_PLACEMENT } from '@shared/types';
 import { macd as macdKernel, ema, rsi as rsiKernel, sma } from './math';
 import { assertValidParams } from './params';
@@ -61,6 +61,12 @@ export const computeIndicator: ComputeIndicator = (bars, kind, params): Indicato
       // The MACD line is the earliest-defined of the three; signal/histogram start later.
       warmup: warmupOf(n, macd, signal, histogram),
     };
+  }
+
+  if (kind === 'liquidity') {
+    // Drawn from zones and sweeps (convention 9, `liquidity.ts`); no lines to compute here.
+    const { lookback, zoneMode, sweepMode, minTouches, maxAge, sweepExtend } = params as LiquidityParams;
+    return { kind, placement, params: { lookback, zoneMode, sweepMode, minTouches, maxAge, sweepExtend }, lines: [], warmup: 0 };
   }
 
   if (kind === 'vpvr') {

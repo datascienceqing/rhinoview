@@ -89,7 +89,7 @@ export interface Snapshot {
 
 // ───────────────────────────── Indicators ─────────────────────────────
 
-export type IndicatorKind = 'sma' | 'ema' | 'rsi' | 'macd' | 'volume' | 'vpvr';
+export type IndicatorKind = 'sma' | 'ema' | 'rsi' | 'macd' | 'volume' | 'vpvr' | 'liquidity';
 
 /** Where an indicator draws: on the price pane, or in its own pane below. */
 export type IndicatorPlacement = 'overlay' | 'separate';
@@ -103,6 +103,8 @@ export const INDICATOR_PLACEMENT: Record<IndicatorKind, IndicatorPlacement> = {
   volume: 'overlay',
   // Drawn over the right side of the price pane; never on the price scale.
   vpvr: 'overlay',
+  // Zones and sweeps drawn on the price pane, at price levels.
+  liquidity: 'overlay',
 };
 
 export interface MovingAverageParams {
@@ -131,13 +133,31 @@ export interface VpvrParams {
   valueAreaPct: number;
 }
 
+/** How a liquidity zone takes its height from the pivot bar. */
+export type LiquidityZoneMode = 'wick' | 'range';
+/** Which sweep events the liquidity indicator marks. */
+export type LiquiditySweepMode = 'wicks' | 'retests' | 'both';
+
+/**
+ * Liquidity zones at swing pivots, and sweeps of those zones (docs/LIQUIDITY_PLAN.md §4).
+ * `lookback` is the pivot lookback L; `maxAge` and `sweepExtend` are counts of bars.
+ */
+export interface LiquidityParams {
+  lookback: number;
+  zoneMode: LiquidityZoneMode;
+  sweepMode: LiquiditySweepMode;
+  minTouches: number;
+  maxAge: number;
+  sweepExtend: number;
+}
+
 export interface MacdParams {
   fastPeriod: number;
   slowPeriod: number;
   signalPeriod: number;
 }
 
-export type IndicatorParams = MovingAverageParams | RsiParams | MacdParams | VolumeParams | VpvrParams;
+export type IndicatorParams = MovingAverageParams | RsiParams | MacdParams | VolumeParams | VpvrParams | LiquidityParams;
 
 /**
  * One point of a computed indicator line.
@@ -152,7 +172,7 @@ export interface IndicatorPoint {
   value: number | null;
 }
 
-/** A single named line. MACD yields three of these; Volume two ('volume', 'ma'); SMA/EMA/RSI one; VPVR none. */
+/** A single named line. MACD yields three of these; Volume two ('volume', 'ma'); SMA/EMA/RSI one; VPVR and Liquidity none. */
 export interface IndicatorLine {
   /** Stable key within the indicator, e.g. 'macd' | 'signal' | 'histogram' | 'value'. */
   key: string;

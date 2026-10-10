@@ -404,6 +404,18 @@ describe('layout contents (invariant 10)', () => {
     expect(l.indicators).toEqual([sma]);
   });
 
+  it('stores a liquidity indicator with its enum fields', async () => {
+    const liq: IndicatorConfig = {
+      id: 'q1',
+      kind: 'liquidity',
+      params: { lookback: 5, zoneMode: 'range', sweepMode: 'both', minTouches: 1, maxAge: 200, sweepExtend: 10 },
+      color: '#ff9800',
+      visible: true,
+    };
+    const l = await (await open()).createLayout({ name: 'Q', indicators: [liq] });
+    expect(l.indicators).toEqual([liq]);
+  });
+
   it('stores a vpvr indicator', async () => {
     const vpvr: IndicatorConfig = { id: 'p1', kind: 'vpvr', params: { rows: 24, widthPct: 30, valueAreaPct: 70 }, color: '#2962ff', visible: true };
     const l = await (await open()).createLayout({ name: 'P', indicators: [vpvr] });
@@ -426,6 +438,9 @@ describe('layout contents (invariant 10)', () => {
     ['a bad source', { ...sma, params: { period: 5, source: 'median' as never } }],
     ['volume with period 0', { ...sma, kind: 'volume', params: { period: 0 } }],
     ['vpvr with 1 row', { ...sma, kind: 'vpvr', params: { rows: 1, widthPct: 30, valueAreaPct: 70 } }],
+    ['liquidity with lookback 1', { ...sma, kind: 'liquidity', params: { lookback: 1, zoneMode: 'wick', sweepMode: 'wicks', minTouches: 0, maxAge: 300, sweepExtend: 20 } }],
+    ['liquidity with a bad zone mode', { ...sma, kind: 'liquidity', params: { lookback: 10, zoneMode: 'body', sweepMode: 'wicks', minTouches: 0, maxAge: 300, sweepExtend: 20 } as never }],
+    ['liquidity with a missing sweep mode', { ...sma, kind: 'liquidity', params: { lookback: 10, zoneMode: 'wick', minTouches: 0, maxAge: 300, sweepExtend: 20 } as never }],
     ['vpvr with a period instead of rows', { ...sma, kind: 'vpvr', params: { period: 20 } as never }],
     ['macd with fast >= slow', { ...sma, kind: 'macd', params: { fastPeriod: 26, slowPeriod: 12, signalPeriod: 9 } }],
     ['macd with a missing period', { ...sma, kind: 'macd', params: { fastPeriod: 12, slowPeriod: 26 } as never }],
