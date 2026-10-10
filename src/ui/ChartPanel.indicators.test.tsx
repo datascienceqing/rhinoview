@@ -58,7 +58,7 @@ async function openMenu(user: ReturnType<typeof userEvent.setup>) {
   const button = screen.getByRole('button', { name: /^Indicators/ });
   if (button.getAttribute('aria-expanded') !== 'true') await user.click(button);
 }
-async function add(user: ReturnType<typeof userEvent.setup>, kind: 'SMA' | 'EMA' | 'RSI' | 'MACD') {
+async function add(user: ReturnType<typeof userEvent.setup>, kind: 'SMA' | 'EMA' | 'RSI' | 'MACD' | 'Liquidity') {
   await openMenu(user);
   await user.click(screen.getByRole('button', { name: `Add ${kind}` }));
 }
@@ -201,6 +201,19 @@ describe('parameter editor', () => {
     expect(screen.queryByLabelText('Source')).toBeNull();
     await add(user, 'EMA');
     expect(screen.getAllByLabelText('Source')).toHaveLength(1);
+  });
+
+  it('adds Liquidity from the menu as a drawing on the price pane, with its Zone and Sweeps selects', async () => {
+    const user = userEvent.setup();
+    await renderPanel();
+    await add(user, 'Liquidity');
+    expect(screen.getByRole('button', { name: 'Remove LIQ (10)' })).toBeInTheDocument();
+    expect(lastChart().paneList).toHaveLength(1);
+    expect(lastChart().paneContents[0]?.[0]?.primitives).toHaveLength(1);
+    fireEvent.change(screen.getByLabelText('Zone'), { target: { value: 'range' } });
+    fireEvent.change(screen.getByLabelText('Pivot lookback', { selector: 'input[type="number"]' }), { target: { value: '5' } });
+    expect(screen.getByRole('button', { name: 'Remove LIQ (5)' })).toBeInTheDocument();
+    expect((screen.getByLabelText('Zone') as HTMLSelectElement).value).toBe('range');
   });
 
   it('keeps the MACD sliders inside the valid ordering so they cannot produce fast >= slow', async () => {

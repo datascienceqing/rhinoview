@@ -1,5 +1,15 @@
-import type { IndicatorKind, IndicatorParams, MacdParams, MovingAverageParams, RsiParams, VpvrParams } from '@shared/types';
-import { InvalidIndicatorParamsError, LINE_KEYS, PERIOD_MAX, PERIOD_MIN, VPVR_BOUNDS } from './types';
+import type { IndicatorKind, IndicatorParams, LiquidityParams, MacdParams, MovingAverageParams, RsiParams, VpvrParams } from '@shared/types';
+import {
+  InvalidIndicatorParamsError,
+  LINE_KEYS,
+  LIQUIDITY_BOUNDS,
+  LIQUIDITY_SWEEP_MODES,
+  LIQUIDITY_ZONE_MODES,
+  PERIOD_MAX,
+  PERIOD_MIN,
+  VPVR_BOUNDS,
+} from './types';
+import type { LiquidityNumericKey } from './types';
 
 const SOURCES: readonly string[] = ['open', 'high', 'low', 'close'];
 
@@ -30,6 +40,17 @@ export function checkIndicatorParams(kind: IndicatorKind, params: IndicatorParam
       const err = periodError(key, p[key], min, max);
       if (err) return err;
     }
+    return null;
+  }
+  if (kind === 'liquidity') {
+    const p = params as Partial<LiquidityParams>;
+    for (const key of Object.keys(LIQUIDITY_BOUNDS) as LiquidityNumericKey[]) {
+      const { min, max } = LIQUIDITY_BOUNDS[key];
+      const err = periodError(key, p[key], min, max);
+      if (err) return err;
+    }
+    if (!LIQUIDITY_ZONE_MODES.some((m) => m === p.zoneMode)) return `zoneMode must be one of ${LIQUIDITY_ZONE_MODES.join(', ')}`;
+    if (!LIQUIDITY_SWEEP_MODES.some((m) => m === p.sweepMode)) return `sweepMode must be one of ${LIQUIDITY_SWEEP_MODES.join(', ')}`;
     return null;
   }
   if (kind === 'macd') {

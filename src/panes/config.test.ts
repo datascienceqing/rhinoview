@@ -1,5 +1,8 @@
-import { PERIOD_MAX, PERIOD_MIN } from '../indicators/types';
+import { LIQUIDITY_SWEEP_MODES, LIQUIDITY_ZONE_MODES, PERIOD_MAX, PERIOD_MIN } from '../indicators/types';
 import {
+  KIND_LABEL,
+  PARAM_CHOICES,
+  choiceValues,
   createIndicator,
   defaultParams,
   indicatorTitle,
@@ -10,7 +13,7 @@ import {
 
 describe('validateParams', () => {
   it('accepts the defaults for every kind', () => {
-    for (const kind of ['sma', 'ema', 'rsi', 'macd', 'volume', 'vpvr'] as const) {
+    for (const kind of ['sma', 'ema', 'rsi', 'macd', 'volume', 'vpvr', 'liquidity'] as const) {
       const p = defaultParams(kind) as unknown as Record<string, number>;
       expect(validateParams(kind, p)).toEqual({});
     }
@@ -155,3 +158,59 @@ describe('vpvr config', () => {
     expect(sanitizeParams('vpvr', { period: 20 })).toBeNull();
   });
 });
+
+describe('liquidity config', () => {
+  it('is named "Liquidity" and titled "LIQ (lookback)" (decision D2)', () => {
+    const l = createIndicator('liquidity', []);
+    expect(KIND_LABEL.liquidity).toBe('Liquidity');
+    expect(l.params).toEqual({ lookback: 10, zoneMode: 'wick', sweepMode: 'wicks', minTouches: 0, maxAge: 300, sweepExtend: 20 });
+    expect(indicatorTitle(l)).toBe('LIQ (10)');
+  });
+
+  it('checks each number field against its own bounds', () => {
+    expect(validateParams('liquidity', { lookback: 2, minTouches: 0, maxAge: 10, sweepExtend: 1 })).toEqual({});
+    expect(validateParams('liquidity', { lookback: 100, minTouches: 100, maxAge: 5000, sweepExtend: 500 })).toEqual({});
+    const bad = validateParams('liquidity', { lookback: 1, minTouches: 101, maxAge: 9, sweepExtend: 0 });
+    expect(bad.lookback).toMatch(/between 2 and 100/);
+    expect(bad.minTouches).toMatch(/between 0 and 100/);
+    expect(bad.maxAge).toMatch(/between 10 and 5000/);
+    expect(bad.sweepExtend).toMatch(/between 1 and 500/);
+  });
+
+  it('sanitizes stored params, keeps the enum fields, and rejects bad ones', () => {
+    const ok = { lookback: 5, zoneMode: 'range', sweepMode: 'both', minTouches: 2, maxAge: 100, sweepExtend: 10 };
+    expect(sanitizeParams('liquidity', { ...ok, extra: 1 })).toEqual(ok);
+    expect(sanitizeParams('liquidity', { ...ok, zoneMode: 'body' })).toBeNull();
+    expect(sanitizeParams('liquidity', { ...ok, sweepMode: undefined })).toBeNull();
+    expect(sanitizeParams('liquidity', { ...ok, lookback: 1 })).toBeNull();
+    expect(sanitizeParams('liquidity', { period: 20 })).toBeNull();
+  });
+});
+
+describe('PARAM_CHOICES', () => {
+  const values = (kind: 'liquidity' | 'sma', key: string) => PARAM_CHOICES[kind].find((c) => c.key === key)?.options.map((o) => o.value);
+
+  it('offers exactly the enum values the param check accepts', () => {
+    expect(values('liquidity', 'zoneMode')).toEqual([...LIQUIDITY_ZONE_MODES]);
+    expect(values('liquidity', 'sweepMode')).toEqual([...LIQUIDITY_SWEEP_MODES]);
+    expect(values('sma', 'source')).toEqual(['open', 'high', 'low', 'close']);
+  });
+
+  it('holds the MA source for SMA and EMA only', () => {
+    expect(PARAM_CHOICES.sma.map((c) => c.key)).toEqual(['source']);
+    expect(PARAM_CHOICES.ema.map((c) => c.key)).toEqual(['source']);
+    for (const kind of ['rsi', 'macd', 'volume', 'vpvr'] as const) expect(PARAM_CHOICES[kind]).toEqual([]);
+  });
+
+  it('an optional choice falls back; a required one makes the params invalid', () => {
+    expect(choiceValues('sma', { source: 'median' })).toEqual({ source: 'close' });
+    expect(choiceValues('sma', {})).toEqual({ source: 'close' });
+    expect(choiceValues('liquidity', { zoneMode: 'range', sweepMode: 'both' })).toEqual({ zoneMode: 'range', sweepMode: 'both' });
+    expect(choiceValues('liquidity', { zoneMode: 'range' })).toBeNull();
+  });
+
+  it('sanitize still turns a bad MA source into close', () => {
+    expect(sanitizeParams('ema', { period: 9, source: 'median' })).toEqual({ period: 9, source: 'close' });
+  });
+});
+

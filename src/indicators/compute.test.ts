@@ -419,7 +419,7 @@ describe('metadata', () => {
     expect(computeIndicator(bars, 'macd', DEFAULT_PARAMS.macd).params).toEqual(DEFAULT_PARAMS.macd);
   });
   it('every default parameter set is valid', () => {
-    for (const kind of ['sma', 'ema', 'rsi', 'macd', 'volume', 'vpvr'] as const) {
+    for (const kind of ['sma', 'ema', 'rsi', 'macd', 'volume', 'vpvr', 'liquidity'] as const) {
       expect(checkIndicatorParams(kind, DEFAULT_PARAMS[kind])).toBeNull();
     }
   });
@@ -542,3 +542,51 @@ describe('vpvr', () => {
     expect(checkIndicatorParams('vpvr', { rows: 400, widthPct: 90, valueAreaPct: 100 })).toBeNull();
   });
 });
+
+describe('liquidity params', () => {
+  const ok = DEFAULT_PARAMS.liquidity;
+
+  it('has no lines: zones and sweeps are drawings (convention 9)', () => {
+    const s = computeIndicator(makeBars(walk(30)), 'liquidity', ok);
+    expect(s).toEqual({ kind: 'liquidity', placement: 'overlay', params: ok, lines: [], warmup: 0 });
+  });
+
+  it('defaults to lookback 10, wick zones, wick sweeps, 0 touches, age 300, sweep length 20', () => {
+    expect(ok).toEqual({ lookback: 10, zoneMode: 'wick', sweepMode: 'wicks', minTouches: 0, maxAge: 300, sweepExtend: 20 });
+  });
+
+  it('accepts the bounds themselves and every enum value', () => {
+    expect(checkIndicatorParams('liquidity', { ...ok, lookback: 2, minTouches: 0, maxAge: 10, sweepExtend: 1 })).toBeNull();
+    expect(checkIndicatorParams('liquidity', { ...ok, lookback: 100, minTouches: 100, maxAge: 5000, sweepExtend: 500 })).toBeNull();
+    for (const zoneMode of ['wick', 'range'] as const) {
+      for (const sweepMode of ['wicks', 'retests', 'both'] as const) {
+        expect(checkIndicatorParams('liquidity', { ...ok, zoneMode, sweepMode })).toBeNull();
+      }
+    }
+  });
+
+  it.each([
+    [{ lookback: 1 }, /lookback/],
+    [{ lookback: 101 }, /lookback/],
+    [{ lookback: 10.5 }, /lookback/],
+    [{ minTouches: -1 }, /minTouches/],
+    [{ minTouches: 101 }, /minTouches/],
+    [{ maxAge: 9 }, /maxAge/],
+    [{ maxAge: 5001 }, /maxAge/],
+    [{ sweepExtend: 0 }, /sweepExtend/],
+    [{ sweepExtend: 501 }, /sweepExtend/],
+    [{ zoneMode: 'body' }, /zoneMode/],
+    [{ sweepMode: 'all' }, /sweepMode/],
+    [{ zoneMode: undefined }, /zoneMode/],
+    [{ sweepMode: undefined }, /sweepMode/],
+  ])('rejects %j', (patch, message) => {
+    const params = { ...ok, ...patch } as never;
+    expect(checkIndicatorParams('liquidity', params)).toMatch(message);
+    expect(() => computeIndicator(makeBars(walk(5)), 'liquidity', params)).toThrow(InvalidIndicatorParamsError);
+  });
+
+  it('rejects params of another kind', () => {
+    expect(checkIndicatorParams('liquidity', { period: 20 } as never)).toMatch(/lookback/);
+  });
+});
+

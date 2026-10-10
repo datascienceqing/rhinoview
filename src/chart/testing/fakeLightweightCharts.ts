@@ -216,6 +216,11 @@ export class FakeChart {
       this.assertLive();
       this.fitContentCalls++;
     },
+    /** A fixed linear scale for tests: x = 100 + 8 * logical (bar spacing 8 px). */
+    logicalToCoordinate: (logical: number) => {
+      this.assertLive();
+      return 100 + 8 * logical;
+    },
   });
 
   remove = (): void => {

@@ -2,10 +2,10 @@ import { useState } from 'react';
 import type { IndicatorConfig, IndicatorParams } from '@shared/types';
 import { PERIOD_MAX, PERIOD_MIN } from '../indicators/types';
 import {
-  MA_SOURCES,
+  PARAM_CHOICES,
   PARAM_FIELDS,
+  choiceValues,
   fieldBounds,
-  isMovingAverageParams,
   numericParams,
   parseWholeNumber,
   sanitizeParams,
@@ -48,16 +48,21 @@ export function ParamsEditor({ config, onChange }: ParamsEditorProps) {
     Object.fromEntries(Object.entries(numericParams(params)).map(([k, v]) => [k, String(v)])),
   );
   const { errors } = draftErrors(kind, drafts);
-  // RSI's params are `{ period }` too, so the shape cannot tell an MA from an RSI; the kind can.
-  const hasSource = (kind === 'sma' || kind === 'ema') && isMovingAverageParams(params);
+  // Select fields come from the kind, not the params shape: RSI's `{ period }` looks like an MA's.
+  const choices = choiceValues(kind, params as unknown as Record<string, unknown>) ?? {};
 
   function edit(key: string, text: string) {
     const next = { ...drafts, [key]: text };
     setDrafts(next);
     const { values } = draftErrors(kind, next);
     if (!values) return;
-    const source = hasSource ? params.source : undefined;
-    const valid = sanitizeParams(kind, { ...values, source });
+    const valid = sanitizeParams(kind, { ...values, ...choices });
+    if (valid) onChange(valid);
+  }
+
+  /** A select change applies at once, with the last valid numbers. */
+  function choose(key: string, value: string) {
+    const valid = sanitizeParams(kind, { ...numericParams(params), ...choices, [key]: value });
     if (valid) onChange(valid);
   }
 
@@ -118,25 +123,21 @@ export function ParamsEditor({ config, onChange }: ParamsEditorProps) {
           </div>
         );
       })}
-      {hasSource && (
-        <div className="param-field">
-          <label htmlFor={`${config.id}-source`}>Source</label>
-          <select
-            id={`${config.id}-source`}
-            value={params.source ?? 'close'}
-            onChange={(e) => {
-              const source = MA_SOURCES.find((s) => s === e.target.value);
-              if (source) onChange({ ...params, source });
-            }}
-          >
-            {MA_SOURCES.map((s) => (
-              <option key={s} value={s}>
-                {s}
-              </option>
-            ))}
-          </select>
-        </div>
-      )}
+      {PARAM_CHOICES[kind].map(({ key, label, options }) => {
+        const id = `${config.id}-${key}`;
+        return (
+          <div className="param-field" key={key}>
+            <label htmlFor={id}>{label}</label>
+            <select id={id} value={choices[key] ?? ''} onChange={(e) => choose(key, e.target.value)}>
+              {options.map((o) => (
+                <option key={o.value} value={o.value}>
+                  {o.label}
+                </option>
+              ))}
+            </select>
+          </div>
+        );
+      })}
     </div>
   );
 }

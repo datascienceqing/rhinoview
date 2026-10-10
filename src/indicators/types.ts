@@ -15,6 +15,9 @@ import type {
   IndicatorKind,
   IndicatorParams,
   IndicatorSeries,
+  LiquidityParams,
+  LiquiditySweepMode,
+  LiquidityZoneMode,
   MacdParams,
   MovingAverageParams,
   RsiParams,
@@ -44,6 +47,7 @@ export const DEFAULT_PARAMS: {
   macd: MacdParams;
   volume: VolumeParams;
   vpvr: VpvrParams;
+  liquidity: LiquidityParams;
 } = {
   sma: { period: 20, source: 'close' },
   ema: { period: 20, source: 'close' },
@@ -51,7 +55,19 @@ export const DEFAULT_PARAMS: {
   macd: { fastPeriod: 12, slowPeriod: 26, signalPeriod: 9 },
   volume: { period: 20 },
   vpvr: { rows: 24, widthPct: 30, valueAreaPct: 70 },
+  liquidity: { lookback: 10, zoneMode: 'wick', sweepMode: 'wicks', minTouches: 0, maxAge: 300, sweepExtend: 20 },
 };
+
+/** Numeric liquidity fields and their bounds (docs/LIQUIDITY_PLAN.md §5). */
+export type LiquidityNumericKey = 'lookback' | 'minTouches' | 'maxAge' | 'sweepExtend';
+export const LIQUIDITY_BOUNDS: Record<LiquidityNumericKey, { min: number; max: number }> = {
+  lookback: { min: 2, max: 100 },
+  minTouches: { min: 0, max: 100 },
+  maxAge: { min: 10, max: 5000 },
+  sweepExtend: { min: 1, max: 500 },
+};
+export const LIQUIDITY_ZONE_MODES: readonly LiquidityZoneMode[] = ['wick', 'range'];
+export const LIQUIDITY_SWEEP_MODES: readonly LiquiditySweepMode[] = ['wicks', 'retests', 'both'];
 
 /** Bounds of the VPVR fields. VPVR params are not periods, so PERIOD_MIN/MAX do not apply. */
 export const VPVR_BOUNDS: Record<keyof VpvrParams, { min: number; max: number }> = {
@@ -76,6 +92,7 @@ export const LINE_KEYS: Record<IndicatorKind, readonly string[]> = {
   macd: ['macd', 'signal', 'histogram'],
   volume: ['volume', 'ma'],
   vpvr: [],
+  liquidity: [],
 };
 
 /** Thrown for parameters outside the bounds above, or a MACD with `fast >= slow`. */
@@ -132,4 +149,8 @@ export class InvalidIndicatorParamsError extends Error {
 // 8. VPVR HAS NO LINES. Its profile depends on the VISIBLE range, which changes on every
 //    pan and zoom, so it is computed at draw time from the bars (see `vpvr.ts`), not
 //    here. `computeIndicator` validates the params and returns `lines: []`, warmup 0.
+//
+// 9. LIQUIDITY HAS NO LINES. Its output is drawings (zones and sweeps), computed from all
+//    loaded bars by `computeLiquidity` in `liquidity.ts`. `computeIndicator` validates the
+//    params and returns `lines: []`, warmup 0, like VPVR.
 // ───────────────────────────────────────────────────────────────────────────────

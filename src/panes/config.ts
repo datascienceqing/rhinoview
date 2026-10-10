@@ -3,13 +3,14 @@ import type {
   IndicatorKind,
   IndicatorParams,
   MacdParams,
+  LiquidityParams,
   MovingAverageParams,
   RsiParams,
   VpvrParams,
 } from '@shared/types';
-import { DEFAULT_PARAMS, PERIOD_MAX, PERIOD_MIN, VPVR_BOUNDS } from '../indicators/types';
+import { DEFAULT_PARAMS, LIQUIDITY_BOUNDS, PERIOD_MAX, PERIOD_MIN, VPVR_BOUNDS } from '../indicators/types';
 
-export const INDICATOR_KINDS: readonly IndicatorKind[] = ['sma', 'ema', 'rsi', 'macd', 'volume', 'vpvr'];
+export const INDICATOR_KINDS: readonly IndicatorKind[] = ['sma', 'ema', 'rsi', 'macd', 'volume', 'vpvr', 'liquidity'];
 
 export const KIND_LABEL: Record<IndicatorKind, string> = {
   sma: 'SMA',
@@ -18,6 +19,7 @@ export const KIND_LABEL: Record<IndicatorKind, string> = {
   macd: 'MACD',
   volume: 'Volume',
   vpvr: 'VRVP',
+  liquidity: 'Liquidity',
 };
 
 export const MA_SOURCES = ['open', 'high', 'low', 'close'] as const;
@@ -77,7 +79,76 @@ export const PARAM_FIELDS: Record<IndicatorKind, readonly ParamField[]> = {
     { key: 'widthPct', label: 'Width %', ...VPVR_BOUNDS.widthPct },
     { key: 'valueAreaPct', label: 'Value area %', ...VPVR_BOUNDS.valueAreaPct },
   ],
+  liquidity: [
+    { key: 'lookback', label: 'Pivot lookback', ...LIQUIDITY_BOUNDS.lookback },
+    { key: 'minTouches', label: 'Min touches', ...LIQUIDITY_BOUNDS.minTouches },
+    { key: 'maxAge', label: 'Max age (bars)', ...LIQUIDITY_BOUNDS.maxAge },
+    { key: 'sweepExtend', label: 'Sweep length (bars)', ...LIQUIDITY_BOUNDS.sweepExtend },
+  ],
 };
+
+/** One select field: a string param with a fixed set of values. */
+export interface ParamChoice {
+  key: string;
+  label: string;
+  options: readonly { value: string; label: string }[];
+  /** A required choice makes stored params invalid when it is missing or unknown. */
+  required: boolean;
+  /** The value an optional choice takes when it is missing or unknown. */
+  fallback: string;
+}
+
+const MA_SOURCE_CHOICE: ParamChoice = {
+  key: 'source',
+  label: 'Source',
+  options: MA_SOURCES.map((s) => ({ value: s, label: s })),
+  required: false,
+  fallback: 'close',
+};
+
+/** Select fields per kind, in display order, shown after the number fields. */
+export const PARAM_CHOICES: Record<IndicatorKind, readonly ParamChoice[]> = {
+  sma: [MA_SOURCE_CHOICE],
+  ema: [MA_SOURCE_CHOICE],
+  rsi: [],
+  macd: [],
+  volume: [],
+  vpvr: [],
+  liquidity: [
+    {
+      key: 'zoneMode',
+      label: 'Zone',
+      options: [
+        { value: 'wick', label: 'Wick' },
+        { value: 'range', label: 'Full range' },
+      ],
+      required: true,
+      fallback: DEFAULT_PARAMS.liquidity.zoneMode,
+    },
+    {
+      key: 'sweepMode',
+      label: 'Sweeps',
+      options: [
+        { value: 'wicks', label: 'Wick sweeps' },
+        { value: 'retests', label: 'Retests' },
+        { value: 'both', label: 'Both' },
+      ],
+      required: true,
+      fallback: DEFAULT_PARAMS.liquidity.sweepMode,
+    },
+  ],
+};
+
+/** The value of each select field of `kind` in `raw`, or null when a required one is missing or unknown. */
+export function choiceValues(kind: IndicatorKind, raw: Record<string, unknown>): Record<string, string> | null {
+  const out: Record<string, string> = {};
+  for (const choice of PARAM_CHOICES[kind]) {
+    const value = choice.options.find((o) => o.value === raw[choice.key])?.value;
+    if (value === undefined && choice.required) return null;
+    out[choice.key] = value ?? choice.fallback;
+  }
+  return out;
+}
 
 /** The bounds of a field: its own, or the period bounds. */
 export function fieldBounds(field: ParamField): { min: number; max: number } {
@@ -99,6 +170,8 @@ export function defaultParams(kind: IndicatorKind): IndicatorParams {
       return { ...DEFAULT_PARAMS.volume };
     case 'vpvr':
       return { ...DEFAULT_PARAMS.vpvr };
+    case 'liquidity':
+      return { ...DEFAULT_PARAMS.liquidity };
   }
 }
 
@@ -159,6 +232,9 @@ export function isMovingAverageParams(p: IndicatorParams): p is MovingAveragePar
 export function isVpvrParams(p: IndicatorParams): p is VpvrParams {
   return 'rows' in p;
 }
+export function isLiquidityParams(p: IndicatorParams): p is LiquidityParams {
+  return 'lookback' in p;
+}
 
 /** A params object shaped for `kind` built from untrusted input, or null if it is not valid for it. */
 export function sanitizeParams(kind: IndicatorKind, raw: unknown): IndicatorParams | null {
@@ -171,6 +247,8 @@ export function sanitizeParams(kind: IndicatorKind, raw: unknown): IndicatorPara
     nums[key] = v;
   }
   if (Object.keys(validateParams(kind, nums)).length > 0) return null;
+  const choices = choiceValues(kind, rec);
+  if (!choices) return null;
   if (kind === 'macd') {
     return {
       fastPeriod: nums['fastPeriod'] ?? 0,
@@ -182,9 +260,17 @@ export function sanitizeParams(kind: IndicatorKind, raw: unknown): IndicatorPara
   if (kind === 'vpvr') {
     return { rows: nums['rows'] ?? 0, widthPct: nums['widthPct'] ?? 0, valueAreaPct: nums['valueAreaPct'] ?? 0 };
   }
-  const source = rec['source'];
-  const valid = MA_SOURCES.find((s) => s === source);
-  return { period: nums['period'] ?? 0, source: valid ?? 'close' };
+  if (kind === 'liquidity') {
+    return {
+      lookback: nums['lookback'] ?? 0,
+      zoneMode: choices['zoneMode'] as LiquidityParams['zoneMode'],
+      sweepMode: choices['sweepMode'] as LiquidityParams['sweepMode'],
+      minTouches: nums['minTouches'] ?? 0,
+      maxAge: nums['maxAge'] ?? 0,
+      sweepExtend: nums['sweepExtend'] ?? 0,
+    };
+  }
+  return { period: nums['period'] ?? 0, source: choices['source'] as MovingAverageParams['source'] };
 }
 
 // ───────────────────────────── instances ─────────────────────────────
@@ -216,6 +302,8 @@ export function indicatorTitle(config: Pick<IndicatorConfig, 'kind' | 'params'>)
   const name = KIND_LABEL[config.kind];
   if (isMacdParams(p)) return `${name} (${p.fastPeriod}, ${p.slowPeriod}, ${p.signalPeriod})`;
   if (isVpvrParams(p)) return `${name} (${p.rows} rows)`;
+  // D2: "Liquidity" in the menu, "LIQ (10)" as the title.
+  if (isLiquidityParams(p)) return `LIQ (${p.lookback})`;
   if (isMovingAverageParams(p) && p.source && p.source !== 'close') return `${name} (${p.period}, ${p.source})`;
   return `${name} (${(p as RsiParams).period})`;
 }
