@@ -287,6 +287,13 @@ single line with key `value`.
 endpoint does not serve it: its profile depends on the chart's visible range, so the
 client computes it at draw time.
 
+`liquidity` (zones and sweeps, docs/LIQUIDITY_PLAN.md) is a valid `IndicatorKind` for layouts,
+but this endpoint does not serve it: its output is drawings, not lines. `LiquidityParams`:
+`lookback` 2–100 (default 10), `zoneMode` `wick`|`range` (default `wick`), `sweepMode`
+`wicks`|`retests`|`both` (default `wicks`), `minTouches` 0–100 (default 0), `maxAge` 10–5000
+(default 300), `sweepExtend` 1–500 (default 20). All numbers are integers. The workspace store
+refuses any other value with `BAD_REQUEST`.
+
 Upstream: `/rest/stocks/technical-indicators/{sma,ema,macd,rsi}`.
 
 ---

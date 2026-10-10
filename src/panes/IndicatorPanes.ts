@@ -1,6 +1,6 @@
 import { HistogramSeries, LineSeries, LineStyle } from 'lightweight-charts';
 import type { IChartApi, IPaneApi, IPriceLine, ISeriesApi, ISeriesPrimitive, Time } from 'lightweight-charts';
-import type { Bar, IndicatorConfig, IndicatorKind, IndicatorSeries, VpvrParams } from '@shared/types';
+import type { Bar, IndicatorConfig, IndicatorKind, IndicatorSeries, LiquidityParams, VpvrParams } from '@shared/types';
 import { INDICATOR_PLACEMENT } from '@shared/types';
 import { withAlpha } from '../chart/theme';
 import type { ChartTheme } from '../chart/theme';
@@ -8,6 +8,8 @@ import { LINE_KEYS } from '../indicators/types';
 import { MACD_SIGNAL_COLOR } from './config';
 import { toHistogramData, toLineData, toVolumeData } from './convert';
 import type { ComputedIndicator } from './computeCache';
+import { LiquidityPrimitive } from './liquidity/LiquidityPrimitive';
+import type { LiquidityStyle } from './liquidity/LiquidityPrimitive';
 import { VpvrPrimitive } from './vpvr/VpvrPrimitive';
 import type { VpvrStyle } from './vpvr/VpvrPrimitive';
 
@@ -15,7 +17,7 @@ import type { VpvrStyle } from './vpvr/VpvrPrimitive';
 export interface ChartHost {
   readonly api: IChartApi | null;
   readonly colors: Pick<ChartTheme, 'up' | 'down' | 'text'>;
-  /** Drawings on the price series (the volume profile). The host keeps them across chart type changes. */
+  /** Drawings on the price series (volume profile, liquidity). The host keeps them across chart type changes. */
   attachPricePrimitive?(primitive: ISeriesPrimitive<Time>): void;
   detachPricePrimitive?(primitive: ISeriesPrimitive<Time>): void;
 }
@@ -43,8 +45,8 @@ interface Entry {
   lines: Map<string, LineHandle>;
   /** Pane of a `separate` indicator. Held by reference, never by index: indices shift when a pane below is removed. */
   pane: IPaneApi<Time> | null;
-  /** The drawing of a VPVR, which has no series. */
-  primitive: VpvrPrimitive | null;
+  /** The drawing of a VPVR or a Liquidity indicator, which have no series. */
+  primitive: VpvrPrimitive | LiquidityPrimitive | null;
   /** The bars last given to `primitive`. */
   bars: readonly Bar[] | undefined;
   /** RSI's 30/70 guides, kept so a theme change can recolour them. */
@@ -176,6 +178,10 @@ export class IndicatorPanes {
       entry.primitive = new VpvrPrimitive(this.vpvrStyle(config));
       this.host.attachPricePrimitive?.(entry.primitive);
     }
+    if (config.kind === 'liquidity') {
+      entry.primitive = new LiquidityPrimitive(config.params as LiquidityParams, this.liquidityStyle(config));
+      this.host.attachPricePrimitive?.(entry.primitive);
+    }
     if (config.kind === 'rsi') {
       const rsi = entry.lines.get('value');
       if (rsi?.type === 'line') {
@@ -253,13 +259,23 @@ export class IndicatorPanes {
     };
   }
 
+  private liquidityStyle(config: IndicatorConfig): LiquidityStyle {
+    const { up, down, text } = this.host.colors;
+    return { upColor: up, downColor: down, levelColor: config.color, textColor: text, visible: config.visible };
+  }
+
   private update(entry: Entry, item: ComputedIndicator): void {
     const { config, series, bars } = item;
 
     if (entry.primitive) {
       // Bars, params (they come with a new series), colour or visibility changed.
       if (entry.written !== series || entry.bars !== bars || entry.color !== config.color || entry.visible !== config.visible) {
-        entry.primitive.update(series ? (bars ?? []) : [], this.vpvrStyle(config));
+        const drawn = series ? (bars ?? []) : [];
+        if (entry.primitive instanceof LiquidityPrimitive) {
+          entry.primitive.update(drawn, config.params as LiquidityParams, this.liquidityStyle(config));
+        } else {
+          entry.primitive.update(drawn, this.vpvrStyle(config));
+        }
       }
       entry.bars = bars;
     }

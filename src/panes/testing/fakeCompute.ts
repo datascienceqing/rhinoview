@@ -192,5 +192,8 @@ export const fakeComputeIndicator: ComputeIndicator = (bars, kind: IndicatorKind
     case 'vpvr':
       // Drawn from the visible bars at draw time; no lines.
       return { kind, placement, params, lines: [], warmup: 0 };
+    case 'liquidity':
+      // Drawn as zones and sweeps; no lines.
+      return { kind, placement, params, lines: [], warmup: 0 };
   }
 };
