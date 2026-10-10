@@ -10,7 +10,7 @@ import type {
 } from '@shared/types';
 import { DEFAULT_PARAMS, LIQUIDITY_BOUNDS, PERIOD_MAX, PERIOD_MIN, VPVR_BOUNDS } from '../indicators/types';
 
-export const INDICATOR_KINDS: readonly IndicatorKind[] = ['sma', 'ema', 'rsi', 'macd', 'volume', 'vpvr'];
+export const INDICATOR_KINDS: readonly IndicatorKind[] = ['sma', 'ema', 'rsi', 'macd', 'volume', 'vpvr', 'liquidity'];
 
 export const KIND_LABEL: Record<IndicatorKind, string> = {
   sma: 'SMA',

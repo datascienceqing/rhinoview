@@ -4,8 +4,10 @@ import { charts, fakeModule, lastChart, resetFakeCharts } from '../chart/testing
 import type { FakeSeries } from '../chart/testing/fakeLightweightCharts';
 import { IndicatorPanes } from './IndicatorPanes';
 import type { PaneLayout } from './IndicatorPanes';
+import { DEFAULT_PARAMS } from '../indicators/types';
 import { MACD_SIGNAL_COLOR } from './config';
 import { ComputeCache } from './computeCache';
+import type { LiquidityPrimitive } from './liquidity/LiquidityPrimitive';
 import type { VpvrPrimitive } from './vpvr/VpvrPrimitive';
 import { fakeComputeIndicator } from './testing/fakeCompute';
 import { indicator, makeBars } from './testing/testHelpers';
@@ -466,3 +468,80 @@ describe('vpvr', () => {
     expect(update).not.toHaveBeenCalled();
   });
 });
+
+describe('liquidity', () => {
+  const priceSeries = (chart: ReturnType<typeof setup>['chart']) => chart.paneContents[0]?.[0];
+  const primOf = (chart: ReturnType<typeof setup>['chart']) => priceSeries(chart)?.primitives[0] as unknown as LiquidityPrimitive;
+  const styleOf = (prim: LiquidityPrimitive) => (prim as unknown as { style: Record<string, unknown> }).style;
+
+  it('adds no series and no pane: it is a drawing attached to the price series', () => {
+    const { chart, sync } = setup();
+    sync([indicator('liquidity')]);
+    expect(chart.paneList).toHaveLength(1);
+    expect(tags(chart.paneContents[0] ?? [])).toEqual(['Candlestick']);
+    expect(priceSeries(chart)?.primitives).toHaveLength(1);
+  });
+
+  it('computes zones from the loaded bars, and uses the theme for zones and the indicator colour for levels', () => {
+    const { price, chart, sync } = setup();
+    const config = indicator('liquidity');
+    sync([{ ...config, params: { ...DEFAULT_PARAMS.liquidity, lookback: 3 } }]);
+    const prim = primOf(chart);
+    expect(prim.result().zones.length).toBeGreaterThan(0);
+    expect(styleOf(prim)).toMatchObject({ upColor: price.colors.up, downColor: price.colors.down, levelColor: config.color, visible: true });
+  });
+
+  it('detaches the drawing when the indicator is removed', () => {
+    const { chart, sync } = setup();
+    sync([indicator('liquidity')]);
+    sync([]);
+    expect(priceSeries(chart)?.primitives).toHaveLength(0);
+  });
+
+  it('keeps the drawing when the chart type changes: detached from the old series, attached to the new', () => {
+    const { price, chart, sync } = setup();
+    sync([indicator('liquidity')]);
+    const old = priceSeries(chart);
+    const prim = old?.primitives[0];
+    price.setChartType('area');
+    expect(old?.primitives).toHaveLength(0);
+    const fresh = chart.liveSeries.find((s) => (s.definition as { tag: string }).tag === 'Area');
+    expect(fresh?.primitives).toEqual([prim]);
+    price.setChartType('candlestick');
+    expect(fresh?.primitives).toHaveLength(0);
+    expect(chart.liveSeries.find((s) => (s.definition as { tag: string }).tag === 'Candlestick')?.primitives).toEqual([prim]);
+  });
+
+  it('passes new params, colour and visibility to the drawing', () => {
+    const { chart, sync } = setup();
+    const config = indicator('liquidity');
+    sync([config]);
+    const prim = primOf(chart);
+    const update = vi.spyOn(prim, 'update');
+    const params = { ...DEFAULT_PARAMS.liquidity, lookback: 4, sweepMode: 'both' as const };
+    sync([{ ...config, params, color: '#123456', visible: false }]);
+    expect(update).toHaveBeenLastCalledWith(bars, params, expect.objectContaining({ levelColor: '#123456', visible: false }));
+  });
+
+  it('does not redraw when synced again with identical input', () => {
+    const { chart, sync } = setup();
+    const config = indicator('liquidity');
+    sync([config]);
+    const prim = primOf(chart);
+    const update = vi.spyOn(prim, 'update');
+    sync([config]);
+    expect(update).not.toHaveBeenCalled();
+  });
+
+  it('lives next to a VPVR on the same price series; removing one keeps the other', () => {
+    const { chart, sync } = setup();
+    const liq = indicator('liquidity');
+    const vpvr = indicator('vpvr');
+    sync([liq, vpvr]);
+    expect(priceSeries(chart)?.primitives).toHaveLength(2);
+    sync([vpvr]);
+    expect(priceSeries(chart)?.primitives).toHaveLength(1);
+    expect(priceSeries(chart)?.primitives[0]).not.toBe(undefined);
+  });
+});
+
