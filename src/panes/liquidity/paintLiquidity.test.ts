@@ -123,6 +123,14 @@ describe('paintLiquidity zones', () => {
     expect((ctx.texts[1] as Text).y).toBeGreaterThan(1000 - 2 * 90);
   });
 
+  it('gives a zone with no touches its box and level line, but no "0" label', () => {
+    const ctx = recorder();
+    paintLiquidity(ctx, [zone({ touches: 0, volume: 0 }), zone({ id: 'high-2' })], [], geom, style);
+    expect(ctx.rects).toHaveLength(2);
+    expect(ctx.lines).toHaveLength(2);
+    expect(ctx.texts.map((t) => t.text)).toEqual(['1.2M']);
+  });
+
   it('skips a zone that has no pixel position', () => {
     const ctx = recorder();
     paintLiquidity(ctx, [zone()], [], { ...geom, yOf: () => null }, style);
@@ -151,6 +159,19 @@ describe('paintLiquidity sweeps', () => {
     paintLiquidity(ctx, [], [sweep()], geom, style);
     expect(ctx.texts).toEqual([expect.objectContaining({ text: '2.5M', baseline: 'bottom', style: 'DOWN' })]);
     expect((ctx.texts[0] as Text).y).toBeLessThan(776);
+  });
+
+  it('gives a sweep of a zone with no touches its area and mark, but no "0" label', () => {
+    const ctx = recorder();
+    paintLiquidity(ctx, [], [sweep({ touches: 0, volume: 0 })], geom, style);
+    expect(ctx.rects).toHaveLength(2);
+    expect(ctx.texts).toEqual([]);
+  });
+
+  it('leaves the context with no dash and full alpha, also when the last item has no label', () => {
+    const ctx = recorder();
+    paintLiquidity(ctx, [zone({ status: 'broken', touches: 0 })], [sweep({ touches: 0 })], geom, style);
+    expect(ctx.globalAlpha).toBe(1);
   });
 
   it('leaves the context with no dash and full alpha', () => {

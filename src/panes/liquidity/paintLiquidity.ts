@@ -4,6 +4,8 @@
  * Per zone: a box from the pivot bar to the end bar, between top and bottom; a level line
  * at the level, solid unless the zone broke, then dashed; a volume label at the pivot.
  * Per sweep: the area box, a short thick mark on the sweep bar, and the volume it took.
+ * A zone with no touches has no label, and neither has a sweep of it: a "0" tells
+ * nothing and covers the labels of other zones at the same price.
  *
  * Colours: a high zone and a bearish sweep use the down colour; a low zone and a bullish
  * sweep use the up colour. The indicator colour sets the level lines (decision D4).
@@ -101,6 +103,7 @@ export function paintLiquidity(
     ctx.lineTo(h.x + h.w, yLevel);
     ctx.stroke();
 
+    if (z.touches === 0) continue;
     ctx.globalAlpha = LABEL_ALPHA;
     ctx.fillStyle = style.textColor;
     ctx.textBaseline = z.side === 'high' ? 'bottom' : 'top';
@@ -122,6 +125,7 @@ export function paintLiquidity(
     ctx.globalAlpha = 1;
     ctx.fillRect(xMark - SWEEP_MARK_WIDTH / 2, v.y, SWEEP_MARK_WIDTH, v.h);
 
+    if (s.touches === 0) continue;
     ctx.globalAlpha = LABEL_ALPHA;
     ctx.fillStyle = color;
     // Beyond the wick extreme: above a bearish sweep, below a bullish one.
