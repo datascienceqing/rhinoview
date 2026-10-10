@@ -469,6 +469,78 @@ describe('vpvr', () => {
   });
 });
 
+describe('theme refresh', () => {
+  // getComputedStyle reads nothing from a detached element, so the container is attached.
+  const attached: HTMLElement[] = [];
+  afterEach(() => attached.splice(0).forEach((el) => el.remove()));
+
+  function setupOn(container: HTMLElement) {
+    document.body.appendChild(container);
+    attached.push(container);
+    const price = new PriceChart(container);
+    price.setChartType('candlestick');
+    price.setBars(bars);
+    const panes = new IndicatorPanes(price);
+    const chart = lastChart();
+    const cache = new ComputeCache(fakeComputeIndicator);
+    return { price, panes, chart, sync: (configs: IndicatorConfig[]) => panes.sync(cache.resolve(bars, configs)) };
+  }
+
+  it('writes the histograms again in the new colours, and recolours the RSI guides', () => {
+    const container = document.createElement('div');
+    const { price, panes, chart, sync } = setupOn(container);
+    sync([indicator('macd'), indicator('rsi')]);
+    const hist = chart.liveSeries.find((s) => (s.definition as { tag: string }).tag === 'Histogram');
+    const rsi = chart.paneContents[2]?.[0];
+    const before = (hist?.setData.mock.calls.at(-1)?.[0] as { color?: string }[]).map((d) => d.color);
+
+    container.style.setProperty('--up', '#00796b');
+    container.style.setProperty('--down', '#cc2936');
+    container.style.setProperty('--text', '#131722');
+    expect(price.refreshTheme()).toBe(true);
+    panes.refreshTheme();
+
+    const after = (hist?.setData.mock.calls.at(-1)?.[0] as { color?: string }[]).map((d) => d.color);
+    expect(after).not.toEqual(before);
+    expect(new Set(after.filter(Boolean))).toEqual(new Set(['rgba(0, 121, 107, 0.7)', 'rgba(204, 41, 54, 0.7)']));
+    expect(rsi?.priceLines.map((l) => l.options.color)).toEqual(['rgba(19, 23, 34, 0.5)', 'rgba(19, 23, 34, 0.5)']);
+  });
+
+  it('gives a drawing (VRVP) its new style', () => {
+    const container = document.createElement('div');
+    const { price, panes, chart, sync } = setupOn(container);
+    sync([indicator('vpvr')]);
+    const prim = chart.paneContents[0]?.[0]?.primitives[0] as unknown as VpvrPrimitive;
+    const update = vi.spyOn(prim, 'update');
+    container.style.setProperty('--down', '#cc2936');
+    price.refreshTheme();
+    panes.refreshTheme();
+    expect(update).toHaveBeenLastCalledWith(bars, expect.objectContaining({ downColor: '#cc2936' }));
+  });
+
+  it('gives the Liquidity drawing its new style', () => {
+    const container = document.createElement('div');
+    const { price, panes, chart, sync } = setupOn(container);
+    const config = indicator('liquidity');
+    sync([config]);
+    const prim = chart.paneContents[0]?.[0]?.primitives[0] as unknown as LiquidityPrimitive;
+    const update = vi.spyOn(prim, 'update');
+    container.style.setProperty('--up', '#00796b');
+    container.style.setProperty('--down', '#cc2936');
+    price.refreshTheme();
+    panes.refreshTheme();
+    expect(update).toHaveBeenLastCalledWith(bars, config.params, expect.objectContaining({ upColor: '#00796b', downColor: '#cc2936' }));
+  });
+
+  it('a refresh with no colour change writes the same colours', () => {
+    const { panes, chart, sync } = setupOn(document.createElement('div'));
+    sync([indicator('macd')]);
+    const hist = chart.liveSeries.find((s) => (s.definition as { tag: string }).tag === 'Histogram');
+    const before = hist?.setData.mock.calls.at(-1)?.[0];
+    panes.refreshTheme();
+    expect(hist?.setData.mock.calls.at(-1)?.[0]).toEqual(before);
+  });
+});
 describe('liquidity', () => {
   const priceSeries = (chart: ReturnType<typeof setup>['chart']) => chart.paneContents[0]?.[0];
   const primOf = (chart: ReturnType<typeof setup>['chart']) => priceSeries(chart)?.primitives[0] as unknown as LiquidityPrimitive;

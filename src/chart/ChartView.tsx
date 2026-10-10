@@ -3,6 +3,7 @@ import type { Bar, ChartType } from '@shared/types';
 import { IndicatorPanes } from '../panes/IndicatorPanes';
 import type { PaneLayout } from '../panes/IndicatorPanes';
 import type { ComputedIndicator } from '../panes/computeCache';
+import { useTheme } from '../theme';
 import { PriceChart } from './PriceChart';
 import type { ChartMarker } from './markers';
 
@@ -73,6 +74,13 @@ export function ChartView({
       chart.dispose();
     };
   }, []);
+
+  // The theme is already on <html> when this runs (src/theme), so the chart reads the new
+  // colours. The panes paint with the chart's colours, so they refresh after it.
+  const { theme } = useTheme();
+  useEffect(() => {
+    if (chartRef.current?.refreshTheme()) panesRef.current?.refreshTheme();
+  }, [theme]);
 
   useEffect(() => {
     chartRef.current?.setIntraday(intraday);

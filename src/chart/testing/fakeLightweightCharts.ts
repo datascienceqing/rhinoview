@@ -10,7 +10,8 @@ type CrosshairHandler = (param: { time?: number; seriesData: Map<unknown, unknow
 type RangeHandler = (range: { from: number; to: number } | null) => void;
 
 export interface FakePriceLine {
-  options: { price: number };
+  options: { price: number; color?: string };
+  applyOptions: ReturnType<typeof vi.fn>;
 }
 
 /**
@@ -127,9 +128,16 @@ export class FakeChart {
       pane,
       setData: vi.fn(() => this.assertLive()),
       applyOptions: vi.fn(() => this.assertLive()),
-      createPriceLine: vi.fn((o: { price: number }) => {
+      createPriceLine: vi.fn((o: { price: number; color?: string }) => {
         this.assertLive();
-        priceLines.push({ options: o });
+        const line: FakePriceLine = {
+          options: o,
+          applyOptions: vi.fn((p: { color?: string }) => {
+            line.options = { ...line.options, ...p };
+          }),
+        };
+        priceLines.push(line);
+        return line;
       }),
       priceLines,
       getPane: () => {
