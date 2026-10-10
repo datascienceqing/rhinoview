@@ -1,7 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import type { IChartApi } from 'lightweight-charts';
 import { FakeChart, FakePane } from './testing/fakeLightweightCharts';
-import { VERTICAL_PAN_THRESHOLD_PX, VerticalPan } from './verticalPan';
+import { VERTICAL_PAN_THRESHOLD_PX, VerticalPan, WHEEL_ZOOM_RATE } from './verticalPan';
 
 // jsdom has no PointerEvent: a MouseEvent with the two pointer fields is what the code reads.
 function pointer(type: string, x: number, y: number, init: { pointerType?: string; button?: number } = {}): MouseEvent {
@@ -117,5 +117,70 @@ describe('VerticalPan', () => {
     pan.dispose();
     container.dispatchEvent(pointer('pointerdown', 300, 200));
     expect(scale().applyOptions).not.toHaveBeenCalled();
+  });
+});
+
+describe('price axis zoom', () => {
+  const wheel = (x: number, y: number, deltaY: number, init: { deltaMode?: number; deltaX?: number } = {}) => {
+    const e = new WheelEvent('wheel', { bubbles: true, cancelable: true, clientX: x, clientY: y, deltaY, ...init });
+    container.dispatchEvent(e);
+    return e;
+  };
+
+  it('reports the end of a drag on the price axis: the library turns auto-scale off there', () => {
+    container.dispatchEvent(pointer('pointerdown', 770, 200));
+    scale().applyOptions({ autoScale: false }); // what the library's axis drag does
+    expect(onChange).not.toHaveBeenCalled();
+    window.dispatchEvent(pointer('pointerup', 770, 260));
+    expect(onChange).toHaveBeenCalledTimes(1);
+    expect(pan.isAutoScaled()).toBe(false);
+  });
+
+  it('the wheel over the price axis zooms prices around the centre, and stops the event', () => {
+    const e = wheel(770, 200, -100);
+    expect(e.defaultPrevented).toBe(true);
+    const f = Math.exp(-100 * WHEEL_ZOOM_RATE);
+    const r = scale().range;
+    expect(r?.from).toBeCloseTo(150 - 50 * f, 9);
+    expect(r?.to).toBeCloseTo(150 + 50 * f, 9);
+    expect(scale().options().autoScale).toBe(false);
+    expect(onChange).toHaveBeenCalledTimes(1);
+  });
+
+  it('wheel up zooms in, wheel down zooms out', () => {
+    wheel(770, 200, -100);
+    const zoomedIn = (scale().range?.to ?? 0) - (scale().range?.from ?? 0);
+    expect(zoomedIn).toBeLessThan(100);
+    scale().range = { from: 100, to: 200 };
+    wheel(770, 200, 100);
+    expect((scale().range?.to ?? 0) - (scale().range?.from ?? 0)).toBeGreaterThan(100);
+  });
+
+  it('counts a wheel in lines like 16 px a line', () => {
+    wheel(770, 200, -100 / 16, { deltaMode: 1 });
+    expect(scale().range?.to).toBeCloseTo(150 + 50 * Math.exp(-100 * WHEEL_ZOOM_RATE), 9);
+  });
+
+  it('acts on the axis of the pane under the pointer only', () => {
+    const second = chart.addPane();
+    placePane(second, 400, 600);
+    wheel(770, 500, -100);
+    expect(scale(1).setVisibleRange).toHaveBeenCalled();
+    expect(scale(0).setVisibleRange).not.toHaveBeenCalled();
+  });
+
+  it('leaves the wheel over the plot area, and a sideways scroll, to the library (time zoom)', () => {
+    const overPlot = wheel(300, 200, -100);
+    const sideways = wheel(770, 200, 0, { deltaX: 50 });
+    expect(overPlot.defaultPrevented).toBe(false);
+    expect(sideways.defaultPrevented).toBe(false);
+    expect(scale().setVisibleRange).not.toHaveBeenCalled();
+    expect(onChange).not.toHaveBeenCalled();
+  });
+
+  it('stops zooming after dispose', () => {
+    pan.dispose();
+    expect(wheel(770, 200, -100).defaultPrevented).toBe(false);
+    expect(scale().setVisibleRange).not.toHaveBeenCalled();
   });
 });

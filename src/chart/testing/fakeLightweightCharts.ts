@@ -28,6 +28,13 @@ export class FakePriceScale {
   });
   options = (): FakePriceScale['opts'] => this.opts;
   width = (): number => this.axisWidth;
+  /** The visible price range; tests set it. Like the library, setting it turns auto-scale off. */
+  range: { from: number; to: number } | null = { from: 100, to: 200 };
+  getVisibleRange = (): { from: number; to: number } | null => this.range;
+  setVisibleRange = vi.fn((r: { from: number; to: number }) => {
+    this.opts = { ...this.opts, autoScale: false };
+    this.range = r;
+  });
 }
 
 export class FakePane {
