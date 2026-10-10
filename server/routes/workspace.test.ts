@@ -135,6 +135,8 @@ describe('workspace routes', () => {
     ['an unknown field on create', 'POST', '/layouts', { name: 'X', colour: 'red' }],
     ['an unknown field on update', 'PUT', '/watchlists/ID', { revision: 1, extra: true }],
     ['an unknown field in an indicator', 'POST', '/layouts', { name: 'X', indicators: [{ id: 'a', kind: 'rsi', params: { period: 14 }, color: '#fff', visible: true, z: 1 }] }],
+    ['an unknown indicator kind on create', 'POST', '/layouts', { name: 'X', indicators: [{ id: 'a', kind: 'bollinger', params: { period: 20 }, color: '#fff', visible: true }] }],
+    ['an unknown indicator kind on update', 'PUT', '/layouts/ID', { revision: 1, indicators: [{ id: 'a', kind: 'bollinger', params: { period: 20 }, color: '#fff', visible: true }] }],
     ['an unknown field on set-active', 'PUT', '/workspace/active', { activeLayoutId: 'ID', foo: 1 }],
     ['a missing revision', 'PUT', '/layouts/ID', { name: 'X' }],
     ['a non-numeric revision', 'PUT', '/layouts/ID', { revision: '1' }],

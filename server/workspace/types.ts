@@ -80,7 +80,11 @@ export class WorkspaceValidationError extends Error {
 //    that does not parse or does not validate is RENAMED to
 //    `<file>.corrupt-<unix-seconds>`, a warning is logged, and the store starts from
 //    the default workspace. Never crash on a bad file. Never overwrite it without the
-//    backup.
+//    backup. Bad JSON, a wrong version, a broken structure, an unknown active id, a bad
+//    symbol and a bad timeframe make the file bad. An invalid INDICATOR does not: the
+//    store drops only that indicator, logs one warning for it (layout, indicator id,
+//    kind, reason), and writes the cleaned workspace back at once. One unknown
+//    indicator kind must not cost the user every layout and watchlist.
 //
 // 5. OPTIMISTIC CONCURRENCY. Every layout and watchlist has a `revision` that starts
 //    at 1 and increments on every successful write. An update with a stale revision

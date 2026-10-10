@@ -24,7 +24,7 @@ import type {
 import { MAX_LAYOUTS, MAX_NAME_LENGTH, MAX_QUOTE_SYMBOLS, MAX_WATCHLISTS, TIMEFRAMES } from '@shared/types';
 // The one sanctioned src -> server production import: identical validation on both sides.
 import { checkIndicatorParams } from '../../src/indicators/params';
-import { FILE_VERSION, workspaceFileSchema } from './schemas';
+import { FILE_VERSION, indicatorConfigSchema, workspaceFileSchema } from './schemas';
 import { WorkspaceConflictError, WorkspaceNotFoundError, WorkspaceValidationError } from './types';
 import type { WorkspaceStore } from './types';
 
@@ -157,8 +157,35 @@ function defaultWorkspace(now: number, newId: () => string): Workspace {
   return { layouts: [layout], watchlists: [watchlist], activeLayoutId: layout.id, activeWatchlistId: watchlist.id };
 }
 
-/** Parse and validate file text. Returns null when the file is not a valid workspace. */
-function parseFile(text: string): Workspace | null {
+/** Check one stored indicator: the indicator when it is valid, otherwise the reason. */
+function checkStoredIndicator(raw: unknown): { indicator: null; reason: string } | { indicator: IndicatorConfig; reason: null } {
+  const parsed = indicatorConfigSchema.safeParse(raw);
+  if (!parsed.success) {
+    const reason = parsed.error.issues.map((i) => `${i.path.join('.') || 'indicator'}: ${i.message}`).join('; ');
+    return { indicator: null, reason };
+  }
+  const message = checkIndicatorParams(parsed.data.kind, parsed.data.params);
+  return message === null ? { indicator: parsed.data, reason: null } : { indicator: null, reason: message };
+}
+
+function describeDropped(layout: ChartLayout, raw: unknown, reason: string): string {
+  const field = (key: string): string => {
+    const v = typeof raw === 'object' && raw !== null ? (raw as Record<string, unknown>)[key] : undefined;
+    return typeof v === 'string' ? JSON.stringify(v) : '(none)';
+  };
+  // The raw JSON goes in the warning because the cleaned file no longer holds it.
+  return (
+    `Workspace file: dropped indicator id ${field('id')}, kind ${field('kind')}, from layout ` +
+    `"${layout.name}" (${layout.id}): ${reason}. Dropped value: ${JSON.stringify(raw)}`
+  );
+}
+
+/**
+ * Parse and validate file text. Returns null when the file is not a valid workspace.
+ * An invalid indicator does not make the file invalid: it is left out of the result and
+ * described in `dropped`, so the caller can warn and write the cleaned file.
+ */
+function parseFile(text: string): { ws: Workspace; dropped: string[] } | null {
   let json: unknown;
   try {
     json = JSON.parse(text);
@@ -167,8 +194,18 @@ function parseFile(text: string): Workspace | null {
   }
   const parsed = workspaceFileSchema.safeParse(json);
   if (!parsed.success) return null;
+  const dropped: string[] = [];
+  const layouts: ChartLayout[] = parsed.data.layouts.map((stored) => {
+    const layout: ChartLayout = { ...stored, indicators: [] };
+    for (const raw of stored.indicators) {
+      const { indicator, reason } = checkStoredIndicator(raw);
+      if (indicator) layout.indicators.push(indicator);
+      else dropped.push(describeDropped(layout, raw, reason));
+    }
+    return layout;
+  });
   const ws: Workspace = {
-    layouts: parsed.data.layouts,
+    layouts,
     watchlists: parsed.data.watchlists,
     activeLayoutId: parsed.data.activeLayoutId,
     activeWatchlistId: parsed.data.activeWatchlistId,
@@ -178,10 +215,9 @@ function parseFile(text: string): Workspace | null {
   for (const l of ws.layouts) {
     if (!(TIMEFRAMES as readonly string[]).includes(l.timeframe)) return null;
     if (!SYMBOL_RE.test(l.symbol)) return null;
-    if (l.indicators.some((i) => checkIndicatorParams(i.kind, i.params) !== null)) return null;
   }
   if (ws.watchlists.some((w) => w.symbols.some((s) => !SYMBOL_RE.test(s)))) return null;
-  return ws;
+  return { ws, dropped };
 }
 
 export async function openWorkspaceStore(filePath: string, opts: WorkspaceStoreOptions = {}): Promise<WorkspaceStore> {
@@ -209,9 +245,17 @@ export async function openWorkspaceStore(filePath: string, opts: WorkspaceStoreO
     await fs.mkdir(dir);
     const text = await fs.readFile(filePath);
     if (text !== null) {
-      const ws = parseFile(text);
-      if (ws) return ws;
-      // Invariant 4: keep the bad file, then start fresh.
+      const result = parseFile(text);
+      if (result) {
+        // Invariant 4: an invalid indicator costs only that indicator. Write the cleaned
+        // workspace now, so the file on disk matches the state in memory.
+        if (result.dropped.length > 0) {
+          for (const message of result.dropped) warn(message);
+          await persist(result.ws);
+        }
+        return result.ws;
+      }
+      // Invariant 4: the file itself is bad. Keep it, then start fresh.
       let backup = `${filePath}.corrupt-${clock()}`;
       for (let n = 1; await fs.exists(backup); n++) backup = `${filePath}.corrupt-${clock()}-${n}`;
       await fs.rename(filePath, backup);

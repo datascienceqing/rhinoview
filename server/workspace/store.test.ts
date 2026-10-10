@@ -143,6 +143,123 @@ describe('corrupt file (invariant 4)', () => {
     await open();
     expect((await readdir(join(dir, 'nested'))).some((f) => f.includes('.corrupt-'))).toBe(true);
   });
+
+  it.each<[string, (layout: Record<string, unknown>) => void]>([
+    ['a bad layout symbol', (l) => { l.symbol = 'not a symbol!'; }],
+    ['a bad layout timeframe', (l) => { l.timeframe = '2h'; }],
+  ])('treats a file with %s as corrupt', async (_label, spoil) => {
+    await open();
+    const good = (await onDisk()) as { layouts: Record<string, unknown>[] };
+    spoil(good.layouts[0] as Record<string, unknown>);
+    await writeFile(file, JSON.stringify(good));
+    const ws = await (await open()).getWorkspace();
+    expect(ws.layouts.map((l) => l.name)).toEqual(['Main']);
+    expect((await readdir(join(dir, 'nested'))).some((f) => f.includes('.corrupt-'))).toBe(true);
+  });
+});
+
+describe('an invalid indicator in the file (invariant 4)', () => {
+  const rsi: IndicatorConfig = { id: 'i2', kind: 'rsi', params: { period: 14 }, color: '#0f0', visible: true };
+
+  /** A saved workspace with two layouts and a second watchlist; `bad` goes into layout "Test". */
+  async function fileWith(bad: unknown): Promise<{ layoutId: string; watchlistId: string }> {
+    const store = await open();
+    const layout = await store.createLayout({ name: 'Test', indicators: [sma, rsi] });
+    const watchlist = await store.createWatchlist({ name: 'Tech', symbols: ['TSLA', 'AMD'] });
+    const saved = (await onDisk()) as { layouts: { id: string; indicators: unknown[] }[] };
+    saved.layouts.find((l) => l.id === layout.id)?.indicators.splice(1, 0, bad);
+    await writeFile(file, JSON.stringify(saved));
+    warn.mockClear();
+    return { layoutId: layout.id, watchlistId: watchlist.id };
+  }
+
+  const backups = async () => (await readdir(join(dir, 'nested'))).filter((f) => f.includes('.corrupt-'));
+
+  it('drops an indicator of an unknown kind and keeps every other indicator, layout and watchlist', async () => {
+    const unknown = { id: 'x9', kind: 'bollinger', params: { period: 20 }, color: '#f00', visible: true };
+    const { layoutId, watchlistId } = await fileWith(unknown);
+    const ws = await (await open()).getWorkspace();
+    expect(ws.layouts.map((l) => l.name)).toEqual(['Main', 'Test']);
+    expect(ws.layouts.find((l) => l.id === layoutId)?.indicators).toEqual([sma, rsi]);
+    expect(ws.watchlists.map((w) => w.name)).toEqual(['Watchlist', 'Tech']);
+    expect(ws.watchlists.find((w) => w.id === watchlistId)?.symbols).toEqual(['TSLA', 'AMD']);
+    expect(await backups()).toEqual([]);
+    expect(warn).toHaveBeenCalledTimes(1);
+    const message = String(warn.mock.calls[0]?.[0]);
+    expect(message).toContain('"Test"');
+    expect(message).toContain(layoutId);
+    expect(message).toContain('"x9"');
+    expect(message).toContain('"bollinger"');
+  });
+
+  it('drops an indicator whose params fail checkIndicatorParams, with that reason in the warning', async () => {
+    const { checkIndicatorParams } = await import('../../src/indicators/params');
+    const badParams = { ...sma, id: 'p0', params: { period: 0, source: 'close' } };
+    const reason = checkIndicatorParams(badParams.kind, badParams.params) as string;
+    const { layoutId } = await fileWith(badParams);
+    const ws = await (await open()).getWorkspace();
+    expect(ws.layouts.find((l) => l.id === layoutId)?.indicators).toEqual([sma, rsi]);
+    expect(await backups()).toEqual([]);
+    expect(warn).toHaveBeenCalledTimes(1);
+    const message = String(warn.mock.calls[0]?.[0]);
+    expect(message).toContain('"Test"');
+    expect(message).toContain('"p0"');
+    expect(message).toContain('"sma"');
+    expect(message).toContain(reason);
+  });
+
+  it.each<[string, unknown]>([
+    ['a value that is not an object', 42],
+    ['an indicator with a field we did not write', { ...rsi, id: 'z1', extra: true }],
+    ['an indicator without an id', { kind: 'rsi', params: { period: 14 }, color: '#0f0', visible: true }],
+  ])('drops %s', async (_label, bad) => {
+    const { layoutId } = await fileWith(bad);
+    const ws = await (await open()).getWorkspace();
+    expect(ws.layouts.find((l) => l.id === layoutId)?.indicators).toEqual([sma, rsi]);
+    expect(await backups()).toEqual([]);
+    expect(warn).toHaveBeenCalledTimes(1);
+  });
+
+  it('warns once for each dropped indicator', async () => {
+    const store = await open();
+    const unknown = (id: string) => ({ id, kind: 'bollinger', params: {}, color: '#f00', visible: true });
+    await store.createLayout({ name: 'Test', indicators: [sma] });
+    const saved = (await onDisk()) as { layouts: { indicators: unknown[] }[] };
+    saved.layouts[0]?.indicators.push(unknown('a'));
+    saved.layouts[1]?.indicators.push(unknown('b'), unknown('c'));
+    await writeFile(file, JSON.stringify(saved));
+    warn.mockClear();
+    const ws = await (await open()).getWorkspace();
+    expect(ws.layouts.map((l) => l.indicators)).toEqual([[], [sma]]);
+    expect(warn).toHaveBeenCalledTimes(3);
+  });
+
+  it('writes the cleaned workspace back to disk at once', async () => {
+    const { layoutId } = await fileWith({ id: 'x9', kind: 'bollinger', params: {}, color: '#f00', visible: true });
+    const ws = await (await open()).getWorkspace();
+    const saved = (await onDisk()) as { version: number; layouts: { id: string; indicators: unknown[] }[] };
+    expect(saved.version).toBe(1);
+    expect(saved.layouts.find((l) => l.id === layoutId)?.indicators).toEqual([sma, rsi]);
+    expect(saved).toEqual({ version: 1, ...ws });
+    // The next start finds nothing to drop.
+    warn.mockClear();
+    await open();
+    expect(warn).not.toHaveBeenCalled();
+  });
+
+  it('does not rewrite a file that has nothing to drop', async () => {
+    await open();
+    const writes: string[] = [];
+    const spy: WorkspaceFs = {
+      ...nodeWorkspaceFs,
+      async writeFileSynced(p, d) {
+        writes.push(p);
+        return nodeWorkspaceFs.writeFileSynced(p, d);
+      },
+    };
+    await open({ fs: spy });
+    expect(writes).toEqual([]);
+  });
 });
 
 describe('a process killed after the temp write', () => {
