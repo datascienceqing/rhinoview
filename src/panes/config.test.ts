@@ -1,6 +1,8 @@
-import { PERIOD_MAX, PERIOD_MIN } from '../indicators/types';
+import { LIQUIDITY_SWEEP_MODES, LIQUIDITY_ZONE_MODES, PERIOD_MAX, PERIOD_MIN } from '../indicators/types';
 import {
   KIND_LABEL,
+  PARAM_CHOICES,
+  choiceValues,
   createIndicator,
   defaultParams,
   indicatorTitle,
@@ -182,6 +184,33 @@ describe('liquidity config', () => {
     expect(sanitizeParams('liquidity', { ...ok, sweepMode: undefined })).toBeNull();
     expect(sanitizeParams('liquidity', { ...ok, lookback: 1 })).toBeNull();
     expect(sanitizeParams('liquidity', { period: 20 })).toBeNull();
+  });
+});
+
+describe('PARAM_CHOICES', () => {
+  const values = (kind: 'liquidity' | 'sma', key: string) => PARAM_CHOICES[kind].find((c) => c.key === key)?.options.map((o) => o.value);
+
+  it('offers exactly the enum values the param check accepts', () => {
+    expect(values('liquidity', 'zoneMode')).toEqual([...LIQUIDITY_ZONE_MODES]);
+    expect(values('liquidity', 'sweepMode')).toEqual([...LIQUIDITY_SWEEP_MODES]);
+    expect(values('sma', 'source')).toEqual(['open', 'high', 'low', 'close']);
+  });
+
+  it('holds the MA source for SMA and EMA only', () => {
+    expect(PARAM_CHOICES.sma.map((c) => c.key)).toEqual(['source']);
+    expect(PARAM_CHOICES.ema.map((c) => c.key)).toEqual(['source']);
+    for (const kind of ['rsi', 'macd', 'volume', 'vpvr'] as const) expect(PARAM_CHOICES[kind]).toEqual([]);
+  });
+
+  it('an optional choice falls back; a required one makes the params invalid', () => {
+    expect(choiceValues('sma', { source: 'median' })).toEqual({ source: 'close' });
+    expect(choiceValues('sma', {})).toEqual({ source: 'close' });
+    expect(choiceValues('liquidity', { zoneMode: 'range', sweepMode: 'both' })).toEqual({ zoneMode: 'range', sweepMode: 'both' });
+    expect(choiceValues('liquidity', { zoneMode: 'range' })).toBeNull();
+  });
+
+  it('sanitize still turns a bad MA source into close', () => {
+    expect(sanitizeParams('ema', { period: 9, source: 'median' })).toEqual({ period: 9, source: 'close' });
   });
 });
 
