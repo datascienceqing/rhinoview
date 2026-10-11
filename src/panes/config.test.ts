@@ -1,6 +1,6 @@
 import { LIQUIDITY_SWEEP_MODES, LIQUIDITY_ZONE_MODES, PERIOD_MAX, PERIOD_MIN } from '../indicators/types';
 import {
-  KIND_LABEL,
+  kindLabel,
   PARAM_CHOICES,
   choiceValues,
   createIndicator,
@@ -162,7 +162,7 @@ describe('vpvr config', () => {
 describe('liquidity config', () => {
   it('is named "Liquidity" and titled "LIQ (lookback)" (decision D2)', () => {
     const l = createIndicator('liquidity', []);
-    expect(KIND_LABEL.liquidity).toBe('Liquidity');
+    expect(kindLabel('liquidity')).toBe('Liquidity');
     expect(l.params).toEqual({ lookback: 10, zoneMode: 'wick', sweepMode: 'wicks', minTouches: 0, maxAge: 300, sweepExtend: 20 });
     expect(indicatorTitle(l)).toBe('LIQ (10)');
   });

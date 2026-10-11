@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import type { IndicatorConfig, IndicatorParams } from '@shared/types';
+import { t, useI18n } from '../i18n';
 import { PERIOD_MAX, PERIOD_MIN } from '../indicators/types';
 import {
   PARAM_CHOICES,
@@ -25,9 +26,9 @@ type Drafts = Record<string, string>;
 function draftErrors(kind: IndicatorConfig['kind'], drafts: Drafts): { errors: ParamErrors; values: Record<string, number> | null } {
   const errors: ParamErrors = {};
   const values: Record<string, number> = {};
-  for (const { key, label } of PARAM_FIELDS[kind]) {
+  for (const { key, labelKey } of PARAM_FIELDS[kind]) {
     const n = parseWholeNumber(drafts[key] ?? '');
-    if (n === null) errors[key] = `${label} must be a whole number.`;
+    if (n === null) errors[key] = t('param.wholeNumber', { label: t(labelKey) });
     else values[key] = n;
   }
   if (Object.keys(errors).length > 0) return { errors, values: null };
@@ -44,6 +45,8 @@ function draftErrors(kind: IndicatorConfig['kind'], drafts: Drafts): { errors: P
  */
 export function ParamsEditor({ config, onChange }: ParamsEditorProps) {
   const { kind, params } = config;
+  // `tr` re-renders this editor when the language changes; `draftErrors` reads the same language.
+  const { t: tr } = useI18n();
   const [drafts, setDrafts] = useState<Drafts>(() =>
     Object.fromEntries(Object.entries(numericParams(params)).map(([k, v]) => [k, String(v)])),
   );
@@ -87,8 +90,9 @@ export function ParamsEditor({ config, onChange }: ParamsEditorProps) {
 
   return (
     <div className="params-editor">
-      {PARAM_FIELDS[kind].map(({ key, label }) => {
+      {PARAM_FIELDS[kind].map(({ key, labelKey }) => {
         const id = `${config.id}-${key}`;
+        const label = tr(labelKey);
         const error = errors[key];
         const { min, max } = bounds(key);
         return (
@@ -108,7 +112,7 @@ export function ParamsEditor({ config, onChange }: ParamsEditorProps) {
             />
             <input
               type="range"
-              aria-label={`${label} slider`}
+              aria-label={tr('param.slider', { label })}
               min={min}
               max={max}
               step={1}
@@ -123,15 +127,15 @@ export function ParamsEditor({ config, onChange }: ParamsEditorProps) {
           </div>
         );
       })}
-      {PARAM_CHOICES[kind].map(({ key, label, options }) => {
+      {PARAM_CHOICES[kind].map(({ key, labelKey, options }) => {
         const id = `${config.id}-${key}`;
         return (
           <div className="param-field" key={key}>
-            <label htmlFor={id}>{label}</label>
+            <label htmlFor={id}>{tr(labelKey)}</label>
             <select id={id} value={choices[key] ?? ''} onChange={(e) => choose(key, e.target.value)}>
               {options.map((o) => (
                 <option key={o.value} value={o.value}>
-                  {o.label}
+                  {tr(o.labelKey)}
                 </option>
               ))}
             </select>

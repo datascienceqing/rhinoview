@@ -2,6 +2,7 @@ import { useEffect, useId, useRef, useState } from 'react';
 import type { KeyboardEvent } from 'react';
 import type { SearchResult } from '@shared/types';
 import { useAsync, useDataSource } from '../data';
+import { useI18n } from '../i18n';
 import { describeError } from './errorCopy';
 import { useDebouncedValue } from './useDebouncedValue';
 
@@ -14,7 +15,9 @@ export interface SymbolSearchProps {
   label?: string;
 }
 
-export function SymbolSearch({ onSelect, debounceMs = SEARCH_DEBOUNCE_MS, label = 'Search symbol' }: SymbolSearchProps) {
+export function SymbolSearch({ onSelect, debounceMs = SEARCH_DEBOUNCE_MS, label: labelProp }: SymbolSearchProps) {
+  const { t } = useI18n();
+  const label = labelProp ?? t('search.label');
   const ds = useDataSource();
   const listId = useId();
   const [query, setQuery] = useState('');
@@ -101,7 +104,7 @@ export function SymbolSearch({ onSelect, debounceMs = SEARCH_DEBOUNCE_MS, label 
         aria-expanded={showPanel}
         aria-controls={listId}
         aria-activedescendant={activeId}
-        placeholder="Search symbol or company"
+        placeholder={t('search.placeholder')}
         autoComplete="off"
         spellCheck={false}
         value={query}
@@ -116,16 +119,16 @@ export function SymbolSearch({ onSelect, debounceMs = SEARCH_DEBOUNCE_MS, label 
         <div className="search-panel" id={listId}>
           {pending ? (
             <div className="search-note" role="status">
-              Searching…
+              {t('search.searching')}
             </div>
           ) : search.status === 'error' ? (
             <SearchError error={search.error} onRetry={search.reload} />
           ) : results.length === 0 ? (
             <div className="search-note" role="status">
-              No symbols match “{debounced}”. Check the spelling, or try a ticker or part of the company name.
+              {t('search.noMatch', { query: debounced })}
             </div>
           ) : (
-            <ul role="listbox" aria-label={`${label} results`}>
+            <ul role="listbox" aria-label={t('search.results', { label })}>
               {results.map((r, i) => (
                 <li
                   key={r.symbol}
@@ -154,13 +157,14 @@ export function SymbolSearch({ onSelect, debounceMs = SEARCH_DEBOUNCE_MS, label 
 }
 
 function SearchError({ error, onRetry }: { error: Parameters<typeof describeError>[0]; onRetry: () => void }) {
+  const { t } = useI18n();
   const copy = describeError(error, 'search');
   return (
     <div className="search-note search-error" role="alert">
       <strong>{copy.title}.</strong> {copy.detail}
       {copy.retryable && (
         <button type="button" className="link-button" onMouseDown={(e) => e.preventDefault()} onClick={onRetry}>
-          Retry
+          {t('common.retry')}
         </button>
       )}
     </div>

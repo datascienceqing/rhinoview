@@ -1,3 +1,5 @@
+import { formatCompactNumber } from '../i18n/format';
+
 const DASH = '—';
 
 export function formatPrice(value: number | null): string {
@@ -20,10 +22,9 @@ export function formatPercent(fraction: number | null): string {
   return `${pct > 0 ? '+' : ''}${pct.toFixed(2)}%`;
 }
 
-const compact = new Intl.NumberFormat('en-US', { notation: 'compact', maximumFractionDigits: 2 });
-
+/** 1.2M in English, 120万 in Chinese. */
 export function formatVolume(value: number | null): string {
-  return value === null ? DASH : compact.format(value);
+  return value === null ? DASH : formatCompactNumber(value);
 }
 
 /** CSS class for a signed value; null/zero are neutral. */

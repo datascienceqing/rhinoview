@@ -8,14 +8,15 @@ import type { FormEvent } from 'react';
 import { MAX_NAME_LENGTH } from '@shared/types';
 import { useActiveChart, useLayouts } from '../workspace';
 import type { ActionResult, LayoutsApi } from '../workspace';
+import { useI18n } from '../i18n';
 import './layouts.css';
 
 type Mode = { kind: 'list' } | { kind: 'new' } | { kind: 'rename' } | { kind: 'delete' };
 
 const SAVE_LABEL = {
-  saved: 'Saved',
-  saving: 'Saving…',
-  error: 'Save failed',
+  saved: 'layout.saved',
+  saving: 'layout.saving',
+  error: 'layout.saveFailed',
 } as const;
 
 export function LayoutSwitcher() {
@@ -33,6 +34,7 @@ export function LayoutSwitcher() {
 }
 
 function Switcher({ api, activeName }: { api: LayoutsApi; activeName: string }) {
+  const { t } = useI18n();
   const [open, setOpen] = useState(false);
   const [mode, setMode] = useState<Mode>({ kind: 'list' });
   const [draft, setDraft] = useState('');
@@ -85,7 +87,7 @@ function Switcher({ api, activeName }: { api: LayoutsApi; activeName: string }) 
     e.preventDefault();
     const name = draft.trim();
     if (name === '') {
-      setError('Enter a name.');
+      setError(t('layout.enterName'));
       return;
     }
     if (mode.kind === 'new') void run(() => api.create(name));
@@ -107,10 +109,10 @@ function Switcher({ api, activeName }: { api: LayoutsApi; activeName: string }) 
       </label>
       <div className="layout-form-actions">
         <button type="submit" className="button" disabled={busy}>
-          {mode.kind === 'new' ? 'Create' : 'Rename'}
+          {mode.kind === 'new' ? t('layout.create') : t('layout.renameSubmit')}
         </button>
         <button type="button" className="layout-plain" onClick={() => startMode({ kind: 'list' })}>
-          Cancel
+          {t('common.cancel')}
         </button>
       </div>
     </form>
@@ -124,7 +126,7 @@ function Switcher({ api, activeName }: { api: LayoutsApi; activeName: string }) 
         aria-haspopup="true"
         aria-expanded={open}
         aria-controls={panelId}
-        aria-label={`Layout: ${activeName}`}
+        aria-label={t('layout.button', { name: activeName })}
         onClick={() => (open ? close() : setOpen(true))}
       >
         <span className="layout-name">{activeName}</span>
@@ -137,19 +139,19 @@ function Switcher({ api, activeName }: { api: LayoutsApi; activeName: string }) 
         role="status"
         aria-live="polite"
       >
-        {SAVE_LABEL[api.saveState]}
+        {t(SAVE_LABEL[api.saveState])}
         {api.saveState === 'error' && (
           <button type="button" className="link-button" onClick={api.retrySave}>
-            Retry
+            {t('common.retry')}
           </button>
         )}
       </span>
 
       {api.status === 'error' && (
         <span className="layout-save layout-save-error" role="alert">
-          Layouts unavailable: {api.loadError}
+          {t('layout.unavailable', { reason: api.loadError ?? '' })}
           <button type="button" className="link-button" onClick={api.reload}>
-            Retry
+            {t('common.retry')}
           </button>
         </span>
       )}
@@ -158,16 +160,16 @@ function Switcher({ api, activeName }: { api: LayoutsApi; activeName: string }) 
         <div className="layout-notice" role="status" data-testid="layout-notice">
           <span>{api.notice}</span>
           <button type="button" className="link-button" onClick={api.dismissNotice}>
-            Dismiss
+            {t('common.dismiss')}
           </button>
         </div>
       )}
 
       {open && (
-        <div className="layout-panel" id={panelId} role="dialog" aria-label="Layouts">
+        <div className="layout-panel" id={panelId} role="dialog" aria-label={t('layout.panel')}>
           {mode.kind === 'list' && (
             <>
-              <ul className="layout-list" aria-label="Saved layouts">
+              <ul className="layout-list" aria-label={t('layout.list')}>
                 {api.layouts.map((l) => (
                   <li key={l.id}>
                     <button
@@ -182,35 +184,35 @@ function Switcher({ api, activeName }: { api: LayoutsApi; activeName: string }) 
                   </li>
                 ))}
               </ul>
-              <div className="layout-actions" role="group" aria-label="Layout actions">
+              <div className="layout-actions" role="group" aria-label={t('layout.actions')}>
                 <button type="button" onClick={() => startMode({ kind: 'new' })}>
-                  New…
+                  {t('layout.new')}
                 </button>
                 <button
                   type="button"
                   disabled={activeId === null}
                   onClick={() => startMode({ kind: 'rename' }, activeName)}
                 >
-                  Rename…
+                  {t('layout.rename')}
                 </button>
                 <button
                   type="button"
                   disabled={activeId === null || busy}
                   onClick={() => activeId !== null && void run(() => api.duplicate(activeId))}
                 >
-                  Duplicate
+                  {t('layout.duplicate')}
                 </button>
                 <button type="button" disabled={activeId === null} onClick={() => startMode({ kind: 'delete' })}>
-                  Delete…
+                  {t('layout.delete')}
                 </button>
               </div>
             </>
           )}
           {(mode.kind === 'new' || mode.kind === 'rename') &&
-            nameForm(mode.kind === 'new' ? 'New layout name' : 'Layout name')}
+            nameForm(mode.kind === 'new' ? t('layout.newName') : t('layout.name'))}
           {mode.kind === 'delete' && (
-            <div className="layout-confirm" role="alertdialog" aria-label="Confirm delete">
-              <p>Delete layout “{activeName}”? This cannot be undone.</p>
+            <div className="layout-confirm" role="alertdialog" aria-label={t('layout.confirmDelete')}>
+              <p>{t('layout.deleteQuestion', { name: activeName })}</p>
               <div className="layout-form-actions">
                 <button
                   type="button"
@@ -218,10 +220,10 @@ function Switcher({ api, activeName }: { api: LayoutsApi; activeName: string }) 
                   disabled={busy}
                   onClick={() => activeId !== null && void run(() => api.remove(activeId))}
                 >
-                  Delete
+                  {t('layout.deleteSubmit')}
                 </button>
                 <button type="button" className="layout-plain" onClick={() => startMode({ kind: 'list' })}>
-                  Cancel
+                  {t('common.cancel')}
                 </button>
               </div>
             </div>

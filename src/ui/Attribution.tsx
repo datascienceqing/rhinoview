@@ -1,3 +1,5 @@
+import { useI18n } from '../i18n';
+
 /**
  * Licence-required attribution for TradingView Lightweight Charts.
  *
@@ -9,9 +11,10 @@
  * Do not delete this without re-enabling the on-chart logo. See NOTICE at the repo root.
  */
 export function Attribution() {
+  const { t } = useI18n();
   return (
     <footer className="attribution">
-      Charts powered by{' '}
+      {t('attribution.prefix')}
       <a href="https://www.tradingview.com/" target="_blank" rel="noopener noreferrer">
         TradingView Lightweight Charts™
       </a>

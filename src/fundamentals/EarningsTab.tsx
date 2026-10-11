@@ -6,14 +6,11 @@ import { outcomeOf, surprisePercent, useEarnings } from './earnings';
 import type { EarningsOutcome } from './earnings';
 import { AsyncBlock } from './AsyncBlock';
 import { DASH, formatLarge, formatNumber, formatSignedPercent } from './format';
+import { t, useI18n } from '../i18n';
 
-const OUTCOME_LABEL: Record<EarningsOutcome, string> = {
-  beat: 'Beat',
-  miss: 'Miss',
-  inline: 'In line',
-  upcoming: 'Upcoming',
-  unknown: DASH,
-};
+function outcomeLabel(outcome: EarningsOutcome): string {
+  return outcome === 'unknown' ? DASH : t(`fund.outcome.${outcome}`);
+}
 
 /** A longer list than the shared initial one, for one symbol. */
 interface Extended {
@@ -24,15 +21,17 @@ interface Extended {
 }
 
 export function EarningsTab({ symbol }: { symbol: string }) {
+  const { t: tr } = useI18n();
   const state = useEarnings(symbol);
   return (
-    <AsyncBlock state={state} loading="Loading earnings…">
+    <AsyncBlock state={state} loading={tr('fund.loadingEarnings')}>
       {(d) => <EarningsBody key={symbol} symbol={symbol} initial={d} />}
     </AsyncBlock>
   );
 }
 
 function EarningsBody({ symbol, initial }: { symbol: string; initial: EarningsResponse }) {
+  const { t: tr } = useI18n();
   const [extended, setExtended] = useState<Extended | null>(null);
   const [loading, setLoading] = useState(false);
   const [failed, setFailed] = useState(false);
@@ -64,21 +63,21 @@ function EarningsBody({ symbol, initial }: { symbol: string; initial: EarningsRe
     );
   }
 
-  if (events.length === 0) return <p className="fund-unavailable">No earnings reports.</p>;
+  if (events.length === 0) return <p className="fund-unavailable">{tr('fund.noEarnings')}</p>;
   return (
     <>
       <div className="fund-table-wrap">
         <table className="fund-table fund-earnings" data-testid="earnings-table">
           <thead>
             <tr>
-              <th scope="col">Report date</th>
-              <th scope="col">Result</th>
-              <th scope="col">EPS actual</th>
-              <th scope="col">EPS estimate</th>
-              <th scope="col">EPS surprise</th>
-              <th scope="col">Revenue actual</th>
-              <th scope="col">Revenue estimate</th>
-              <th scope="col">Revenue surprise</th>
+              <th scope="col">{tr('fund.col.date')}</th>
+              <th scope="col">{tr('fund.col.result')}</th>
+              <th scope="col">{tr('fund.col.epsActual')}</th>
+              <th scope="col">{tr('fund.col.epsEstimate')}</th>
+              <th scope="col">{tr('fund.col.epsSurprise')}</th>
+              <th scope="col">{tr('fund.col.revActual')}</th>
+              <th scope="col">{tr('fund.col.revEstimate')}</th>
+              <th scope="col">{tr('fund.col.revSurprise')}</th>
             </tr>
           </thead>
           <tbody>
@@ -90,15 +89,15 @@ function EarningsBody({ symbol, initial }: { symbol: string; initial: EarningsRe
       </div>
       {failed && (
         <p className="fund-unavailable" role="alert">
-          Could not load more reports.{' '}
+          {tr('fund.moreFailed')}{' '}
           <button type="button" className="fund-retry" onClick={showMore}>
-            Retry
+            {tr('common.retry')}
           </button>
         </p>
       )}
       {canShowMore && !failed && (
         <button type="button" className="fund-more" disabled={loading} onClick={showMore}>
-          {loading ? 'Loading…' : 'Show more'}
+          {loading ? tr('common.loading') : tr('fund.showMore')}
         </button>
       )}
     </>
@@ -111,7 +110,7 @@ function EarningsRow({ event: e }: { event: EarningsEvent }) {
   return (
     <tr data-testid={`earnings-${e.date}`} data-outcome={outcome}>
       <th scope="row">{e.date}</th>
-      <td className={`fund-outcome fund-${outcome}`}>{OUTCOME_LABEL[outcome]}</td>
+      <td className={`fund-outcome fund-${outcome}`}>{outcomeLabel(outcome)}</td>
       <td>{upcoming ? DASH : formatNumber(e.epsActual)}</td>
       <td>{formatNumber(e.epsEstimate)}</td>
       <td>{upcoming ? DASH : formatSignedPercent(surprisePercent(e.epsActual, e.epsEstimate))}</td>

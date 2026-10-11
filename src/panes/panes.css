@@ -101,7 +101,7 @@
 }
 
 .indicator-remove:hover {
-  color: var(--down);
+  color: var(--error);
 }
 
 .params-editor {
@@ -128,12 +128,12 @@
 }
 
 .param-field input[aria-invalid='true'] {
-  border-color: var(--down);
+  border-color: var(--error);
 }
 
 .param-error {
   grid-column: 1 / -1;
-  color: var(--down);
+  color: var(--error);
   font-size: 12px;
 }
 
@@ -157,7 +157,7 @@
 }
 
 .indicator-legend-error {
-  color: var(--down);
+  color: var(--error);
 }
 
 /* Pane legends sit over their own pane, top-left, positioned from measured pane tops. */

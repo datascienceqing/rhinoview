@@ -4,6 +4,7 @@ import type { ComputedIndicator } from './computeCache';
 import { MACD_SIGNAL_COLOR, indicatorTitle } from './config';
 import { barDirection } from './convert';
 import { formatVolume } from '../ui/format';
+import { t } from '../i18n';
 
 const DASH = '—';
 
@@ -51,7 +52,11 @@ export function findPointIndex(points: readonly IndicatorPoint[], time: number):
   return -1;
 }
 
-const LINE_NAMES: Record<string, string> = { macd: 'MACD', signal: 'Signal', histogram: 'Hist', volume: 'Vol', ma: 'MA' };
+const LINE_KEYS_NAMED = ['macd', 'signal', 'histogram', 'volume', 'ma'] as const;
+type NamedLine = (typeof LINE_KEYS_NAMED)[number];
+const isNamedLine = (key: string): key is NamedLine => (LINE_KEYS_NAMED as readonly string[]).includes(key);
+/** The short name of a line in the current language; empty for a single-line indicator ('value'). */
+const lineName = (key: string): string => (isNamedLine(key) ? t(`indicator.line.${key}`) : '');
 
 /**
  * What one indicator's legend shows. Same rule as the OHLCV legend: `hoverTime` null
@@ -69,7 +74,7 @@ export function buildIndicatorLegend(item: ComputedIndicator, hoverTime: number 
     const point = line.points[index];
     return {
       key: line.key,
-      name: LINE_NAMES[line.key] ?? '',
+      name: lineName(line.key),
       color: isHistogram || isVolume ? null : line.key === 'signal' ? MACD_SIGNAL_COLOR : config.color,
       value,
       text: formatIndicatorValue(config.kind, value),

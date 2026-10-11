@@ -1,6 +1,7 @@
 import { TIMEFRAMES } from '@shared/types';
 import type { Timeframe } from '@shared/types';
 import { useCapabilities } from '../data';
+import { useI18n } from '../i18n';
 import { effectiveTimeframe } from '../workspace';
 import '../layouts/layouts.css';
 
@@ -12,6 +13,7 @@ export interface TimeframeSelectorProps {
 
 export function TimeframeSelector({ value, onChange }: TimeframeSelectorProps) {
   // Null while unknown (or if the request failed): every timeframe stays enabled.
+  const { t } = useI18n();
   const capabilities = useCapabilities();
   const supported = capabilities ? new Set<Timeframe>(capabilities.timeframes) : null;
   const shown = effectiveTimeframe(value, capabilities);
@@ -20,10 +22,10 @@ export function TimeframeSelector({ value, onChange }: TimeframeSelectorProps) {
     <>
       {shown !== value && (
         <span className="chip" role="status" data-testid="timeframe-fallback-notice">
-          {value} is not available from this data provider. Showing {shown}.
+          {t('timeframe.fallback', { saved: t(`timeframe.${value}`), shown: t(`timeframe.${shown}`) })}
         </span>
       )}
-      <div className="segmented" role="group" aria-label="Timeframe">
+      <div className="segmented" role="group" aria-label={t('timeframe.group')}>
         {TIMEFRAMES.map((tf) => {
           const enabled = supported === null || supported.has(tf);
           return (
@@ -33,10 +35,10 @@ export function TimeframeSelector({ value, onChange }: TimeframeSelectorProps) {
               aria-pressed={tf === shown}
               className={tf === shown ? 'seg active' : 'seg'}
               disabled={!enabled}
-              title={enabled ? undefined : `${tf} is not available from this data provider`}
+              title={enabled ? undefined : t('timeframe.unavailable', { tf: t(`timeframe.${tf}`) })}
               onClick={() => onChange(tf)}
             >
-              {tf}
+              {t(`timeframe.${tf}`)}
             </button>
           );
         })}

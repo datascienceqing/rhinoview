@@ -9,6 +9,7 @@ import type { PaneLayout } from '../panes';
 import { effectiveTimeframe, useActiveChart, useWorkspaceStatus } from '../workspace';
 import { CrosshairLegend } from './CrosshairLegend';
 import { StatusMessage } from './StatusMessage';
+import { useI18n } from '../i18n';
 import { describeError } from './errorCopy';
 
 export interface ChartPanelProps {
@@ -25,12 +26,13 @@ export interface ChartPanelProps {
  * instead of fetching the placeholder chart and then the real one.
  */
 export function ChartPanel(props: ChartPanelProps) {
+  const { t } = useI18n();
   const status = useWorkspaceStatus();
   if (status === 'loading') {
     return (
       <div className="chart-panel">
         <div className="chart-overlay-center">
-          <StatusMessage kind="loading" title="Loading layout…" />
+          <StatusMessage kind="loading" title={t('chart.loadingLayout')} />
         </div>
       </div>
     );
@@ -41,7 +43,9 @@ export function ChartPanel(props: ChartPanelProps) {
 function LoadedChartPanel({ symbol, timeframe: savedTimeframe, chartType, markers }: ChartPanelProps) {
   // A saved timeframe the provider cannot serve is drawn as the nearest supported one.
   // The layout itself is untouched until the user picks (see TimeframeSelector).
+  const { t } = useI18n();
   const timeframe = effectiveTimeframe(savedTimeframe, useCapabilities());
+  const tfLabel = t(`timeframe.${timeframe}`);
   const history = useBarHistory(symbol, timeframe);
   const [hoverTime, setHoverTime] = useState<number | null>(null);
   // Indicators belong to the active layout, not to the symbol.
@@ -61,7 +65,7 @@ function LoadedChartPanel({ symbol, timeframe: savedTimeframe, chartType, marker
 
   const retry = (onClick: () => void) => (
     <button type="button" className="button" onClick={onClick}>
-      Retry
+      {t('common.retry')}
     </button>
   );
 
@@ -82,7 +86,7 @@ function LoadedChartPanel({ symbol, timeframe: savedTimeframe, chartType, marker
       {history.status === 'ready' && history.bars.length > 0 && (
         <div className="chart-overlay-top">
           <div className="legend-title">
-            {symbol} · {timeframe}
+            {symbol} · {tfLabel}
           </div>
           <CrosshairLegend bars={history.bars} hoverTime={hoverTime} />
           {overlays.map((item) => (
@@ -107,7 +111,7 @@ function LoadedChartPanel({ symbol, timeframe: savedTimeframe, chartType, marker
 
       {history.status === 'loading' && (
         <div className="chart-overlay-center">
-          <StatusMessage kind="loading" title={`Loading ${symbol} ${timeframe}…`} />
+          <StatusMessage kind="loading" title={t('chart.loading', { symbol, timeframe: tfLabel })} />
         </div>
       )}
 
@@ -121,20 +125,20 @@ function LoadedChartPanel({ symbol, timeframe: savedTimeframe, chartType, marker
         <div className="chart-overlay-center">
           <StatusMessage
             kind="empty"
-            title={`No ${timeframe} data for ${symbol}`}
-            detail="The data provider returned no bars for this symbol and timeframe in the recent past. Try a longer timeframe."
+            title={t('chart.emptyTitle', { symbol, timeframe: tfLabel })}
+            detail={t('chart.emptyDetail')}
           />
         </div>
       )}
 
       <div className="chart-overlay-bottom" aria-live="polite">
-        {history.loadingOlder && <span className="chip">Loading older history…</span>}
+        {history.loadingOlder && <span className="chip">{t('chart.loadingOlder')}</span>}
         {history.olderError && (
           <span className="chip chip-error" role="alert">
-            {describeError(history.olderError, 'history').title}: couldn’t load older history.
+            {t('chart.olderFailed', { reason: describeError(history.olderError, 'history').title })}
             {describeError(history.olderError, 'history').retryable && (
               <button type="button" className="link-button" onClick={history.retryOlder}>
-                Retry
+                {t('common.retry')}
               </button>
             )}
           </span>
@@ -142,9 +146,9 @@ function LoadedChartPanel({ symbol, timeframe: savedTimeframe, chartType, marker
         {history.truncated && !history.loadingOlder && !history.exhausted && (
           <span
             className="chip"
-            title="The server returned only the newest bars of the requested range. There is no gap; older bars load as you scroll left."
+            title={t('chart.moreHistoryTitle')}
           >
-            More history available · scroll left
+            {t('chart.moreHistory')}
           </span>
         )}
       </div>

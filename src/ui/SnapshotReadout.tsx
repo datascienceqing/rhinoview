@@ -1,5 +1,6 @@
 import type { Snapshot } from '@shared/types';
 import { useAsync, useDataSource } from '../data';
+import { useI18n } from '../i18n';
 import { describeError } from './errorCopy';
 import { directionClass, formatChange, formatPercent, formatPrice } from './format';
 
@@ -10,6 +11,7 @@ export interface SnapshotReadoutProps {
 
 /** Header quote: price, absolute and percent change, and a loud DELAYED badge when applicable. */
 export function SnapshotReadout({ symbol, name }: SnapshotReadoutProps) {
+  const { t } = useI18n();
   const ds = useDataSource();
   const snapshot = useAsync(symbol, (signal) => ds.getSnapshot(symbol, { signal }));
 
@@ -22,7 +24,7 @@ export function SnapshotReadout({ symbol, name }: SnapshotReadoutProps) {
       {snapshot.status === 'success' && <Quote snapshot={snapshot.data} />}
       {snapshot.status === 'loading' && (
         <span className="readout-note" role="status">
-          Loading quote…
+          {t('quote.loading')}
         </span>
       )}
       {snapshot.status === 'error' && (
@@ -33,6 +35,7 @@ export function SnapshotReadout({ symbol, name }: SnapshotReadoutProps) {
 }
 
 function Quote({ snapshot }: { snapshot: Snapshot }) {
+  const { t } = useI18n();
   const dir = directionClass(snapshot.change);
   return (
     <>
@@ -49,9 +52,9 @@ function Quote({ snapshot }: { snapshot: Snapshot }) {
         <span
           className="badge-delayed"
           data-testid="delayed-badge"
-          title="This price is delayed (typically by about 15 minutes) and is not live."
+          title={t('quote.delayedTitle')}
         >
-          DELAYED
+          {t('quote.delayed')}
         </span>
       )}
     </>
@@ -59,13 +62,14 @@ function Quote({ snapshot }: { snapshot: Snapshot }) {
 }
 
 function QuoteError({ error, onRetry }: { error: Parameters<typeof describeError>[0]; onRetry: () => void }) {
+  const { t } = useI18n();
   const copy = describeError(error, 'quote');
   return (
     <span className="readout-note readout-error" role="alert">
-      Quote unavailable: {copy.title.toLowerCase()}.
+      {t('quote.unavailable', { reason: copy.title })}
       {copy.retryable && (
         <button type="button" className="link-button" onClick={onRetry}>
-          Retry
+          {t('common.retry')}
         </button>
       )}
     </span>

@@ -1,10 +1,7 @@
 import type { ChartType } from '@shared/types';
+import { useI18n } from '../i18n';
 
-const OPTIONS: readonly { value: ChartType; label: string }[] = [
-  { value: 'candlestick', label: 'Candles' },
-  { value: 'line', label: 'Line' },
-  { value: 'area', label: 'Area' },
-];
+const OPTIONS: readonly ChartType[] = ['candlestick', 'line', 'area'];
 
 export interface ChartTypeSelectorProps {
   value: ChartType;
@@ -12,17 +9,18 @@ export interface ChartTypeSelectorProps {
 }
 
 export function ChartTypeSelector({ value, onChange }: ChartTypeSelectorProps) {
+  const { t } = useI18n();
   return (
-    <div className="segmented" role="group" aria-label="Chart type">
+    <div className="segmented" role="group" aria-label={t('chartType.group')}>
       {OPTIONS.map((o) => (
         <button
-          key={o.value}
+          key={o}
           type="button"
-          aria-pressed={o.value === value}
-          className={o.value === value ? 'seg active' : 'seg'}
-          onClick={() => onChange(o.value)}
+          aria-pressed={o === value}
+          className={o === value ? 'seg active' : 'seg'}
+          onClick={() => onChange(o)}
         >
-          {o.label}
+          {t(`chartType.${o}`)}
         </button>
       ))}
     </div>

@@ -23,6 +23,7 @@ import { classifyUpdate, toCandles, toCloseLine } from './convert';
 import { VerticalPan } from './verticalPan';
 import { readTheme, withAlpha } from './theme';
 import type { ChartTheme } from './theme';
+import { INTL_LOCALE, getLocale } from '../i18n/locale';
 import { formatCrosshairTime, formatTick } from './timeFormat';
 
 /** Bars shown after a fresh load; the rest is reachable by scrolling. */
@@ -99,7 +100,7 @@ export class PriceChart {
         rightOffset: RIGHT_PADDING_BARS,
         tickMarkFormatter: (time: Time, type: number) => formatTick(time, type, this.intraday),
       },
-      localization: { timeFormatter: (time: Time) => formatCrosshairTime(time, this.intraday) },
+      localization: { locale: INTL_LOCALE[getLocale()], timeFormatter: (time: Time) => formatCrosshairTime(time, this.intraday) },
       crosshair: { mode: CrosshairMode.Normal },
     });
     // Pane 0 holds the price series, and `setChartType` removes that series before adding
@@ -160,6 +161,14 @@ export class PriceChart {
   /** Resolved theme colours, for layers that draw on this chart (indicator panes). */
   get colors(): ChartTheme {
     return this.theme;
+  }
+
+  /**
+   * The language changed (src/i18n has already applied it). The time formatters read the
+   * current language; an options change makes the library draw the labels again.
+   */
+  refreshLocale(): void {
+    this.chart?.applyOptions({ localization: { locale: INTL_LOCALE[getLocale()] } });
   }
 
   setIntraday(intraday: boolean): void {

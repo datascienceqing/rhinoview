@@ -22,6 +22,7 @@ import { LayoutsContext } from './layoutsContext';
 import type { ActionResult, LayoutsApi, SaveState, WorkspaceStatus } from './layoutsContext';
 import { DEFAULT_ACTIVE_CHART } from './types';
 import type { ActiveChart, ActiveChartApi } from './types';
+import { t } from '../i18n';
 
 export const SAVE_DEBOUNCE_MS = 500;
 
@@ -33,12 +34,13 @@ interface LayoutsResponse {
   activeLayoutId: EntityId;
 }
 
-const CONFLICT_NOTICE =
-  'This layout was changed elsewhere. Showing the latest saved version; your last edit was not saved.';
+// Notices are made in the language in force when the event happens.
+const conflictNotice = () => t('layout.conflict');
 
+/** A network failure in our words; anything else is the server's own message (it is not translated). */
 function messageOf(e: unknown): string {
   const err = toDataError(e);
-  if (err.code === 'NETWORK') return 'Could not reach the server. Check your connection and try again.';
+  if (err.code === 'NETWORK') return t('layout.noServer');
   return err.message;
 }
 
@@ -51,7 +53,7 @@ function isFinal(code: string): boolean {
 function copyName(base: string, taken: readonly { name: string }[]): string {
   const used = new Set(taken.map((l) => l.name.toLowerCase()));
   for (let n = 1; ; n += 1) {
-    const suffix = n === 1 ? ' copy' : ` copy ${n}`;
+    const suffix = t('layout.copySuffix', { n });
     const candidate = `${base.slice(0, MAX_NAME_LENGTH - suffix.length).trimEnd()}${suffix}`;
     if (!used.has(candidate.toLowerCase())) return candidate;
   }
@@ -130,7 +132,7 @@ export function WorkspaceProvider({ children }: { children: ReactNode }) {
       } catch (e) {
         failed.current.add(id);
         needsAdopt.current.add(id);
-        setNotice(`${message} Could not load the saved version: ${messageOf(e)}`);
+        setNotice(t('layout.loadSavedFailed', { notice: message, reason: messageOf(e) }));
       }
       refreshSaveState();
     },
@@ -169,7 +171,7 @@ export function WorkspaceProvider({ children }: { children: ReactNode }) {
       } catch (e) {
         const err = toDataError(e);
         if (isFinal(err.code)) {
-          await adoptServer(id, err.code === 'CONFLICT' ? CONFLICT_NOTICE : `Your edit was not saved: ${err.message}`);
+          await adoptServer(id, err.code === 'CONFLICT' ? conflictNotice() : t('layout.notSaved', { reason: err.message }));
         } else {
           // Transient. Keep the edit (newer edits win) for the user's Retry.
           pending.current.set(id, { ...patch, ...pending.current.get(id) });
@@ -260,7 +262,7 @@ export function WorkspaceProvider({ children }: { children: ReactNode }) {
         refreshSaveState();
         setNotice(message);
       } catch (e) {
-        setNotice(`${message} Could not refresh the list: ${messageOf(e)}`);
+        setNotice(t('layout.refreshFailed', { notice: message, reason: messageOf(e) }));
       }
     },
     [refreshSaveState, setActive, setLayoutList],
@@ -324,7 +326,7 @@ export function WorkspaceProvider({ children }: { children: ReactNode }) {
     async (id: EntityId): Promise<ActionResult> => {
       const prev = activeIdRef.current;
       if (id === prev) return { ok: true };
-      if (!layoutsRef.current.some((l) => l.id === id)) return { ok: false, message: 'That layout no longer exists.' };
+      if (!layoutsRef.current.some((l) => l.id === id)) return { ok: false, message: t('layout.gone') };
       if (prev !== null) void flush(prev); // the old layout keeps saving in the background
       setActive(id);
       try {
@@ -336,9 +338,9 @@ export function WorkspaceProvider({ children }: { children: ReactNode }) {
       } catch (e) {
         const err = toDataError(e);
         if (activeIdRef.current === id) setActive(prev);
-        const message = `Could not switch layout: ${messageOf(e)}`;
+        const message = t('layout.switchFailed', { reason: messageOf(e) });
         setNotice(message);
-        if (err.code === 'NOT_FOUND') void refresh('That layout no longer exists. The list is refreshed.');
+        if (err.code === 'NOT_FOUND') void refresh(t('layout.goneRefreshed'));
         return { ok: false, message };
       }
     },
@@ -370,7 +372,7 @@ export function WorkspaceProvider({ children }: { children: ReactNode }) {
       if (!src)
         return Promise.resolve<ActionResult>({
           ok: false,
-          message: 'That layout no longer exists.',
+          message: t('layout.gone'),
         });
       // The local copy, so unsaved edits are included. The SAVED timeframe is copied, not the fallback.
       return addAndSwitch({
@@ -389,7 +391,7 @@ export function WorkspaceProvider({ children }: { children: ReactNode }) {
       enqueue(id, async (): Promise<ActionResult> => {
         await writePending(id); // settle edits first so the revision we send is current
         const layout = layoutsRef.current.find((l) => l.id === id);
-        if (!layout) return { ok: false, message: 'That layout no longer exists.' };
+        if (!layout) return { ok: false, message: t('layout.gone') };
         inflight.current += 1;
         refreshSaveState();
         try {
@@ -419,8 +421,8 @@ export function WorkspaceProvider({ children }: { children: ReactNode }) {
             await adoptServer(
               id,
               err.code === 'CONFLICT'
-                ? 'This layout was changed elsewhere, so it was not renamed. Showing the latest saved version.'
-                : 'That layout no longer exists.',
+                ? t('layout.renameConflict')
+                : t('layout.gone'),
             );
           }
           return { ok: false, message: messageOf(e) };
@@ -450,7 +452,7 @@ export function WorkspaceProvider({ children }: { children: ReactNode }) {
       } catch (e) {
         if (toDataError(e).code === 'NOT_FOUND') {
           // Already deleted elsewhere: refetch so the stale entry goes away.
-          const message = 'That layout was already deleted elsewhere. The list is refreshed.';
+          const message = t('layout.deletedElsewhere');
           void refresh(message);
           return { ok: false, message };
         }
@@ -464,7 +466,7 @@ export function WorkspaceProvider({ children }: { children: ReactNode }) {
     for (const id of [...failed.current]) {
       if (needsAdopt.current.has(id)) {
         // The server's answer to the refused edit never arrived: fetch it, do not "save" nothing.
-        void adoptServer(id, 'Reloaded the latest saved version; your last edit was not saved.');
+        void adoptServer(id, t('layout.reloaded'));
       } else {
         failed.current.delete(id);
         void flush(id);
