@@ -449,6 +449,99 @@ describe('disposal under StrictMode', () => {
   });
 });
 
+describe('indicator order', () => {
+  const rsiTags = ['Line'];
+  const macdTags = ['Line', 'Line', 'Histogram'];
+  const listTitles = () => screen.getAllByTestId(/^indicator-item-/).map((li) => li.querySelector('.indicator-item-title')?.textContent);
+
+  it('moves a pane up with the ▲ button: the list and the panes take the new order', async () => {
+    const user = userEvent.setup();
+    await renderPanel();
+    await add(user, 'RSI');
+    await add(user, 'MACD');
+    const chart = lastChart();
+    expect(paneTags(chart)).toEqual([['Candlestick'], rsiTags, macdTags]);
+    await user.click(screen.getByRole('button', { name: 'Move MACD (12, 26, 9) up' }));
+    expect(paneTags(chart)).toEqual([['Candlestick'], macdTags, rsiTags]);
+    expect(listTitles()).toEqual(['MACD (12, 26, 9)', 'RSI (14)']);
+    // At the top ▲ is disabled, so the focus stays on the moved row, on its grip.
+    expect(screen.getByRole('button', { name: 'Move MACD (12, 26, 9) up' })).toBeDisabled();
+    expect(document.activeElement).toBe(screen.getByRole('button', { name: 'Reorder MACD (12, 26, 9)' }));
+  });
+
+  it('moves a row with Alt+ArrowDown and Alt+ArrowUp on its grip, and keeps the focus there', async () => {
+    const user = userEvent.setup();
+    await renderPanel();
+    await add(user, 'RSI');
+    await add(user, 'MACD');
+    const grip = screen.getByRole('button', { name: 'Reorder RSI (14)' });
+    grip.focus();
+    await user.keyboard('{Alt>}{ArrowDown}{/Alt}');
+    expect(listTitles()).toEqual(['MACD (12, 26, 9)', 'RSI (14)']);
+    expect(document.activeElement).toBe(screen.getByRole('button', { name: 'Reorder RSI (14)' }));
+    await user.keyboard('{Alt>}{ArrowDown}{/Alt}'); // already last: nothing moves
+    expect(listTitles()).toEqual(['MACD (12, 26, 9)', 'RSI (14)']);
+    await user.keyboard('{Alt>}{ArrowUp}{/Alt}');
+    expect(listTitles()).toEqual(['RSI (14)', 'MACD (12, 26, 9)']);
+    expect(paneTags(lastChart())).toEqual([['Candlestick'], rsiTags, macdTags]);
+  });
+
+  it('moves a row by drag and drop on its grip', async () => {
+    const user = userEvent.setup();
+    await renderPanel();
+    await add(user, 'RSI');
+    await add(user, 'MACD');
+    await add(user, 'SMA');
+    const row = (title: string) => screen.getByRole('button', { name: `Reorder ${title}` }).closest('li') as HTMLElement;
+    fireEvent.dragStart(screen.getByRole('button', { name: 'Reorder SMA (20)' }));
+    fireEvent.dragOver(row('RSI (14)'));
+    expect(row('RSI (14)')).toHaveClass('drop');
+    fireEvent.drop(row('RSI (14)'));
+    expect(listTitles()).toEqual(['SMA (20)', 'RSI (14)', 'MACD (12, 26, 9)']);
+    expect(row('RSI (14)')).not.toHaveClass('drop');
+    // SMA is an overlay: the panes keep RSI above MACD.
+    expect(paneTags(lastChart())).toEqual([['Candlestick', 'Line'], rsiTags, macdTags]);
+  });
+
+  it('orders the legend rows of overlays as the list', async () => {
+    const user = userEvent.setup();
+    await renderPanel();
+    await add(user, 'SMA');
+    await add(user, 'EMA');
+    await user.click(screen.getByRole('button', { name: 'Move EMA (20) up' }));
+    const rows = screen.getAllByTestId(/^indicator-legend-/);
+    expect(rows.map((r) => r.textContent)).toEqual([expect.stringContaining('EMA (20)'), expect.stringContaining('SMA (20)')]);
+  });
+
+  it('shows no order controls for a single indicator, and disables ▼ on the last row', async () => {
+    const user = userEvent.setup();
+    await renderPanel();
+    await add(user, 'RSI');
+    expect(screen.queryByRole('button', { name: /^Reorder / })).toBeNull();
+    expect(screen.queryByRole('button', { name: /^Move / })).toBeNull();
+    await add(user, 'MACD');
+    expect(screen.getByRole('button', { name: 'Move MACD (12, 26, 9) down' })).toBeDisabled();
+    expect(screen.getByRole('button', { name: 'Move RSI (14) up' })).toBeDisabled();
+    expect(screen.getByText(/to change the order/)).toBeInTheDocument();
+  });
+
+  it('saves the order in the layout on the server and restores it after a remount', async () => {
+    const user = userEvent.setup();
+    const first = render(connected());
+    await screen.findByTestId('crosshair-legend');
+    await add(user, 'RSI');
+    await add(user, 'MACD');
+    await user.click(screen.getByRole('button', { name: 'Move MACD (12, 26, 9) up' }));
+    await waitFor(() => expect(mockWorkspace().layouts[0]?.indicators.map((i) => i.kind)).toEqual(['macd', 'rsi']), { timeout: 3000 });
+    first.unmount();
+
+    resetFakeCharts();
+    render(connected());
+    await screen.findByTestId('crosshair-legend');
+    expect(paneTags(lastChart())).toEqual([['Candlestick'], macdTags, rsiTags]);
+  });
+});
+
 describe('confluence latch handle', () => {
   const confluence = (latch: 'on' | 'off', latchTime = 0): IndicatorConfig => ({
     id: 'cf',

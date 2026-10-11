@@ -51,6 +51,14 @@ export class FakePane {
   setStretchFactor = (factor: number): void => {
     this.stretchFactor = factor;
   };
+  /** Like the library: take this pane out and put it back at `index`. */
+  moveTo = (index: number): void => {
+    const list = this.chart.paneList;
+    const from = list.indexOf(this);
+    if (from < 0) return;
+    list.splice(from, 1);
+    list.splice(Math.max(0, Math.min(index, list.length)), 0, this);
+  };
   /** A fixed height for tests. */
   getHeight = (): number => 400;
   getHTMLElement = (): HTMLElement => this.element;

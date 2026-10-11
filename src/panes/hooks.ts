@@ -13,6 +13,18 @@ export interface IndicatorActions {
   setParams(id: string, params: IndicatorParams): void;
   setColor(id: string, color: string): void;
   setVisible(id: string, visible: boolean): void;
+  /** Move an indicator to index `to` in the list. The list order is the order of the panes, from the top. */
+  move(id: string, to: number): void;
+}
+
+/** `items` with `id` moved to index `to`, or the same array when nothing moves. */
+export function moveIndicator(items: readonly IndicatorConfig[], id: string, to: number): readonly IndicatorConfig[] {
+  const from = items.findIndex((c) => c.id === id);
+  if (from < 0 || from === to || to < 0 || to >= items.length) return items;
+  const next = [...items];
+  const [item] = next.splice(from, 1);
+  if (item) next.splice(to, 0, item);
+  return next;
 }
 
 /**
@@ -29,10 +41,12 @@ export function useIndicators(
   latest.current = indicators;
 
   const commit = useCallback(
-    (change: (items: readonly IndicatorConfig[]) => IndicatorConfig[]) => {
+    (change: (items: readonly IndicatorConfig[]) => readonly IndicatorConfig[]) => {
       const next = change(latest.current);
+      // Nothing changed (a move to the same place): no new list, so no save.
+      if (next === latest.current) return;
       latest.current = next;
-      setIndicators(next);
+      setIndicators([...next]);
     },
     [setIndicators],
   );
@@ -51,6 +65,7 @@ export function useIndicators(
       setParams: (id, params) => patch(id, { params }),
       setColor: (id, color) => patch(id, { color }),
       setVisible: (id, visible) => patch(id, { visible }),
+      move: (id, to) => commit((items) => moveIndicator(items, id, to)),
     }),
     [indicators, commit, patch],
   );
