@@ -1,4 +1,12 @@
-# RhinoView
+<p align="center">
+  <img src="docs/images/logo.svg" width="96" height="96" alt="RhinoView logo: a rhino head whose horn is a rising chart line">
+</p>
+
+<h1 align="center">RhinoView</h1>
+
+<p align="center"><b>English</b> · <a href="README.zh-CN.md">简体中文</a></p>
+
+![RhinoView with AAPL on the daily chart, Volume, Liquidity zones and RSI, in the dark theme](docs/images/app-en.png)
 
 RhinoView is a financial charting application. The client uses React, TypeScript, and
 [Lightweight Charts](https://github.com/tradingview/lightweight-charts). A thin Fastify
@@ -11,12 +19,34 @@ proxy holds the API key and normalizes the upstream data.
 - Pan and zoom in two directions, with lazy load of older history.
 - A crosshair OHLCV readout.
 - SMA, EMA, RSI, and MACD indicators in synced panes.
+- Volume, a visible-range volume profile (VRVP), and Liquidity zones and sweeps on the price pane.
 - Earnings markers ("E") on the chart.
 - Named layouts. Each layout keeps one chart: its symbol, timeframe, chart type, and indicators.
 - Watchlists: many named lists, sort, drag to reorder, and delayed quotes. You can resize the sidebar.
 - A Financials page: Overview, Statements, Trends, and Earnings.
+- A dark theme and a light theme.
+- An English interface and a Simplified Chinese interface. See [Languages](#languages).
 
 The proxy keeps layouts and watchlists in one JSON file on the server (`WORKSPACE_FILE`).
+
+## Languages
+
+The first visit uses the browser language: a `zh` browser gets Chinese, any other browser
+gets English. The **中文 / EN** button in the toolbar changes the language. The browser
+keeps the choice (`localStorage`, key `rhinoview:locale`).
+
+The Chinese interface changes more than the text:
+
+- Up is red and down is green, as in Chinese markets. English keeps green for up.
+- Large numbers use 万 and 亿, for example 4676.81万 and 1.26亿.
+- Dates on the time axis are Chinese, for example 6月 and 11日.
+- Fiscal periods read 2026财年 and 2026财年Q1.
+- The abbreviations MA, EMA, RSI, MACD, and VRVP do not change.
+
+Data from the provider does not change: company names, descriptions, and sectors stay in
+the provider's language. Some error messages come from the server, and they stay in English.
+
+![RhinoView in Chinese and in the light theme: rises are red and falls are green](docs/images/app-zh.png)
 
 ## Data providers
 
@@ -90,13 +120,14 @@ server/routes/     HTTP routes
 server/provider/   Cache, errors, quotes, and fault injection
 src/chart/         The lightweight-charts wrapper, panes, markers, and vertical pan
 src/data/          The DataSource interface over the proxy contract
-src/indicators/    Pure indicator math: SMA, EMA, RSI, and MACD
+src/indicators/    Pure indicator math: SMA, EMA, RSI, MACD, Volume, VRVP, and Liquidity
 src/panes/         The indicator pane UI
 src/workspace/     The client state for the active layout
 src/layouts/       The layout switcher
 src/watchlist/     The watchlist sidebar
 src/fundamentals/  The Financials page
-src/ui/            Symbol search, timeframe selector, legend, and sidebar resizer
+src/ui/            Symbol search, timeframe selector, legend, sidebar resizer, and logo
+src/i18n/          English and Chinese messages, the language toggle, and number formats
 mocks/             MSW handlers, and fixtures recorded from real upstream responses
 ```
 
@@ -108,12 +139,14 @@ mocks/             MSW handlers, and fixtures recorded from real upstream respon
 - [`docs/AGENT_BRIEF.md`](docs/AGENT_BRIEF.md): Shared context, file ownership, and known traps.
 - [`docs/PHASE5_PLAN.md`](docs/PHASE5_PLAN.md): The plan for watchlists, layouts, and financials.
 - [`docs/PHASE5_REPORT.md`](docs/PHASE5_REPORT.md): The Phase 5 report.
+- [`docs/LIQUIDITY_PLAN.md`](docs/LIQUIDITY_PLAN.md): The specification of the Liquidity indicator.
 
 ## Attribution
 
 RhinoView draws its charts with TradingView Lightweight Charts™. The on-chart logo of
-the library is off. The credit in the application footer meets the link requirement of
-the licence. Read [NOTICE](NOTICE) before you change the logo or the credit.
+the library is off. (This is the TradingView logo, not the RhinoView rhino.) The credit
+in the application footer meets the link requirement of the licence. Read
+[NOTICE](NOTICE) before you change the TradingView logo setting or the credit.
 
 ## Not in scope
 
