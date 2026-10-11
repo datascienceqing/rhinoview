@@ -258,11 +258,11 @@ state fields do not change it.
 | `GET /api/alerts` | — | `{ alerts: Alert[] }` |
 | `POST /api/alerts` | `CreateAlertBody` | `Alert` (201) |
 | `PUT /api/alerts/:id` | `UpdateAlertBody` (with `revision`) | `Alert`; a stale revision gives `CONFLICT` |
-| `DELETE /api/alerts/:id` | — | 204 |
+| `DELETE /api/alerts/:id` | — | `{ id }` (every answer uses the JSON envelope, so there is no 204) |
 | `GET /api/alerts/events?since=` | — | `{ events: AlertEvent[], unchecked: number }`, newest first |
 | `PUT /api/alerts/events/checked` | `{ ids: string[] }` or `{ all: true }` | `{ unchecked: number }` |
-| `DELETE /api/alerts/events/:id` | — | 204 |
-| `GET /api/alerts/stream` | — | `text/event-stream`: an `alert` event for each event that fires, and a `checked` event when the checked state changes (so other tabs update their bell) |
+| `DELETE /api/alerts/events/:id` | — | `{ unchecked: number }` |
+| `GET /api/alerts/stream` | — | `text/event-stream`: a `fired` event for each event that fires, and a `checked` event when the checked state changes (so other tabs update their bell) |
 
 Limits: at most 1000 alerts, with no limit on the number of symbols (D3). The log keeps the last
 1000 events. The messages are at most 200 characters. The search runs in the client: 1000 rows

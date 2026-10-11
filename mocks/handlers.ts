@@ -2,6 +2,7 @@ import { HttpResponse, delay, http } from 'msw';
 import type { BarsResponse, SearchResponse, Snapshot, Timeframe } from '@shared/types';
 import { TIMEFRAMES } from '@shared/types';
 import { fail, ok } from './envelope';
+import { createAlertsHandlers } from './alerts';
 import { createFundamentalsHandlers } from './fundamentals';
 import { createQuotesHandlers } from './quotes';
 import { createWorkspaceHandlers } from './workspace';
@@ -103,6 +104,7 @@ export function createHandlers({ latencyMs = 0 }: HandlerOptions = {}) {
     ...createWorkspaceHandlers(),
     ...createQuotesHandlers(),
     ...createFundamentalsHandlers(),
+    ...createAlertsHandlers(),
 
     http.get('*/api/search', async ({ request }) => {
       await wait();

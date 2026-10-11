@@ -398,3 +398,57 @@ record measured FMP behaviour that is not what you would guess.
   costs no extra upstream call. A `limit` that is not an integer in range → `BAD_REQUEST`.
   The client loads 40 first and offers "Show more", which asks for 40 more.
 - Real recorded responses for five symbols are in `server/fundamentals/__fixtures__/fmp/`.
+
+## Alerts
+
+The plan is `docs/ALERTS_PLAN.md`. The types are in `shared/types.ts` (`Alert`, `AlertEvent`,
+`AlertCondition`, …). Alerts and events are stored server-side in their own JSON file
+(`ALERTS_FILE`, default `data/alerts.json`), not in the workspace file, so checker writes
+never change the workspace revision. The server checks the alerts; the client only shows them.
+
+| Method & path | Body | Success |
+|---|---|---|
+| `GET /api/alerts` | — | `AlertsResponse` (`{ alerts }`, newest first) |
+| `POST /api/alerts` | `CreateAlertBody` | `Alert` (201) |
+| `PUT /api/alerts/:id` | `UpdateAlertBody` | `Alert` |
+| `DELETE /api/alerts/:id` | — | `{ id }` |
+| `GET /api/alerts/events?since=` | — | `AlertEventsResponse` (newest first; `since` is optional Unix seconds, exclusive) |
+| `PUT /api/alerts/events/checked` | `SetCheckedBody` (`{ ids }` with 1–1000 ids, or `{ all: true }`) | `{ unchecked }` |
+| `DELETE /api/alerts/events/:id` | — | `{ unchecked }` |
+| `GET /api/alerts/stream` | — | `text/event-stream` |
+
+- Bodies are JSON with strict zod schemas (`server/alerts/schemas.ts`). Unknown fields →
+  `BAD_REQUEST`. The body is validated BEFORE the id is looked up.
+- Semantic checks are `checkAlertCondition` and `checkAlertMessage` in
+  `src/alerts/condition.ts`. The dialog, the store and the mock use them.
+  - Price: `level` is a positive finite number.
+  - Indicator: `kind` is in `ALERT_INDICATOR_KINDS` (sma, ema, rsi, macd); `params` pass
+    `checkIndicatorParams`; `line` is in `LINE_KEYS[kind]`; a `line` target is another line
+    of the same indicator; a `value` target is finite.
+  - `message` is 0–`MAX_ALERT_MESSAGE_LENGTH` (200) characters.
+- Symbols use the workspace format and are stored upper case. There is no limit on the
+  number of symbols. At most `MAX_ALERTS` (1000) alerts → else `BAD_REQUEST`.
+- Defaults on create: `frequency: 'once'`, `expiry: '1M'`, `message: ''`, `status: 'active'`.
+- `expiresAt` = `computeExpiresAt(now, expiry)` (`src/alerts/expiry.ts`): weeks add 7 days;
+  months and years add calendar months in UTC, and the day clamps to the end of a short month.
+  A new `expiry` in a `PUT` counts from the time of the `PUT`.
+- **Optimistic concurrency** as for the workspace: `PUT` carries `revision`; stale →
+  `CONFLICT` (409). Only user edits raise `revision`. The checker writes `state`, `status`
+  (`triggered`, `expired`) and events, and never raises `revision`.
+- `PUT` with `status: 'active'` enables a `paused`, `triggered` or `expired` alert again. A
+  new `condition` or a status change to `active` resets `state.lastSide` and
+  `state.lastBarTime`, so the first check after it only records the side and does not fire.
+  When `expiresAt` already passed, enabling counts the expiry choice from now. A new
+  `expiry` on an `expired` alert also makes it `active`.
+- Unknown id → `NOT_FOUND` (404).
+- Events keep a copy of the condition and the message, so they stay readable after the
+  alert is deleted. The log keeps the newest `MAX_ALERT_EVENTS` (1000) events.
+- **Stream.** Each message is an SSE event whose name is the `type` of an
+  `AlertStreamMessage`, and whose `data` is that message as JSON:
+  - `fired`: an alert fired. Carries the event and the alert after the change.
+  - `checked`: the checked state or the event log changed. Carries the new `unchecked` count.
+  - `alerts`: alerts were created, edited, deleted, or changed status. Load the list again.
+
+  A client that reconnects loads the events it missed with `GET /api/alerts/events?since=`.
+- The MSW mock (`mocks/alerts.ts`) implements this table. It has no checker; `mockFireAlert`
+  fires an alert for tests and pushes a `fired` message to the open streams.
