@@ -1,10 +1,10 @@
-import { screen } from '@testing-library/react';
+import { act, screen } from '@testing-library/react';
 import { useState } from 'react';
 import userEvent from '@testing-library/user-event';
 import { http, HttpResponse } from 'msw';
 import type { Snapshot } from '@shared/types';
 import { server } from '../../mocks/server';
-import { DataError } from '../data';
+import { DataError, fetchCapabilities, resetCapabilitiesCache } from '../data';
 import { SnapshotReadout } from './SnapshotReadout';
 import { fakeDataSource, renderWithDataSource } from './testUtils';
 
@@ -12,6 +12,15 @@ const snapshot = (over: Partial<Snapshot>): Snapshot => ({
   symbol: 'AAPL', price: 100, change: 1.23, changePercent: 0.0123, previousClose: 98.77,
   dayOpen: null, dayHigh: null, dayLow: null, dayVolume: null, updated: null, delayed: false, ...over,
 });
+
+const realProvider = () =>
+  server.use(
+    http.get('*/api/capabilities', () =>
+      HttpResponse.json({ ok: true, data: { timeframes: ['1D'], delayed: true, provider: 'fmp', fundamentals: true } }),
+    ),
+  );
+
+beforeEach(resetCapabilitiesCache);
 
 describe('SnapshotReadout', () => {
   it('shows price, absolute change and percent change, treating changePercent as a fraction', async () => {
@@ -34,18 +43,24 @@ describe('SnapshotReadout', () => {
     expect(screen.getByTestId('snapshot-change-percent')).toHaveClass('down');
   });
 
-  it('badges delayed data visibly', async () => {
-    renderWithDataSource(<SnapshotReadout symbol="AAPL" name={null} />); // fixture: delayed:true
-    expect(await screen.findByTestId('delayed-badge')).toHaveTextContent('DELAYED');
+  it('badges synthetic data (the mock provider), so nobody takes it for a market price', async () => {
+    renderWithDataSource(<SnapshotReadout symbol="AAPL" name={null} />);
+    const badge = await screen.findByTestId('synthetic-badge');
+    expect(badge).toHaveTextContent('SYNTHETIC');
+    expect(badge).toHaveAttribute('title', expect.stringMatching(/not a real market price/));
   });
 
-  it('shows no badge when the data is not delayed', async () => {
-    server.use(
-      http.get('*/api/snapshot', () => HttpResponse.json({ ok: true, data: snapshot({ delayed: false }) })),
-    );
+  it('shows no badge on real data, also when that data is delayed', async () => {
+    realProvider();
+    server.use(http.get('*/api/snapshot', () => HttpResponse.json({ ok: true, data: snapshot({ delayed: true }) })));
     renderWithDataSource(<SnapshotReadout symbol="AAPL" name={null} />);
     await screen.findByTestId('snapshot-price');
-    expect(screen.queryByTestId('delayed-badge')).not.toBeInTheDocument();
+    // Let the capabilities arrive AND React draw them: the badge decision is made (provider 'fmp').
+    await act(async () => {
+      await fetchCapabilities();
+    });
+    expect(screen.queryByTestId('synthetic-badge')).not.toBeInTheDocument();
+    expect(screen.queryByText(/delayed/i)).not.toBeInTheDocument();
   });
 
   it('renders null prices as dashes, never zeros', async () => {

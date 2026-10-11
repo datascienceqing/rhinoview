@@ -22,7 +22,8 @@ proxy holds the API key and normalizes the upstream data.
 - Volume, a visible-range volume profile (VRVP), and Liquidity zones and sweeps on the price pane.
 - Earnings markers ("E") on the chart.
 - Named layouts. Each layout keeps one chart: its symbol, timeframe, chart type, and indicators.
-- Watchlists: many named lists, sort, drag to reorder, and delayed quotes. You can resize the sidebar.
+- Watchlists: many named lists, sort, drag to reorder, and quotes. You can resize the sidebar.
+- A "Synthetic" badge in the header and the watchlist when the data is synthetic, so that nobody takes it for market prices.
 - A Financials page: Overview, Statements, Trends, and Earnings.
 - A dark theme and a light theme.
 - An English interface and a Simplified Chinese interface. See [Languages](#languages).

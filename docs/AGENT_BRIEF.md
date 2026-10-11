@@ -185,8 +185,10 @@ report `truncated: true`. `next_url` comes back **without** the API key attached
 
 ### 6. Delayed vs real-time tiers
 
-Depending on plan tier, massive.com serves 15-minute delayed data. `Snapshot.delayed`
-must reflect reality and the UI must badge it. Never present delayed data as live.
+Depending on plan tier, a provider serves delayed data. `Snapshot.delayed` must reflect
+reality. The UI does not badge delayed data (user decision, 2026-10-11). It badges
+SYNTHETIC data instead (`Capabilities.provider` is `synthetic` or `mock`), so that nobody
+takes generated prices for market prices.
 
 ### 7. The API key is server-side only
 

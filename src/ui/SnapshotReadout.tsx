@@ -1,5 +1,5 @@
 import type { Snapshot } from '@shared/types';
-import { useAsync, useDataSource } from '../data';
+import { useAsync, useDataSource, useSyntheticData } from '../data';
 import { useI18n } from '../i18n';
 import { describeError } from './errorCopy';
 import { directionClass, formatChange, formatPercent, formatPrice } from './format';
@@ -9,7 +9,7 @@ export interface SnapshotReadoutProps {
   name: string | null;
 }
 
-/** Header quote: price, absolute and percent change, and a loud DELAYED badge when applicable. */
+/** Header quote: price, absolute and percent change, and a SYNTHETIC badge on synthetic data. */
 export function SnapshotReadout({ symbol, name }: SnapshotReadoutProps) {
   const { t } = useI18n();
   const ds = useDataSource();
@@ -36,6 +36,7 @@ export function SnapshotReadout({ symbol, name }: SnapshotReadoutProps) {
 
 function Quote({ snapshot }: { snapshot: Snapshot }) {
   const { t } = useI18n();
+  const synthetic = useSyntheticData();
   const dir = directionClass(snapshot.change);
   return (
     <>
@@ -48,13 +49,9 @@ function Quote({ snapshot }: { snapshot: Snapshot }) {
       <span className={`readout-change ${dir}`} data-testid="snapshot-change-percent">
         {formatPercent(snapshot.changePercent)}
       </span>
-      {snapshot.delayed && (
-        <span
-          className="badge-delayed"
-          data-testid="delayed-badge"
-          title={t('quote.delayedTitle')}
-        >
-          {t('quote.delayed')}
+      {synthetic && (
+        <span className="badge-synthetic" data-testid="synthetic-badge" title={t('quote.syntheticTitle')}>
+          {t('quote.synthetic')}
         </span>
       )}
     </>

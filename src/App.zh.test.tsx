@@ -31,7 +31,7 @@ describe('App in Chinese', () => {
     expect(screen.getByRole('button', { name: '日线' })).toHaveAttribute('aria-pressed', 'true');
     expect(screen.getByRole('group', { name: '周期' })).toBeInTheDocument();
     expect(screen.getByText('AAPL · 日线')).toBeInTheDocument();
-    expect(screen.getByTestId('delayed-badge')).toHaveTextContent('延时');
+    expect(await screen.findByTestId('synthetic-badge')).toHaveTextContent('模拟数据');
     expect(screen.getByRole('combobox', { name: '搜索代码' })).toHaveAttribute('placeholder', '搜索代码或公司');
     const watchlist = screen.getByTestId('watchlist-panel');
     expect(await within(watchlist).findByRole('button', { name: '新建列表' })).toBeInTheDocument();

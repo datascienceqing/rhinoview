@@ -36,8 +36,8 @@ export const en = {
 
   // ── quote readout ──
   'quote.loading': 'Loading quote…',
-  'quote.delayed': 'DELAYED',
-  'quote.delayedTitle': 'This price is delayed (typically by about 15 minutes) and is not live.',
+  'quote.synthetic': 'SYNTHETIC',
+  'quote.syntheticTitle': 'Synthetic data for development. This is not a real market price.',
   'quote.unavailable': (p: { reason: string }) => `Quote unavailable: ${p.reason.toLowerCase()}.`,
 
   // ── crosshair legend ──
@@ -162,8 +162,8 @@ export const en = {
 
   // ── watchlist ──
   'wl.title': 'Watchlist',
-  'wl.delayed': 'Delayed',
-  'wl.delayedTitle': 'Quotes are delayed, not live.',
+  'wl.synthetic': 'Synthetic',
+  'wl.syntheticTitle': 'Synthetic quotes for development, not real market prices.',
   'wl.loading': 'Loading watchlists…',
   'wl.loadFailed': 'Could not load the watchlists.',
   'wl.select': 'Watchlist',

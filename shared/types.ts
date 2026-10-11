@@ -81,8 +81,9 @@ export interface Snapshot {
   /** When upstream computed this, Unix SECONDS. */
   updated: UnixSeconds | null;
   /**
-   * True when the key's plan tier serves delayed (typically 15-minute) data.
-   * The UI must badge delayed data rather than implying it is live.
+   * True when the key's plan tier serves delayed data. It must be truthful. The UI does
+   * not badge it (user decision, 2026-10-11): it badges SYNTHETIC data instead, from
+   * `Capabilities.provider`.
    */
   delayed: boolean;
 }
@@ -287,7 +288,7 @@ export type ChartType = 'candlestick' | 'line' | 'area';
 export interface Capabilities {
   /** Subset of TIMEFRAMES the market-data provider serves. The UI disables the rest. */
   timeframes: Timeframe[];
-  /** Market data is delayed; the UI must badge it. */
+  /** Market data is delayed. Truthful, but not badged in the UI (see `Snapshot.delayed`). */
   delayed: boolean;
   /** Active market-data provider name, for diagnostics. Never contains any part of a key. */
   provider: string;

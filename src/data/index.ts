@@ -12,4 +12,4 @@ export type { BarHistory, BarHistoryState } from './useBarHistory';
 export { nowSeconds } from './time';
 export { apiRequest } from './request';
 export type { ApiRequestOptions, FetchLike } from './request';
-export { fetchCapabilities, resetCapabilitiesCache, useCapabilities } from './capabilities';
+export { SYNTHETIC_PROVIDERS, fetchCapabilities, isSyntheticData, resetCapabilitiesCache, useCapabilities, useSyntheticData } from './capabilities';

@@ -2,6 +2,7 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import type { DragEvent, FormEvent, KeyboardEvent } from 'react';
 import type { SearchResult, Snapshot, Watchlist } from '@shared/types';
 import { MAX_NAME_LENGTH, MAX_QUOTE_SYMBOLS } from '@shared/types';
+import { useSyntheticData } from '../data';
 import { SymbolSearch } from '../ui/SymbolSearch';
 import { useActiveChart } from '../workspace';
 import { direction, fmtChange, fmtPercent, fmtPrice, fmtRange, fmtVolume, normKey } from './format';
@@ -63,7 +64,7 @@ export function WatchlistPanel() {
 
   const shown = useMemo(() => sortSymbols(symbols, q.quotes, sort), [symbols, q.quotes, sort]);
   const sorted = sort !== null;
-  const delayed = [...q.quotes.values()].some((s) => s.delayed);
+  const synthetic = useSyntheticData();
   const atCap = symbols.length >= MAX_QUOTE_SYMBOLS;
 
   function openEditor(kind: Editor) {
@@ -133,9 +134,9 @@ export function WatchlistPanel() {
     <section className="watchlist-panel wl" data-testid="watchlist-panel" aria-label={t('wl.title')}>
       <header className="panel-header">
         <span>{t('wl.title')}</span>
-        {delayed && (
-          <span className="wl-badge" title={t('wl.delayedTitle')}>
-            {t('wl.delayed')}
+        {synthetic && (
+          <span className="wl-badge" data-testid="wl-synthetic-badge" title={t('wl.syntheticTitle')}>
+            {t('wl.synthetic')}
           </span>
         )}
       </header>

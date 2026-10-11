@@ -31,8 +31,8 @@ export const zh: typeof en = {
 
   // ── quote readout ──
   'quote.loading': '正在加载报价…',
-  'quote.delayed': '延时',
-  'quote.delayedTitle': '此价格为延时行情（通常延时约 15 分钟），不是实时价格。',
+  'quote.synthetic': '模拟数据',
+  'quote.syntheticTitle': '用于开发的模拟数据，不是真实的市场价格。',
   'quote.unavailable': (p) => `报价不可用：${p.reason}。`,
 
   // ── crosshair legend ──
@@ -157,8 +157,8 @@ export const zh: typeof en = {
 
   // ── watchlist ──
   'wl.title': '自选',
-  'wl.delayed': '延时',
-  'wl.delayedTitle': '报价为延时行情，不是实时价格。',
+  'wl.synthetic': '模拟',
+  'wl.syntheticTitle': '用于开发的模拟报价，不是真实的市场价格。',
   'wl.loading': '正在加载自选列表…',
   'wl.loadFailed': '无法加载自选列表。',
   'wl.select': '自选列表',
