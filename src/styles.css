@@ -229,6 +229,13 @@ button:focus-visible {
 .readout-id {
   display: flex;
   flex-direction: column;
+  min-width: 0;
+}
+
+.readout-price,
+.readout-change,
+.badge-synthetic {
+  flex: none;
 }
 
 .readout-symbol {
@@ -240,6 +247,10 @@ button:focus-visible {
 .readout-note {
   color: var(--text-dim);
   font-size: 12px;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .readout-error {
@@ -545,9 +556,31 @@ button:focus-visible {
 }
 
 /* Narrower windows keep the mark and drop the name, so the toolbar stays on one row. */
-@media (max-width: 1439px) {
+@media (max-width: 1599px) {
   .app-logo-name {
     display: none;
+  }
+}
+
+/* From 1366 px the toolbar is one row: the controls keep their size, and only the quote
+   readout shrinks (the company name gets "…" first). Narrower windows may wrap, so that
+   nothing is cut. Measured with real data: 1,365 px of items, gaps and padding at
+   1366 px without a company name. */
+@media (min-width: 1366px) {
+  .toolbar {
+    flex-wrap: nowrap;
+  }
+  .toolbar > * {
+    flex-shrink: 0;
+  }
+  .toolbar > .readout {
+    flex: 0 1 auto;
+    min-width: 0;
+    overflow: hidden;
+  }
+  .toolbar > .toolbar-spacer {
+    flex: 1 1 0;
+    min-width: 0;
   }
 }
 
