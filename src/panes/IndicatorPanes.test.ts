@@ -7,6 +7,7 @@ import type { PaneLayout } from './IndicatorPanes';
 import { DEFAULT_PARAMS } from '../indicators/types';
 import { MACD_SIGNAL_COLOR } from './config';
 import { ComputeCache } from './computeCache';
+import type { ConfluencePrimitive } from './confluence/ConfluencePrimitive';
 import type { LiquidityPrimitive } from './liquidity/LiquidityPrimitive';
 import type { VpvrPrimitive } from './vpvr/VpvrPrimitive';
 import { fakeComputeIndicator } from './testing/fakeCompute';
@@ -532,6 +533,19 @@ describe('theme refresh', () => {
     expect(update).toHaveBeenLastCalledWith(bars, config.params, expect.objectContaining({ upColor: '#00796b', downColor: '#cc2936' }));
   });
 
+  it('gives the Confluence drawing its new style', () => {
+    const container = document.createElement('div');
+    const { price, panes, chart, sync } = setupOn(container);
+    const config = indicator('confluence');
+    sync([config]);
+    const prim = chart.paneContents[0]?.[0]?.primitives[0] as unknown as ConfluencePrimitive;
+    const update = vi.spyOn(prim, 'update');
+    container.style.setProperty('--up', '#00796b');
+    price.refreshTheme();
+    panes.refreshTheme();
+    expect(update).toHaveBeenLastCalledWith(bars, config.params, expect.objectContaining({ modeColor: '#00796b' }));
+  });
+
   it('a refresh with no colour change writes the same colours', () => {
     const { panes, chart, sync } = setupOn(document.createElement('div'));
     sync([indicator('macd')]);
@@ -617,3 +631,52 @@ describe('liquidity', () => {
   });
 });
 
+
+describe('confluence', () => {
+  const priceSeries = (chart: ReturnType<typeof setup>['chart']) => chart.paneContents[0]?.[0];
+  const primOf = (chart: ReturnType<typeof setup>['chart']) => priceSeries(chart)?.primitives[0] as unknown as ConfluencePrimitive;
+  const styleOf = (prim: ConfluencePrimitive) => (prim as unknown as { style: Record<string, unknown> }).style;
+
+  it('adds no series and no pane: it is a drawing attached to the price series', () => {
+    const { chart, sync } = setup();
+    sync([indicator('confluence')]);
+    expect(chart.paneList).toHaveLength(1);
+    expect(tags(chart.paneContents[0] ?? [])).toEqual(['Candlestick']);
+    expect(priceSeries(chart)?.primitives).toHaveLength(1);
+  });
+
+  it('uses the up colour in mode turn, the down colour in mode breakdown, and the indicator colour for sources (D6)', () => {
+    const { price, chart, sync } = setup();
+    const config = indicator('confluence');
+    sync([config]);
+    const prim = primOf(chart);
+    expect(prim.result().last).not.toBeNull();
+    expect(styleOf(prim)).toMatchObject({ modeColor: price.colors.up, sourceColor: config.color, textColor: price.colors.text, visible: true });
+    sync([{ ...config, params: { ...DEFAULT_PARAMS.confluence, mode: 'breakdown' } }]);
+    expect(styleOf(prim)).toMatchObject({ modeColor: price.colors.down });
+    expect(prim.result().mode).toBe('breakdown');
+  });
+
+  it('passes new params, colour and visibility to the drawing', () => {
+    const { chart, sync } = setup();
+    const config = indicator('confluence');
+    sync([config]);
+    const prim = primOf(chart);
+    const update = vi.spyOn(prim, 'update');
+    const params = { ...DEFAULT_PARAMS.confluence, latch: 'on' as const, latchTime: bars[60]?.time ?? 0 };
+    sync([{ ...config, params, color: '#123456', visible: false }]);
+    expect(update).toHaveBeenLastCalledWith(bars, params, expect.objectContaining({ sourceColor: '#123456', visible: false }));
+    expect(prim.result().latch.index).toBe(60);
+  });
+
+  it('keeps the drawing when the chart type changes, and detaches it when the indicator is removed', () => {
+    const { price, chart, sync } = setup();
+    sync([indicator('confluence')]);
+    const prim = priceSeries(chart)?.primitives[0];
+    price.setChartType('line');
+    const line = chart.liveSeries.find((s) => (s.definition as { tag: string }).tag === 'Line');
+    expect(line?.primitives).toEqual([prim]);
+    sync([]);
+    expect(line?.primitives).toHaveLength(0);
+  });
+});

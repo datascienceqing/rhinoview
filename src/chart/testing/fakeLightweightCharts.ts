@@ -84,6 +84,8 @@ export interface FakeSeries {
   detachPrimitive: ReturnType<typeof vi.fn>;
   /** A fixed linear scale for tests: y = 1000 - 2 * price. */
   priceToCoordinate: (price: number) => number;
+  /** Like the library's default price format: two decimals. */
+  priceFormatter: () => { format: (price: number) => string };
   removed: boolean;
   /** Set by createSeriesMarkers: the markers currently drawn on this series. */
   markersApi?: { markers: unknown[]; setMarkers: ReturnType<typeof vi.fn>; detach: ReturnType<typeof vi.fn> };
@@ -165,6 +167,7 @@ export class FakeChart {
         p.detached?.();
       }),
       priceToCoordinate: (price: number) => 1000 - 2 * price,
+      priceFormatter: () => ({ format: (price: number) => price.toFixed(2) }),
       removed: false,
     };
     this.series.push(s);
