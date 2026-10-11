@@ -111,8 +111,25 @@ export class IndicatorPanes {
       }
       this.update(entry, item);
     }
+    this.orderPanes(items);
 
     this.measureSoon();
+  }
+
+  /**
+   * Put the separate panes in the order of `items`, below the price pane. A new pane opens
+   * at the bottom, and a pane that already exists stays where it is, so a reorder of the
+   * list must move the panes itself. Moving each one to its place from the top gives the
+   * full order.
+   */
+  private orderPanes(items: readonly ComputedIndicator[]): void {
+    let index = 1;
+    for (const item of items) {
+      const pane = this.entries.get(item.config.id)?.pane;
+      if (!pane) continue;
+      if (pane.paneIndex() !== index) pane.moveTo(index);
+      index += 1;
+    }
   }
 
   /**

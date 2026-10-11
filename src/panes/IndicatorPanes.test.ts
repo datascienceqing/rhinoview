@@ -66,6 +66,48 @@ describe('overlay vs separate routing', () => {
   });
 });
 
+describe('pane order', () => {
+  it('moves existing panes when the order of the list changes', () => {
+    const { chart, sync } = setup();
+    const rsi = indicator('rsi');
+    const macd = indicator('macd', [rsi]);
+    const rsi2 = { ...indicator('rsi', [rsi, macd]), params: { period: 7 } };
+    sync([rsi, macd, rsi2]);
+    const panes = () => chart.paneList.slice(1).map((p) => p.getSeries().length);
+    const rsiPane = chart.paneList[1];
+    const macdPane = chart.paneList[2];
+    expect(panes()).toEqual([1, 3, 1]);
+    sync([macd, rsi2, rsi]);
+    expect(chart.paneList[1]).toBe(macdPane);
+    expect(chart.paneList[3]).toBe(rsiPane);
+    sync([rsi2, rsi, macd]);
+    expect(chart.paneList.slice(1)).toEqual([chart.paneList[1], rsiPane, macdPane]);
+    expect(panes()).toEqual([1, 1, 3]);
+  });
+
+  it('counts only separate indicators: an overlay in between does not take a pane place', () => {
+    const { chart, sync } = setup();
+    const rsi = indicator('rsi');
+    const sma = indicator('sma', [rsi]);
+    const macd = indicator('macd', [rsi, sma]);
+    sync([rsi, sma, macd]);
+    sync([macd, sma, rsi]);
+    expect(tags(chart.paneContents[0] ?? [])).toEqual(['Candlestick', 'Line']);
+    expect(tags(chart.paneContents[1] ?? [])).toEqual(['Line', 'Line', 'Histogram']);
+    expect(tags(chart.paneContents[2] ?? [])).toEqual(['Line']);
+  });
+
+  it('does not move a pane that is already in place', () => {
+    const { chart, sync } = setup();
+    const rsi = indicator('rsi');
+    const macd = indicator('macd', [rsi]);
+    sync([rsi, macd]);
+    const moves = chart.paneList.map((p) => vi.spyOn(p, 'moveTo'));
+    sync([rsi, macd]);
+    for (const m of moves) expect(m).not.toHaveBeenCalled();
+  });
+});
+
 describe('adding and removing panes', () => {
   it('creates a pane when the first separate indicator is added and removes it with the last', () => {
     const { chart, sync } = setup();
