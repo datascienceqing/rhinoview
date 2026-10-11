@@ -2,13 +2,14 @@
   "status": 200,
   "path": "/grades-consensus?symbol=AAPL",
   "fetchedAt": "2026-10-04T22:01:52.889Z",
+  "synthetic": true,
   "body": [
     {
       "symbol": "AAPL",
-      "strongBuy": 1,
-      "buy": 70,
-      "hold": 32,
-      "sell": 9,
+      "strongBuy": 8,
+      "buy": 89,
+      "hold": 20,
+      "sell": 2,
       "strongSell": 0,
       "consensus": "Buy"
     }

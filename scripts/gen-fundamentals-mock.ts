@@ -1,6 +1,6 @@
 /**
  * Regenerates mocks/fundamentals.generated.json: the client's MSW fundamentals data,
- * produced by the REAL server mapper (W2) over the recorded FMP fixtures.
+ * produced by the REAL server mapper (W2) over the FMP fixtures (synthetic values).
  *
  * The client mock therefore cannot drift from the server mapping (Gate 5 finding F3).
  * A server test (server/fundamentals/generatedMock.test.ts) fails when this file is stale.

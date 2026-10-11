@@ -82,12 +82,12 @@ describe('success', () => {
     expect(provider.getEarnings).toHaveBeenCalledWith('aapl');
   });
 
-  it('passes JPM gross margin 0.626 and RIVN negative P/E through the whole stack, from the FMP mapper', async () => {
+  it('passes JPM gross margin (0.6) and RIVN negative P/E through the whole stack, from the FMP mapper', async () => {
     serve(createFixtureFundamentals());
     const jpm = await get<FundamentalsOverview>('/api/fundamentals/overview?symbol=JPM');
     const rivn = await get<FundamentalsOverview>('/api/fundamentals/overview?symbol=RIVN');
-    expect(jpm.body.ok && jpm.body.data.metrics.grossMargin).toBeCloseTo(0.626, 3);
-    expect(rivn.body.ok && rivn.body.data.metrics.peRatio).toBeCloseTo(-5.54, 2);
+    expect(jpm.body.ok && jpm.body.data.metrics.grossMargin).toBeCloseTo(0.6, 3);
+    expect(rivn.body.ok && rivn.body.data.metrics.peRatio).toBeCloseTo(-4.02, 2);
   });
 
   it('serves MSFT fiscal labels and TSM currency through the whole stack', async () => {

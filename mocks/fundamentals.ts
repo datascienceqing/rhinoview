@@ -1,6 +1,6 @@
 /**
- * MSW mock of `/api/fundamentals/*`, built from REAL recorded FMP responses (AAPL, MSFT,
- * JPM, TSM, RIVN) so the panel is developed against real shapes: nulls, fiscal labels,
+ * MSW mock of `/api/fundamentals/*`, built from the FMP fixtures (AAPL, MSFT,
+ * JPM, TSM, RIVN: real shapes, synthetic values) so the panel sees nulls, fiscal labels,
  * currencies. The mapping lives in ./fundamentalsData.ts and is the only part the
  * orchestrator swaps for the real server mapper at integration.
  */

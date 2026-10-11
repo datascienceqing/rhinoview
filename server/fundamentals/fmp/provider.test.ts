@@ -1,6 +1,8 @@
 /**
- * FMP provider against the RECORDED responses (server/fundamentals/__fixtures__/fmp),
+ * FMP provider against the fixture responses (server/fundamentals/__fixtures__/fmp),
  * through the real FmpClient. One describe per invariant of server/fundamentals/types.ts.
+ * The fixtures have the shape of real FMP responses, with SYNTHETIC values
+ * (scripts/gen-synthetic-fmp-fixtures.ts).
  */
 import { describe, expect, it } from 'vitest';
 import type { StatementRow } from '@shared/types';
@@ -61,16 +63,16 @@ describe('invariant 1 — null, never zero; pass through what FMP supplies', () 
     expect(fetch.paths()).toEqual(['/profile', '/profile']);
   });
 
-  it('passes JPM gross margin 0.626 through unchanged, although it is not meaningful for a bank', async () => {
+  it('passes JPM gross margin (0.6 in the fixture) through unchanged, although it is not meaningful for a bank', async () => {
     const o = await createFixtureFundamentals().getOverview('JPM');
     expect(o.metrics.grossMargin).toBe(ttm('JPM', 'ratios-ttm').grossProfitMarginTTM);
-    expect(o.metrics.grossMargin).toBeCloseTo(0.626, 3);
+    expect(o.metrics.grossMargin).toBeCloseTo(0.6, 3);
   });
 
-  it('passes RIVN negative P/E -5.54 through unchanged', async () => {
+  it('passes RIVN negative P/E (-4.02 in the fixture) through unchanged', async () => {
     const o = await createFixtureFundamentals().getOverview('RIVN');
     expect(o.metrics.peRatio).toBe(ttm('RIVN', 'ratios-ttm').priceToEarningsRatioTTM);
-    expect(o.metrics.peRatio).toBeCloseTo(-5.54, 2);
+    expect(o.metrics.peRatio).toBeCloseTo(-4.02, 2);
     expect(o.metrics.evToEbitda).toBeLessThan(0);
     expect(o.metrics.returnOnEquity).toBeLessThan(0);
   });
@@ -105,7 +107,7 @@ describe('invariant 1 — null, never zero; pass through what FMP supplies', () 
 
   it('reads employees from the string FMP sends', async () => {
     const { profile } = await createFixtureFundamentals().getOverview('AAPL');
-    expect(profile.employees).toBe(166000);
+    expect(profile.employees).toBe(45000);
     expect(profile.ipoDate).toBe('1980-12-12');
     expect(profile.exchange).toBe('NASDAQ');
   });
@@ -131,11 +133,11 @@ describe('invariant 2 — ratios are fractions', () => {
     const ratios = ttm('AAPL', 'ratios-ttm');
     const km = ttm('AAPL', 'key-metrics-ttm');
     expect(o.metrics.grossMargin).toBe(ratios.grossProfitMarginTTM);
-    expect(o.metrics.grossMargin).toBeCloseTo(0.4865, 3); // 48.65%, not 48.65
+    expect(o.metrics.grossMargin).toBeCloseTo(0.44, 3); // 44%, not 44
     expect(o.metrics.operatingMargin).toBe(ratios.operatingProfitMarginTTM);
     expect(o.metrics.netMargin).toBe(ratios.netProfitMarginTTM);
     expect(o.metrics.dividendYield).toBe(ratios.dividendYieldTTM);
-    expect(o.metrics.dividendYield).toBeCloseTo(0.0032, 4);
+    expect(o.metrics.dividendYield).toBeCloseTo(0.0045, 4);
     expect(o.metrics.payoutRatio).toBe(ratios.dividendPayoutRatioTTM);
     expect(o.metrics.returnOnEquity).toBe(km.returnOnEquityTTM);
     expect(o.metrics.returnOnInvestedCapital).toBe(km.returnOnInvestedCapitalTTM);
@@ -153,10 +155,10 @@ describe('invariant 2 — ratios are fractions', () => {
   it('copies analyst targets and counts as supplied', async () => {
     const o = await createFixtureFundamentals().getOverview('AAPL');
     expect(o.analyst).toEqual({
-      targetHigh: 400, targetLow: 245, targetConsensus: 341.68, targetMedian: 357.5,
-      strongBuy: 1, buy: 70, hold: 32, sell: 9, strongSell: 0, consensus: 'Buy',
+      targetHigh: 274.2, targetLow: 142.18, targetConsensus: 203.11, targetMedian: 205.14,
+      strongBuy: 8, buy: 89, hold: 20, sell: 2, strongSell: 0, consensus: 'Buy',
     });
-    expect(o.scores).toEqual({ piotroskiScore: 9, altmanZScore: ttm('AAPL', 'financial-scores').altmanZScore });
+    expect(o.scores).toEqual({ piotroskiScore: 5, altmanZScore: ttm('AAPL', 'financial-scores').altmanZScore });
   });
 });
 
@@ -209,7 +211,7 @@ describe('invariant 4 — currency is explicit (TSM reports in TWD, trades in US
     const price = ttm('TSM', 'profile').price as number;
     expect(o.metrics.peRatio).toBe(ttm('TSM', 'ratios-ttm').priceToEarningsRatioTTM);
     expect(o.metrics.epsDiluted).toBe(ttm('TSM', 'ratios-ttm').netIncomePerShareTTM); // TWD per share
-    // price / EPS would be about 1.1; the provider's P/E is about 29.
+    // price / EPS would be about 1.1; the provider's P/E is about 35.
     expect(price / (o.metrics.epsDiluted as number)).toBeLessThan(2);
     expect(o.metrics.peRatio).toBeGreaterThan(20);
   });
@@ -291,8 +293,8 @@ describe('invariant 6 — newest first; annual <= 10, quarterly <= 8', () => {
     const res = await providerOver(fetch).getEarnings('AAPL');
     const dates = res.events.map((e) => e.date);
     expect(dates).toEqual([...dates].sort().reverse());
-    expect(res.events[0]).toMatchObject({ date: '2026-10-29', epsActual: null, revenueActual: null, epsEstimate: 1.99 });
-    expect(res.events[1]).toMatchObject({ date: '2026-07-30', epsActual: 2.02, epsEstimate: 1.89 });
+    expect(res.events[0]).toMatchObject({ date: '2026-10-29', epsActual: null, revenueActual: null, epsEstimate: 1.42 });
+    expect(res.events[1]).toMatchObject({ date: '2026-07-30', epsActual: 1.46, epsEstimate: 1.36 });
   });
 
   it('asks FMP for 10 annual and 8 quarterly rows', async () => {
@@ -343,7 +345,7 @@ describe('invariant 7 — partial success in the overview', () => {
     const o = await providerOver(fetch).getOverview('AAPL');
     expect(o.unavailable).toEqual(['metrics']);
     expect(Object.values(o.metrics).every((v) => v === null)).toBe(true);
-    expect(o.scores.piotroskiScore).toBe(9);
+    expect(o.scores.piotroskiScore).toBe(5);
     expect(o.analyst.consensus).toBe('Buy');
   });
 

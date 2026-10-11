@@ -2,19 +2,20 @@
   "status": 200,
   "path": "/financial-scores?symbol=RIVN",
   "fetchedAt": "2026-10-04T22:01:52.889Z",
+  "synthetic": true,
   "body": [
     {
       "symbol": "RIVN",
       "reportedCurrency": "USD",
-      "altmanZScore": -1.5067934364631397,
-      "piotroskiScore": 3,
-      "workingCapital": 3998000000,
-      "totalAssets": 15140000000,
-      "retainedEarnings": -28200000000,
-      "ebit": -2958000000,
-      "marketCap": 17358454099,
-      "totalLiabilities": 10013000000,
-      "revenue": 5883000000
+      "altmanZScore": 1.044044,
+      "piotroskiScore": 2,
+      "workingCapital": -1217332170,
+      "totalAssets": 16162904553,
+      "retainedEarnings": -81375545811,
+      "ebit": -3333723697,
+      "marketCap": 13392000000,
+      "totalLiabilities": 9697742732,
+      "revenue": 4898428050
     }
   ]
 }

@@ -1,6 +1,6 @@
 /**
- * Test helpers: serve the recorded FMP responses through the REAL `FmpClient`, so a
- * recorded 402 goes through the client's own 402 handling. No network.
+ * Test helpers: serve the FMP fixture responses (synthetic values) through the REAL
+ * `FmpClient`, so a fixture 402 goes through the client's own 402 handling. No network.
  */
 import { existsSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';

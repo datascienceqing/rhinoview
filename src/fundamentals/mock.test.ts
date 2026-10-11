@@ -1,4 +1,4 @@
-/** Guards mocks/fundamentals.ts: contract-shaped, real fixtures, contract errors. */
+/** Guards mocks/fundamentals.ts: contract-shaped, built from the (synthetic) FMP fixtures, contract errors. */
 import { describe, expect, it } from 'vitest';
 import type { EarningsResponse, FundamentalsOverview, StatementsResponse } from '@shared/types';
 import { DataError, apiRequest } from '../data';
@@ -16,19 +16,19 @@ describe('fundamentals mock', () => {
   it('serves an overview with fractions and the reporting currency', async () => {
     const o = await apiRequest<FundamentalsOverview>('/fundamentals/overview', { params: { symbol: 'aapl' } });
     expect(o.profile.symbol).toBe('AAPL');
-    expect(o.metrics.grossMargin).toBeCloseTo(0.4865, 3);
+    expect(o.metrics.grossMargin).toBeCloseTo(0.44, 3);
     expect(o.unavailable).toEqual([]);
     const tsm = await apiRequest<FundamentalsOverview>('/fundamentals/overview', { params: { symbol: 'TSM' } });
     expect(tsm.reportedCurrency).toBe('TWD');
     expect(tsm.profile.currency).toBe('USD');
   });
 
-  it('keeps the measured RIVN and JPM raw values', async () => {
+  it('keeps the RIVN and JPM raw values of the fixtures', async () => {
     const rivn = await apiRequest<FundamentalsOverview>('/fundamentals/overview', { params: { symbol: 'RIVN' } });
     expect(rivn.metrics.peRatio).toBeLessThan(0);
     const jpm = await apiRequest<FundamentalsOverview>('/fundamentals/overview', { params: { symbol: 'JPM' } });
     expect(jpm.profile.sector).toBe('Financial Services');
-    expect(jpm.metrics.grossMargin).toBeCloseTo(0.626, 3);
+    expect(jpm.metrics.grossMargin).toBeCloseTo(0.6, 3);
   });
 
   it('serves statements newest first with provider fiscal labels', async () => {

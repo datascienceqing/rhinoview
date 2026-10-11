@@ -2,12 +2,13 @@
   "status": 200,
   "path": "/grades-consensus?symbol=TSM",
   "fetchedAt": "2026-10-04T22:01:52.889Z",
+  "synthetic": true,
   "body": [
     {
       "symbol": "TSM",
       "strongBuy": 0,
-      "buy": 18,
-      "hold": 7,
+      "buy": 19,
+      "hold": 3,
       "sell": 0,
       "strongSell": 0,
       "consensus": "Buy"

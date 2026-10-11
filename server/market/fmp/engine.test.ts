@@ -142,8 +142,8 @@ describe('getBars 1W', () => {
     const e = engineWith(eodFixtureFetch());
     const { bars: weeks } = await bars(e, '1W', '2025-10-27', '2025-11-07');
     expect(weeks.map((w) => w.time)).toEqual([T('2025-10-27'), T('2025-11-03')]);
-    expect(weeks[0]).toMatchObject({ open: 264.88, close: 270.37, high: 277.32, low: 264.65, volume: 293563399 });
-    expect(weeks[1]).toMatchObject({ open: 270.42, close: 268.47, high: 273.4, low: 266.25, volume: 242583991 });
+    expect(weeks[0]).toMatchObject({ open: 184.87, close: 182.74, high: 185.16, low: 181.77, volume: 118386538 });
+    expect(weeks[1]).toMatchObject({ open: 183.42, close: 182.4, high: 184.09, low: 179.67, volume: 135051098 });
   });
 
   it('1W agrees with 1D from the same engine (invariant 2 for this pair)', async () => {
@@ -310,8 +310,8 @@ describe('getSnapshot', () => {
 
   it('converts changePercentage (a percentage) to our fraction', async () => {
     const snap = await engineWith(quoteFetch()).getSnapshot('aapl', 0);
-    expect(snap.changePercent).toBeCloseTo(0.0102022, 8);
-    expect(snap).toMatchObject({ symbol: 'AAPL', price: 333.69, previousClose: 330.32, dayVolume: 31878433, updated: 1790971201 });
+    expect(snap.changePercent).toBeCloseTo(0.0018125, 8);
+    expect(snap).toMatchObject({ symbol: 'AAPL', price: 182.4, previousClose: 182.07, dayVolume: 43588453, updated: 1790971201 });
   });
 
   it('is reported as delayed unless the operator opts out (see FmpEngine.delayed)', async () => {

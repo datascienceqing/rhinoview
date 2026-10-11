@@ -2,13 +2,14 @@
   "status": 200,
   "path": "/grades-consensus?symbol=RIVN",
   "fetchedAt": "2026-10-04T22:01:52.889Z",
+  "synthetic": true,
   "body": [
     {
       "symbol": "RIVN",
       "strongBuy": 0,
-      "buy": 14,
-      "hold": 10,
-      "sell": 5,
+      "buy": 64,
+      "hold": 58,
+      "sell": 4,
       "strongSell": 0,
       "consensus": "Buy"
     }

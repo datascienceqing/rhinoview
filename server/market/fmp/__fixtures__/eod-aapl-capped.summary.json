@@ -1,30 +1,30 @@
 {
-  "note": "Summary of one real capped response (GET historical-price-eod/full?symbol=AAPL&from=1980-01-01&to=2026-10-02). Full body is ~1.1 MB so only its shape is kept.",
+  "note": "Shape of one capped FMP response (GET historical-price-eod/full?symbol=AAPL&from=1980-01-01&to=2026-10-02): its row count, order, keys and end dates. The two rows hold SYNTHETIC values.",
   "status": 200,
   "rowCount": 5000,
   "newest": {
     "symbol": "AAPL",
     "date": "2026-10-02",
-    "open": 333.26,
-    "high": 334.54,
-    "low": 330.61,
-    "close": 333.69,
-    "volume": 31829263,
-    "change": 0.43,
-    "changePercent": 0.12903,
-    "vwap": 333.025
+    "open": 182.8,
+    "high": 183.8,
+    "low": 181.66,
+    "close": 182.4,
+    "volume": 15770537,
+    "change": -0.91,
+    "changePercent": -0.49643,
+    "vwap": 182.665
   },
   "oldest": {
     "symbol": "AAPL",
     "date": "2006-11-15",
-    "open": 3.04,
-    "high": 3.07,
-    "low": 3,
-    "close": 3,
-    "volume": 658170448,
-    "change": -0.035892,
-    "changePercent": -1.32,
-    "vwap": 3.0275
+    "open": 4.5355,
+    "high": 4.595,
+    "low": 4.509,
+    "close": 4.5828,
+    "volume": 26013795,
+    "change": 0.044,
+    "changePercent": 0.96943,
+    "vwap": 4.5556
   },
   "descending": true,
   "keys": [
@@ -38,5 +38,6 @@
     "change",
     "changePercent",
     "vwap"
-  ]
+  ],
+  "synthetic": true
 }
