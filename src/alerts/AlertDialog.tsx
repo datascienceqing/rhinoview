@@ -189,17 +189,19 @@ function AlertDialogForm({ draft, onClose }: { draft: AlertDraft; onClose: () =>
           ))}
         </fieldset>
 
-        <label className="alert-field">
-          <span>{t('alerts.field.expiry')}</span>
-          <select value={expiry} onChange={(e) => setExpiry(e.target.value as AlertExpiry)}>
+        <div className="alert-field">
+          <label htmlFor={`${id}-expiry`}>{t('alerts.field.expiry')}</label>
+          <select id={`${id}-expiry`} aria-describedby={`${id}-expires`} value={expiry} onChange={(e) => setExpiry(e.target.value as AlertExpiry)}>
             {ALERT_EXPIRY_CHOICES.map((c) => (
               <option key={c} value={c}>
                 {t(`alerts.expiry.${c}`)}
               </option>
             ))}
           </select>
-          <small className="alert-hint">{t('alerts.expiresOn', { date: expiresText })}</small>
-        </label>
+          <small id={`${id}-expires`} className="alert-hint">
+            {t('alerts.expiresOn', { date: expiresText })}
+          </small>
+        </div>
 
         <label className="alert-field">
           <span>{t('alerts.field.message')}</span>
