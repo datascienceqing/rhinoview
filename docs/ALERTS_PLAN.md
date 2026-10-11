@@ -2,8 +2,9 @@
 
 Status: draft for the user's review (2026-10-11). Branch: `feat/alerts`, from `main` at `3d24afc`.
 
-Decisions D1–D9 (section 9) use the recommendations. The user can change them before the
-implementation starts.
+Decisions D1–D9 (section 9) use the recommendations. The user confirmed D1, D5, D6 and D9
+(2026-10-11). D2, D3, D4, D7 and D8 are still recommendations; the user can change them before
+the implementation starts.
 
 **Implementer:** read `AGENTS.md`, `docs/AGENT_BRIEF.md` and `docs/CONTRACT.md` first. All
 output for the user (reports, commit messages, the PR) must be in ASD-STE100 style.
@@ -279,12 +280,12 @@ Tests that must exist:
 
 | # | Question | Recommendation |
 |---|---|---|
-| D1 | Where does the check run? | On the server (section 5.1). |
+| D1 | Where does the check run? | On the server (section 5.1). **Confirmed by the user.** |
 | D2 | How often does the server check price alerts? | Each 30 s, like the watchlist. |
 | D3 | Limits? | 100 alerts, 20 symbols with an active alert. |
 | D4 | Which indicators can have alerts? | SMA, EMA, RSI and MACD. Not Volume, VRVP or Liquidity in this phase. |
-| D5 | "Every time": how often can one alert fire? | On each new crossing; it must cross back first. |
-| D6 | Alerts when no tab is open? | The server records them; the app shows them on the next visit. No push or e-mail in this phase. |
+| D5 | "Every time": how often can one alert fire? | On each new crossing; it must cross back first. **Confirmed by the user.** |
+| D6 | Alerts when no tab is open? | The server records them; the app shows them on the next visit. No push or e-mail in this phase. **Confirmed by the user.** |
 | D7 | How long does a popup stay? | 30 s, or until the user dismisses it. |
 | D8 | A browser notification when the tab is hidden? | Yes, if the user allows it. The app asks only after the user makes the first alert. |
-| D9 | Expiry choices: 1, 2 or 3 weeks, months or years (9 choices)? | Yes, default 1 month. |
+| D9 | Expiry choices: 1, 2 or 3 weeks, months or years (9 choices)? | Yes, default 1 month. **Confirmed by the user.** |
