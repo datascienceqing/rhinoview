@@ -5,6 +5,8 @@ import type { ChartType, Timeframe } from '@shared/types';
 import { ChartView } from '../chart';
 import { useBarHistory, useCapabilities } from '../data';
 import { IndicatorLegendRow, IndicatorMenu, useComputedIndicators, useIndicators } from '../panes';
+import { LatchHandles } from '../panes/confluence/LatchHandle';
+import type { PriceChart } from '../chart/PriceChart';
 import type { PaneLayout } from '../panes';
 import { effectiveTimeframe, useActiveChart, useWorkspaceStatus } from '../workspace';
 import { CrosshairLegend } from './CrosshairLegend';
@@ -53,6 +55,8 @@ function LoadedChartPanel({ symbol, timeframe: savedTimeframe, chartType, marker
   const indicatorState = useIndicators(chart.indicators, setIndicators);
   const computed = useComputedIndicators(history.bars, indicatorState.indicators);
   const [paneTops, setPaneTops] = useState<PaneLayout>({});
+  // The live chart, for the confluence latch handle; null while there is none.
+  const [priceChart, setPriceChart] = useState<PriceChart | null>(null);
   // Measured on every layout pass; only a real change may cause a render.
   const onPaneLayout = useCallback((next: PaneLayout) => {
     setPaneTops((prev) => {
@@ -80,8 +84,19 @@ function LoadedChartPanel({ symbol, timeframe: savedTimeframe, chartType, marker
         onNearStart={history.loadOlder}
         indicators={computed}
         onPaneLayout={onPaneLayout}
+        onChart={setPriceChart}
         {...(markers ? { markers } : {})}
       />
+
+      {history.status === 'ready' && history.bars.length > 0 && (
+        <LatchHandles
+          chart={priceChart}
+          bars={history.bars}
+          indicators={indicatorState.indicators}
+          intraday={isIntraday(timeframe)}
+          onChange={indicatorState.setParams}
+        />
+      )}
 
       {history.status === 'ready' && history.bars.length > 0 && (
         <div className="chart-overlay-top">

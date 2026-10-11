@@ -50,11 +50,66 @@ describe('ChartView lifecycle', () => {
     expect(pc.api).toBeNull();
   });
 
+  it('reports its PriceChart to onChart after it is created, and null when it is disposed', () => {
+    const onChart = vi.fn();
+    const { unmount } = render(<ChartView bars={mk(1, 2, 3)} chartType="candlestick" intraday={false} onChart={onChart} />);
+    expect(onChart).toHaveBeenCalledTimes(1);
+    expect(onChart.mock.calls[0]?.[0]).toBeInstanceOf(PriceChart);
+    unmount();
+    expect(onChart).toHaveBeenLastCalledWith(null);
+  });
+
   it('feeds bar times to the series unchanged (Unix seconds in, seconds out)', () => {
     render(<ChartView bars={mk(1790775000, 1790775300)} chartType="candlestick" intraday />);
     const series = lastChart().liveSeries[0];
     const data = series?.setData.mock.calls.at(-1)?.[0] as { time: number }[];
     expect(data.map((d) => d.time)).toEqual([1790775000, 1790775300]);
+  });
+});
+
+describe('PriceChart geometry for overlays', () => {
+  // The fake: x = 100 + 8 * logical, plot width 700, price pane height 400.
+  it('maps bars to x and x to the nearest bar, and reports the plot and pane sizes', () => {
+    const pc = new PriceChart(document.createElement('div'));
+    expect(pc.barX(5)).toBe(140);
+    expect(pc.barAt(143)).toBe(5);
+    expect(pc.barAt(145)).toBe(6);
+    expect(pc.plotWidth()).toBe(700);
+    expect(pc.pricePaneHeight()).toBe(400);
+  });
+
+  it('scrolls a bar to the centre and keeps the number of bars in view', () => {
+    const pc = new PriceChart(document.createElement('div'));
+    lastChart().visibleRange = { from: 100, to: 160 };
+    pc.scrollToBar(40);
+    expect(pc.visibleRange()).toEqual({ from: 10, to: 70 });
+  });
+
+  it('calls a view listener on a scroll and on a resize, until it unsubscribes', () => {
+    const pc = new PriceChart(document.createElement('div'));
+    const chart = lastChart();
+    const listener = vi.fn();
+    const off = pc.subscribeView(listener);
+    chart.scrollTo({ from: 1, to: 2 });
+    chart.sizeHandlers.forEach((h) => h());
+    expect(listener).toHaveBeenCalledTimes(2);
+    off();
+    chart.scrollTo({ from: 3, to: 4 });
+    expect(listener).toHaveBeenCalledTimes(2);
+  });
+
+  it('is safe after dispose: no geometry, and an unsubscribe that does nothing', () => {
+    const pc = new PriceChart(document.createElement('div'));
+    const off = pc.subscribeView(vi.fn());
+    pc.dispose();
+    expect(() => off()).not.toThrow();
+    expect(pc.barX(1)).toBeNull();
+    expect(pc.barAt(1)).toBeNull();
+    expect(pc.visibleRange()).toBeNull();
+    expect(pc.plotWidth()).toBe(0);
+    expect(pc.pricePaneHeight()).toBe(0);
+    expect(() => pc.scrollToBar(1)).not.toThrow();
+    expect(pc.subscribeView(vi.fn())()).toBeUndefined();
   });
 });
 

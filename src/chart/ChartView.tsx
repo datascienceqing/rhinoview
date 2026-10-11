@@ -24,6 +24,8 @@ export interface ChartViewProps {
   onPaneLayout?: (layout: PaneLayout) => void;
   /** Flags on the price series, for example earnings. Phase 5 seam; see markers.ts. */
   markers?: readonly ChartMarker[];
+  /** The chart after it is created, and null when it is disposed: overlays (the latch handle) read its geometry. */
+  onChart?: (chart: PriceChart | null) => void;
 }
 
 /**
@@ -43,6 +45,7 @@ export function ChartView({
   indicators = NO_INDICATORS,
   onPaneLayout,
   markers = NO_MARKERS,
+  onChart,
 }: ChartViewProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const chartRef = useRef<PriceChart | null>(null);
@@ -50,9 +53,9 @@ export function ChartView({
   const [autoScaled, setAutoScaled] = useState(true);
   const panesRef = useRef<IndicatorPanes | null>(null);
   // Callbacks are read through refs so changing them never recreates the chart.
-  const handlers = useRef({ onCrosshairTime, onNearStart, onPaneLayout });
+  const handlers = useRef({ onCrosshairTime, onNearStart, onPaneLayout, onChart });
   useEffect(() => {
-    handlers.current = { onCrosshairTime, onNearStart, onPaneLayout };
+    handlers.current = { onCrosshairTime, onNearStart, onPaneLayout, onChart };
   });
 
   useEffect(() => {
@@ -67,9 +70,11 @@ export function ChartView({
     const panes = new IndicatorPanes(chart, (layout) => handlers.current.onPaneLayout?.(layout));
     chartRef.current = chart;
     panesRef.current = panes;
+    handlers.current.onChart?.(chart);
     return () => {
       chartRef.current = null;
       panesRef.current = null;
+      handlers.current.onChart?.(null);
       // Panes first: it only drops its references, so it never touches a removed chart.
       panes.dispose();
       chart.dispose();
