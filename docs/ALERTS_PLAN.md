@@ -2,9 +2,9 @@
 
 Status: draft for the user's review (2026-10-11). Branch: `feat/alerts`, from `main` at `3d24afc`.
 
-Decisions D1–D9 (section 9) use the recommendations. The user confirmed D1, D5, D6 and D9
-(2026-10-11). D2, D3, D4, D7 and D8 are still recommendations; the user can change them before
-the implementation starts.
+Decisions D1–D12 (section 9) use the recommendations. The user confirmed D1, D5, D6 and D9,
+and asked for D3 and D7 (2026-10-11). D2, D4, D8, D10, D11 and D12 are still recommendations;
+the user can change them before the implementation starts.
 
 **Implementer:** read `AGENTS.md`, `docs/AGENT_BRIEF.md` and `docs/CONTRACT.md` first. All
 output for the user (reports, commit messages, the PR) must be in ASD-STE100 style.
@@ -47,8 +47,12 @@ In scope:
   line of the same indicator (section 4.3).
 - Once or every time; an expiry time.
 - The server checks the alerts, also when no browser is open.
-- A popup window with a sound for each alert that fires; a list of the alerts that fired.
-- An Alerts panel to see, edit, pause and delete alerts.
+- A popup window with a sound for each alert that fires. After 30 s it shrinks into a bell
+  button at the top right.
+- An Alerts window: it lists the alerts that fired and all alerts. It can search, delete, and
+  mark all fired alerts as checked. It is docked on the right, and the user can float it and
+  drag it.
+- Up to 1000 alerts, with no limit on the number of symbols (D3).
 - An alert line on the chart for each active price alert of the shown symbol.
 - English and Chinese text for all of it.
 
@@ -144,26 +148,74 @@ already imports `checkIndicatorParams` from there.
 
 ### 4.5 The popup window and the sound
 
-- An alert that fires shows a small popup window at the bottom right: the symbol, the
-  message, the price or value, and the time. It has two buttons: **Show on chart** and
-  **Dismiss**. It closes by itself after 30 s (D7).
-- More popups stack, up to 3. Above 3, one line says "{n} more alerts". The full list is in the
-  Alerts panel, tab "Log".
+- An alert that fires shows a small popup window at the **bottom left** of the app window: the
+  symbol, the message, the price or value, and the time. It has two buttons: **Show on chart**
+  and **Dismiss**.
+- **Dismiss** marks that event as checked (section 4.6) and closes the popup.
+- If the user does not dismiss it, the popup **shrinks into the bell button at the top right**
+  after 30 s (D7). The event stays unchecked.
+- More popups stack upward, up to 3. Above 3, one line says "{n} more alerts". That line also
+  shrinks into the bell after 30 s.
 - The sound is a short chime, made with the Web Audio API. No sound file is in the bundle.
 - Browsers block sound until the user clicks the page once. Before that click, the popup shows
   without sound, and it shows a small "Sound is off until you click" note.
 - When the tab is hidden, the app can also show a browser notification, if the user allowed
   it (D8).
 - Sound on or off and the volume are a device setting in `localStorage`
-  (`rhinoview:alert-sound`). A switch is in the Alerts panel.
+  (`rhinoview:alert-sound`). A switch is in the Alerts window.
 
-### 4.6 The Alerts panel
+### 4.6 The bell button and the Alerts window
 
-- A second tab in the right sidebar: **Watchlist | Alerts**.
-- Each alert row: symbol, condition text ("crossing up 250.00", "RSI(14) crossing up 70"),
-  status, expiry date. Actions: edit, pause or enable, delete.
-- A **Log** tab lists the last 200 events that fired, newest first.
-- A click on an alert row shows its symbol on the chart.
+**Bell button.** It is at the right end of the toolbar (top right). It shows the number of
+unchecked fired alerts. A click on it opens the Alerts window, at the default position, on the
+**Triggered** tab.
+
+**Default position: docked on the right.** The window fills the height of the area under the
+toolbar, along the right edge, 360 px wide, over the watchlist sidebar (D10). The chart does
+not change its size.
+
+**Float and drag.** The user drags the title bar to float the window. It then moves freely
+inside the app window, and it stays inside it. A **Dock** button in the title bar docks it
+again.
+
+**Minimize.** A **Minimize** button (and Esc, when the window has focus) shrinks the window into
+the bell. The next click on the bell opens it again **at the default docked position**, not at
+the old floating position. The floating position is not stored.
+
+**Tabs.**
+
+| Tab | Rows | Order |
+|---|---|---|
+| Triggered | The events that fired (the log, up to 1000 events) | Newest first; unchecked first |
+| Alerts | All alerts (up to 1000) | Active first, then by symbol |
+
+**Search.** One search box filters the open tab by symbol or by indicator, for example "AAPL",
+"RSI" or "MACD". It ignores case. It also finds Chinese indicator names in the Chinese interface.
+
+**Different looks.** Each row shows its type and status at a glance:
+
+| What | Look |
+|---|---|
+| Price alert | A horizontal-line icon |
+| Indicator alert | A wave icon, and the indicator title, for example "RSI (14)" |
+| Direction | ↑ crossing up, ↓ crossing down, ↕ crossing |
+| Unchecked fired event | Bold text, a dot in the accent colour, a light accent background |
+| Checked fired event | Normal text |
+| Active alert | Normal text |
+| Paused alert | Dim text, a pause icon |
+| Fired "once" alert (done) | A check mark |
+| Expired alert | Dim text, struck through |
+
+**Actions.**
+
+- A click on a row shows its symbol on the chart. For an indicator alert, the chart also shows
+  the alert's timeframe (D11). A click on an unchecked event also marks it as checked.
+- Each row has a **Delete** button. On the Alerts tab it deletes the alert. On the Triggered tab
+  it deletes the event from the log.
+- On the Alerts tab, each row also has **Edit** and **Pause / Enable**.
+- **Mark all as checked** (on the Triggered tab): all unchecked events become checked. The
+  bell count becomes 0. It does not delete events and it does not change the alerts.
+- The checked state is stored on the server, so all tabs and browsers agree.
 
 ### 4.7 Alert lines on the chart
 
@@ -190,8 +242,8 @@ The **server** checks the alerts (D1). Reasons:
 | Contract | `shared/types.ts`, `docs/CONTRACT.md` | `Alert`, `AlertCondition`, `AlertEvent`, bodies, limits |
 | Store | `server/alerts/store.ts` | A second JSON file (`ALERTS_FILE`, default `data/alerts.json`). Same atomic write and serial queue as the workspace store. |
 | Check (pure) | `server/alerts/evaluate.ts` | `evaluate(alert, observation) -> { fire, nextState }`. No clock, no I/O. Most tests go here. |
-| Scheduler | `server/alerts/scheduler.ts` | Each 30 s: price alerts, grouped by symbol, one quote for each symbol. At each bar close: indicator alerts, grouped by symbol and timeframe. Injectable clock. |
-| Events | `server/alerts/events.ts` | Keeps the last 200 events. Sends new ones on a Server-Sent Events stream. |
+| Scheduler | `server/alerts/scheduler.ts` | A queue of symbols with active alerts, checked in turn inside a call budget (section 6). Price alerts use one quote for each symbol. Indicator alerts use closed bars, after each bar close. Injectable clock. |
+| Events | `server/alerts/events.ts` | Keeps the last 1000 events, each with a `checked` flag. Sends new ones on a Server-Sent Events stream. |
 | Routes | `server/routes/alerts.ts` | CRUD, the event list, the event stream |
 
 Why a second file, not the workspace file: the scheduler writes the state of an alert each
@@ -207,11 +259,14 @@ state fields do not change it.
 | `POST /api/alerts` | `CreateAlertBody` | `Alert` (201) |
 | `PUT /api/alerts/:id` | `UpdateAlertBody` (with `revision`) | `Alert`; a stale revision gives `CONFLICT` |
 | `DELETE /api/alerts/:id` | — | 204 |
-| `GET /api/alerts/events?since=` | — | `{ events: AlertEvent[] }`, newest first |
-| `GET /api/alerts/stream` | — | `text/event-stream`: one `alert` event for each event that fires |
+| `GET /api/alerts/events?since=` | — | `{ events: AlertEvent[], unchecked: number }`, newest first |
+| `PUT /api/alerts/events/checked` | `{ ids: string[] }` or `{ all: true }` | `{ unchecked: number }` |
+| `DELETE /api/alerts/events/:id` | — | 204 |
+| `GET /api/alerts/stream` | — | `text/event-stream`: an `alert` event for each event that fires, and a `checked` event when the checked state changes (so other tabs update their bell) |
 
-Limits: at most 100 alerts; at most 20 different symbols with an active alert (D3). The
-messages are at most 200 characters.
+Limits: at most 1000 alerts, with no limit on the number of symbols (D3). The log keeps the last
+1000 events. The messages are at most 200 characters. The search runs in the client: 1000 rows
+are small.
 
 ### 5.4 Client parts
 
@@ -220,21 +275,38 @@ messages are at most 200 characters.
 | Price at the pointer | `src/chart/PriceChart.ts` | `pointAt(x, y)`: the pane, and the price or the indicator value, with `coordinateToPrice` |
 | Context menu | `src/chart/ChartContextMenu.tsx` | Opens on `contextmenu` over the canvas only |
 | Alert dialog | `src/alerts/AlertDialog.tsx` | The fields of section 4.2 or 4.3 |
-| Alerts panel | `src/alerts/AlertsPanel.tsx` | Section 4.6 |
+| Bell button | `src/alerts/AlertBell.tsx` | Section 4.6; the unchecked count |
+| Alerts window | `src/alerts/AlertsWindow.tsx` | Docked, floating, minimized; tabs, search, actions (section 4.6) |
+| Window drag | `src/alerts/useFloatingWindow.ts` | Pointer drag of the title bar; keeps the window inside the app window |
 | Event stream | `src/alerts/useAlertStream.ts` | `EventSource` on `/api/alerts/stream`; it connects again after a loss, and then loads the missed events with `?since=` |
-| Popup and sound | `src/alerts/AlertToasts.tsx`, `src/alerts/chime.ts` | Section 4.5 |
+| Popup and sound | `src/alerts/AlertToasts.tsx`, `src/alerts/chime.ts` | Bottom left; shrinks into the bell after 30 s (section 4.5) |
 | Alert lines | `src/chart/PriceChart.ts` | Section 4.7 |
 | Mocks | `mocks/alerts.ts` | Uses the server zod schemas, like the workspace mock |
 
 ## 6. Rate budget (FMP Starter: 300 calls a minute)
 
-- Price alerts: one quote call for each symbol each 30 s. With the limit of 20 symbols: at most
-  40 calls a minute. The quote cache is shared with the watchlist, so a symbol in both costs
-  the same.
-- Indicator alerts on 5m: one bars call for each symbol and timeframe each 5 minutes. Daily:
-  one call a day after the close.
-- Worst case with the watchlist (100 calls a minute): about 150 calls a minute. This is in
-  the budget.
+With 1000 alerts and no symbol limit, the server cannot check every symbol each 30 s: 1000
+symbols would need about 2000 calls a minute, and FMP Starter has no batch quote. So the
+scheduler rotates (D2):
+
+- Alerts get a fixed budget: **150 calls a minute** (`ALERT_CALL_BUDGET`). The watchlist keeps
+  the rest (it needs at most 100 calls a minute).
+- The symbols with active alerts form a queue. The scheduler checks them in turn, as fast as
+  the budget allows, but no symbol more often than each 30 s.
+- So the time between two checks of one symbol is `max(30 s, symbols / 150 per minute)`:
+  - 20 symbols: each 30 s.
+  - 150 symbols: each minute.
+  - 1000 symbols: about each 7 minutes.
+- A crossing between two checks is still found: the check compares the level with the last
+  price **and** with the day high and day low of the quote. Only the alert comes later.
+- Symbols with an alert near the current price can go to the front of the queue (a later
+  improvement; not in this phase).
+- Indicator alerts use the same budget. One bars call serves all alerts of one symbol and one
+  timeframe. After a bar close they wait in the queue, so a 5m alert can come some minutes late
+  when many symbols have alerts.
+- The quote cache is shared with the watchlist, so a symbol in both costs one call.
+- The synthetic provider has no budget: all symbols are checked each 30 s.
+- The Alerts window shows the current check interval, for example "Checked every 7 min".
 
 ## 7. Waves and gates
 
@@ -261,12 +333,21 @@ Tests that must exist:
 - The scheduler respects the symbol limit and the shared quote cache.
 - The SSE client connects again and loads the missed events.
 - The context menu opens only on the canvas, and with the keyboard.
+- A popup shrinks into the bell after 30 s (fake timers); Dismiss marks its event as checked.
+- The bell opens the window docked; drag floats it; minimize and open again docks it.
+- The floating window cannot leave the app window.
+- Search filters by symbol and by indicator, in both languages.
+- Mark all as checked sets the count to 0 in every open tab (the `checked` stream event).
+- The scheduler keeps inside its call budget with 1000 symbols, and checks no symbol more
+  often than each 30 s.
 - All new text exists in English and in Chinese (the catalog test already checks this).
 
 ## 8. Risks
 
-- **Missed spikes:** a 30 s check can miss a short spike. The day high and low reduce this,
-  but only for the first spike of the day (section 4.2).
+- **Missed spikes:** a check between two quotes can miss a short spike. The day high and low
+  reduce this, but only for a spike that makes a new high or low of the day (section 4.2).
+- **Late alerts with many symbols:** with 1000 symbols on FMP Starter, one symbol is checked
+  about each 7 minutes, so an alert can come up to 7 minutes late (section 6).
 - **Delayed data:** with delayed quotes, the alert is also delayed. The popup says "delayed"
   when the quote was delayed.
 - **No tab open:** without a tab, there is no popup and no sound. The event waits in the log.
@@ -281,11 +362,14 @@ Tests that must exist:
 | # | Question | Recommendation |
 |---|---|---|
 | D1 | Where does the check run? | On the server (section 5.1). **Confirmed by the user.** |
-| D2 | How often does the server check price alerts? | Each 30 s, like the watchlist. |
-| D3 | Limits? | 100 alerts, 20 symbols with an active alert. |
+| D2 | How often does the server check price alerts? | Each 30 s at most; with many symbols, in turn inside a budget of 150 calls a minute (section 6). |
+| D3 | Limits? | 1000 alerts, no limit on symbols. **Asked by the user.** |
 | D4 | Which indicators can have alerts? | SMA, EMA, RSI and MACD. Not Volume, VRVP or Liquidity in this phase. |
 | D5 | "Every time": how often can one alert fire? | On each new crossing; it must cross back first. **Confirmed by the user.** |
 | D6 | Alerts when no tab is open? | The server records them; the app shows them on the next visit. No push or e-mail in this phase. **Confirmed by the user.** |
-| D7 | How long does a popup stay? | 30 s, or until the user dismisses it. |
+| D7 | What happens to a popup? | Bottom left; after 30 s it shrinks into the bell at the top right, unchecked. **Asked by the user.** |
 | D8 | A browser notification when the tab is hidden? | Yes, if the user allows it. The app asks only after the user makes the first alert. |
 | D9 | Expiry choices: 1, 2 or 3 weeks, months or years (9 choices)? | Yes, default 1 month. **Confirmed by the user.** |
+| D10 | Where is the docked Alerts window? | Along the right edge, 360 px wide, over the watchlist sidebar. The chart keeps its size. |
+| D11 | A click on an indicator alert: symbol only, or also its timeframe? | Symbol and timeframe, so the user sees the indicator that fired. |
+| D12 | How many events does the log keep? | The last 1000. |
