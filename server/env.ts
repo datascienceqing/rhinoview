@@ -35,6 +35,9 @@ const schema = z
     /** Where the workspace (named layouts and watchlists) is saved. Gitignored. */
     WORKSPACE_FILE: optional(z.string().min(1).default('data/workspace.json')),
 
+    /** Where the alerts and the alert event log are saved. Gitignored. */
+    ALERTS_FILE: optional(z.string().min(1).default('data/alerts.json')),
+
     /**
      * Synthetic-provider fault injection, so the client's error and loading states
      * are reachable in development rather than theoretical. All default to off.

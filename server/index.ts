@@ -15,6 +15,9 @@ import { registerApiRoutes } from './routes';
 import { registerFundamentalsRoutes } from './routes/fundamentals';
 import { registerQuotesRoutes } from './routes/quotes';
 import { registerWorkspaceRoutes } from './routes/workspace';
+import { registerAlertsRoutes } from './routes/alerts';
+import { openAlertsStore } from './alerts/store';
+import type { AlertsStore } from './alerts/store';
 import { UNAVAILABLE_FUNDAMENTALS, createFundamentalsProvider } from './fundamentals';
 import type { FundamentalsProvider } from './fundamentals';
 import { createWorkspaceStore } from './workspace';
@@ -38,6 +41,8 @@ export interface BuildServerOptions {
   fundamentals?: FundamentalsProvider;
   /** Phase 5. Null means the workspace routes answer "not implemented". */
   workspace?: WorkspaceStore | null;
+  /** Null means the alerts routes answer "not implemented". */
+  alerts?: AlertsStore | null;
 }
 
 export function buildServer(opts: BuildServerOptions): FastifyInstance {
@@ -67,6 +72,7 @@ export function buildServer(opts: BuildServerOptions): FastifyInstance {
   registerQuotesRoutes(app, { service });
   registerFundamentalsRoutes(app, { fundamentals });
   registerWorkspaceRoutes(app, { store: opts.workspace ?? null });
+  registerAlertsRoutes(app, { store: opts.alerts ?? null });
 
   return app;
 }
@@ -76,7 +82,8 @@ export async function createServer(): Promise<FastifyInstance> {
   const engine = await selectEngine(); // throws for DATA_PROVIDER=massive — fail at boot, not per request
   const fundamentals = await createFundamentalsProvider();
   const workspace = await createWorkspaceStore(env.WORKSPACE_FILE);
-  return buildServer({ engine, provider: env.DATA_PROVIDER, faults: faultsFromEnv(), fundamentals, workspace });
+  const alerts = await openAlertsStore(env.ALERTS_FILE);
+  return buildServer({ engine, provider: env.DATA_PROVIDER, faults: faultsFromEnv(), fundamentals, workspace, alerts });
 }
 
 // Only listen when run directly, so tests can import buildServer() without binding a port.
