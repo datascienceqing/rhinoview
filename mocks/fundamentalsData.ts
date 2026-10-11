@@ -1,6 +1,6 @@
 /**
  * Data for the fundamentals mock: the REAL server mapping (server/fundamentals/fmp)
- * run over the recorded FMP responses, generated into `fundamentals.generated.json`.
+ * run over the synthetic FMP fixtures, generated into `fundamentals.generated.json`.
  *
  * Regenerate with `npx tsx scripts/gen-fundamentals-mock.ts`. The server test
  * `server/fundamentals/fmp/mockData.test.ts` fails when the JSON is stale, so the

@@ -2,19 +2,20 @@
   "status": 200,
   "path": "/financial-scores?symbol=MSFT",
   "fetchedAt": "2026-10-04T22:01:52.889Z",
+  "synthetic": true,
   "body": [
     {
       "symbol": "MSFT",
       "reportedCurrency": "USD",
-      "altmanZScore": 9.137394454101338,
-      "piotroskiScore": 6,
-      "workingCapital": 38885000000,
-      "totalAssets": 758376000000,
-      "retainedEarnings": 328265000000,
-      "ebit": 168985000000,
-      "marketCap": 3842944891500,
-      "totalLiabilities": 315989000000,
-      "revenue": 331839000000
+      "altmanZScore": 7.620274,
+      "piotroskiScore": 9,
+      "workingCapital": -13338884111,
+      "totalAssets": 552405545766,
+      "retainedEarnings": 822876237200,
+      "ebit": 117572492023,
+      "marketCap": 3015015000000,
+      "totalLiabilities": 292774939256,
+      "revenue": 261695250799
     }
   ]
 }

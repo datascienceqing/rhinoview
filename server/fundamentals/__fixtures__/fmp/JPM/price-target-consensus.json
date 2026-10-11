@@ -2,13 +2,14 @@
   "status": 200,
   "path": "/price-target-consensus?symbol=JPM",
   "fetchedAt": "2026-10-04T22:01:52.889Z",
+  "synthetic": true,
   "body": [
     {
       "symbol": "JPM",
-      "targetHigh": 420,
-      "targetLow": 305,
-      "targetConsensus": 373.64,
-      "targetMedian": 370
+      "targetHigh": 287.29,
+      "targetLow": 148.97,
+      "targetConsensus": 212.81,
+      "targetMedian": 214.94
     }
   ]
 }

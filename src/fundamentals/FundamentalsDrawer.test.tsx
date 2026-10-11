@@ -41,7 +41,7 @@ describe('Overview tab', () => {
       expect(cell).toHaveTextContent('%');
       expect(cell).not.toHaveTextContent('NM');
     }
-    expect(await metric('peRatio')).toHaveTextContent('14.29x');
+    expect(await metric('peRatio')).toHaveTextContent('9.53x');
   });
 
   it('shows every margin for a Financial Services company that is not a lender (like Visa)', async () => {
@@ -61,7 +61,7 @@ describe('Overview tab', () => {
 
   it('shows fractions as percentages (AAPL gross margin)', async () => {
     drawer('AAPL');
-    expect(await metric('grossMargin')).toHaveTextContent('48.65%');
+    expect(await metric('grossMargin')).toHaveTextContent('44.00%');
   });
 
   it('labels per-share values with the reporting currency, not the trading currency (TSM)', async () => {
@@ -239,9 +239,9 @@ describe('Earnings tab', () => {
     const row = await screen.findByTestId('earnings-2026-07-30');
     expect(row).toHaveAttribute('data-outcome', 'beat');
     const cells = within(row).getAllByRole('cell');
-    expect(cells[1]).toHaveTextContent('2.02');
-    expect(cells[2]).toHaveTextContent('1.89');
-    expect(cells[3]).toHaveTextContent('+6.88%'); // (2.02 - 1.89) / 1.89
+    expect(cells[1]).toHaveTextContent('1.46');
+    expect(cells[2]).toHaveTextContent('1.36');
+    expect(cells[3]).toHaveTextContent('+7.35%'); // (1.46 - 1.36) / 1.36
   });
 
   it('marks a miss', async () => {

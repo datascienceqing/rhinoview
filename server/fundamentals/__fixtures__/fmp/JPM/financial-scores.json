@@ -2,19 +2,20 @@
   "status": 200,
   "path": "/financial-scores?symbol=JPM",
   "fetchedAt": "2026-10-04T22:01:52.889Z",
+  "synthetic": true,
   "body": [
     {
       "symbol": "JPM",
       "reportedCurrency": "USD",
-      "altmanZScore": 0.2100824974831289,
-      "piotroskiScore": 4,
-      "workingCapital": -601210000000,
-      "totalAssets": 5015069000000,
-      "retainedEarnings": 445020000000,
-      "ebit": 83898000000,
-      "marketCap": 890615533800,
-      "totalLiabilities": 4640471000000,
-      "revenue": 297633000000
+      "altmanZScore": 4.793159,
+      "piotroskiScore": 7,
+      "workingCapital": -718427967334,
+      "totalAssets": 3870163845290,
+      "retainedEarnings": 526998431787,
+      "ebit": 75827919995,
+      "marketCap": 558076000000,
+      "totalLiabilities": 3541199918440,
+      "revenue": 251644990856
     }
   ]
 }

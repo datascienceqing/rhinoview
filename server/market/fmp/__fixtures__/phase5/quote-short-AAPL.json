@@ -2,12 +2,13 @@
   "status": 200,
   "path": "/quote-short?symbol=AAPL",
   "fetchedAt": "2026-10-04T22:01:52.889Z",
+  "synthetic": true,
   "body": [
     {
       "symbol": "AAPL",
-      "price": 333.69,
-      "change": 3.37,
-      "volume": 33278552
+      "price": 182.4,
+      "change": 1.95,
+      "volume": 36320540
     }
   ]
 }
