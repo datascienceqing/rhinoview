@@ -1,4 +1,4 @@
-import { LOGO_HEAD, LOGO_HORN, LOGO_VIEWBOX } from './logo';
+import { LOGO_HEAD, LOGO_HORN, LOGO_VIEWBOX } from './logoPaths';
 
 /** The mark and the name, at the left of the toolbar. The mark uses the accent colour. */
 export function Logo() {

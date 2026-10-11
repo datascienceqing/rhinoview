@@ -2,7 +2,7 @@ import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { cwd } from 'node:process';
 import { render, screen } from '@testing-library/react';
-import { LOGO_HEAD, LOGO_HORN } from './logo';
+import { LOGO_HEAD, LOGO_HORN } from './logoPaths';
 import { Logo } from './Logo';
 
 // Vitest runs from the repository root.
