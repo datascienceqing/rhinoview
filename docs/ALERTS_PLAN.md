@@ -1,9 +1,9 @@
 # Plan — Chart context menu and alerts
 
-Status: draft for the user's review (2026-10-11). Branch: `feat/alerts`, from `main` at `3d24afc`.
+Status: approved for implementation by one agent, step by step (2026-10-11). Branch: `feat/alerts`, from `main` at `3d24afc`.
 
-Decisions D1–D12 (section 9) use the recommendations. The user confirmed D1, D5, D6 and D9,
-and asked for D3 and D7 (2026-10-11). D2, D4, D8, D10, D11 and D12 are still recommendations;
+Decisions D1–D12 (section 9) use the recommendations. The user confirmed D1, D5, D6, D9 and
+D10, and asked for D3 and D7 (2026-10-11). D2, D4, D8, D11 and D12 are still recommendations;
 the user can change them before the implementation starts.
 
 **Implementer:** read `AGENTS.md`, `docs/AGENT_BRIEF.md` and `docs/CONTRACT.md` first. All
@@ -308,22 +308,25 @@ scheduler rotates (D2):
 - The synthetic provider has no budget: all symbols are checked each 30 s.
 - The Alerts window shows the current check interval, for example "Checked every 7 min".
 
-## 7. Waves and gates
+## 7. Steps and gates
 
-1. **Wave 0 (one agent):** contract, types, limits, the evaluate seam with its rules as
-   comments, the mock. Gate: typecheck, lint, all tests.
-2. **Wave 1 (parallel, separate paths):**
-   - S1: the alert store and the routes.
-   - S2: `evaluate.ts` and the scheduler, with a fake clock and a fake engine.
-   - S3: the event list and the SSE stream.
-   - C1: the price at the pointer, the context menu, the alert lines.
-   - C2: the alert dialog and the Alerts panel.
-   - C3: the event stream client, the popups and the sound.
-3. **Gate A:** a review of all diffs together (contract drift, double fire, time zones, i18n).
-4. **Wave 2 (integration):** an end-to-end test with the synthetic engine and a fake clock: make
-   an alert, move the clock over a crossing, see one event on the stream. A browser check: right-
-   click, add an alert, see the popup. FMP checks only when a key is available.
-5. **Gate B:** final review, then the PR.
+One agent does the work, step by step (user decision, 2026-10-11). Each step ends with
+typecheck, lint and all tests at 0 failures, then a commit and a push. So the finished steps
+are always on the branch.
+
+1. **Contract.** Types, limits, `docs/CONTRACT.md`, the param checks, the mock.
+2. **Check logic.** `server/alerts/evaluate.ts` (pure) and its tests: crossing, up, down, the
+   first check, once, every time, expiry, day high and low, indicator lines on closed bars.
+3. **Server store and routes.** `server/alerts/store.ts`, `server/routes/alerts.ts`, the event
+   log with the checked state, and the SSE stream.
+4. **Scheduler.** The budget queue (section 6), with a fake clock and a fake engine. An
+   end-to-end test: make an alert, move the clock over a crossing, see one event on the stream.
+5. **Context menu.** The price at the pointer, the menu items, the alert dialog.
+6. **Popups, bell and sound.** The event stream client, the popups, the chime.
+7. **Alerts window.** Dock, float, minimize; tabs, search, delete, mark all as checked; alert
+   lines on the chart.
+8. **Verification and PR.** Mutation checks on the main rules, a browser check with synthetic
+   data, an optional review agent, then the PR in ASD-STE100 style.
 
 Tests that must exist:
 
@@ -370,6 +373,6 @@ Tests that must exist:
 | D7 | What happens to a popup? | Bottom left; after 30 s it shrinks into the bell at the top right, unchecked. **Asked by the user.** |
 | D8 | A browser notification when the tab is hidden? | Yes, if the user allows it. The app asks only after the user makes the first alert. |
 | D9 | Expiry choices: 1, 2 or 3 weeks, months or years (9 choices)? | Yes, default 1 month. **Confirmed by the user.** |
-| D10 | Where is the docked Alerts window? | Along the right edge, 360 px wide, over the watchlist sidebar. The chart keeps its size. |
+| D10 | Where is the docked Alerts window? | Along the right edge, 360 px wide, over the watchlist sidebar. The chart keeps its size. **Confirmed by the user.** |
 | D11 | A click on an indicator alert: symbol only, or also its timeframe? | Symbol and timeframe, so the user sees the indicator that fired. |
 | D12 | How many events does the log keep? | The last 1000. |
