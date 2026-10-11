@@ -8,8 +8,10 @@ import { PeriodToggle } from './StatementsTab';
 import { TrendChart } from './TrendChart';
 import { buildTrend } from './trends';
 import type { TrendPoint } from './trends';
+import { useI18n } from '../i18n';
 
 export function TrendsTab({ symbol }: { symbol: string }) {
+  const { t } = useI18n();
   const [period, setPeriod] = useState<StatementPeriod>('annual');
   const state = useAsync(`trends:${symbol}:${period}`, async () => {
     const [income, cashflow, overview] = await Promise.all([
@@ -29,7 +31,7 @@ export function TrendsTab({ symbol }: { symbol: string }) {
       <div className="fund-controls">
         <PeriodToggle value={period} onChange={setPeriod} />
       </div>
-      <AsyncBlock state={state} loading="Loading trends…">
+      <AsyncBlock state={state} loading={t('fund.loadingTrends')}>
         {(d) => <Charts points={d.points} currency={d.currency} grossNotMeaningful={d.grossNotMeaningful} />}
       </AsyncBlock>
     </div>
@@ -37,41 +39,46 @@ export function TrendsTab({ symbol }: { symbol: string }) {
 }
 
 function Charts({ points, currency, grossNotMeaningful }: { points: TrendPoint[]; currency: string; grossNotMeaningful: boolean }) {
-  if (points.length === 0) return <p className="fund-unavailable">No periods reported.</p>;
+  const { t } = useI18n();
+  if (points.length === 0) return <p className="fund-unavailable">{t('fund.noPeriods')}</p>;
   const labels = points.map((p) => p.label);
   const money = (v: number | null) => `${formatLarge(v)} ${currency}`.trim();
   return (
     <>
-      <p className="fund-currency">Amounts in {currency || 'the reporting currency'}.</p>
+      <p className="fund-currency">{t('fund.amountsIn', { currency: currency || t('fund.reportingCurrency') })}</p>
       {grossNotMeaningful && (
         <p className="fund-currency" data-testid="gross-margin-note">
-          Gross margin is not shown: the cost of revenue is mostly interest expense, so it is a lending spread.
+          {t('fund.grossHidden')}
         </p>
       )}
       <div className="fund-chart-grid">
         <TrendChart
-          title="Revenue"
+          id="Revenue"
+          title={t('fund.chart.revenue')}
           kind="bar"
           labels={labels}
           format={money}
-          series={[{ name: 'Revenue', color: 'var(--accent)', values: points.map((p) => p.revenue) }]}
+          series={[{ name: t('fund.chart.revenue'), color: 'var(--accent)', values: points.map((p) => p.revenue) }]}
         />
         <TrendChart
-          title="Net income"
+          id="Net income"
+          title={t('fund.chart.netIncome')}
           kind="bar"
           labels={labels}
           format={money}
-          series={[{ name: 'Net income', color: 'var(--accent)', values: points.map((p) => p.netIncome) }]}
+          series={[{ name: t('fund.chart.netIncome'), color: 'var(--accent)', values: points.map((p) => p.netIncome) }]}
         />
         <TrendChart
-          title="EPS (diluted)"
+          id="EPS (diluted)"
+          title={t('fund.chart.eps')}
           kind="bar"
           labels={labels}
           format={(v) => `${formatNumber(v)} ${currency}`.trim()}
-          series={[{ name: 'EPS', color: 'var(--accent)', values: points.map((p) => p.eps) }]}
+          series={[{ name: t('fund.chart.epsSeries'), color: 'var(--accent)', values: points.map((p) => p.eps) }]}
         />
         <TrendChart
-          title="Margins"
+          id="Margins"
+          title={t('fund.chart.margins')}
           kind="line"
           labels={labels}
           format={formatFraction}
@@ -79,17 +86,19 @@ function Charts({ points, currency, grossNotMeaningful }: { points: TrendPoint[]
             // A lender's gross margin is a lending spread: leave out only that line.
             ...(grossNotMeaningful
               ? []
-              : [{ name: 'Gross', color: 'var(--accent)', values: points.map((p) => p.grossMargin) }]),
-            { name: 'Operating', color: 'var(--up)', values: points.map((p) => p.operatingMargin) },
-            { name: 'Net', color: 'var(--text-dim)', values: points.map((p) => p.netMargin) },
+              : [{ name: t('fund.chart.gross'), color: 'var(--accent)', values: points.map((p) => p.grossMargin) }]),
+            // A fixed colour: --up swaps with the language, and this line is not a direction.
+            { name: t('fund.chart.operating'), color: 'var(--warn)', values: points.map((p) => p.operatingMargin) },
+            { name: t('fund.chart.net'), color: 'var(--text-dim)', values: points.map((p) => p.netMargin) },
           ]}
         />
         <TrendChart
-          title="Free cash flow"
+          id="Free cash flow"
+          title={t('fund.chart.fcf')}
           kind="bar"
           labels={labels}
           format={money}
-          series={[{ name: 'Free cash flow', color: 'var(--accent)', values: points.map((p) => p.freeCashFlow) }]}
+          series={[{ name: t('fund.chart.fcf'), color: 'var(--accent)', values: points.map((p) => p.freeCashFlow) }]}
         />
       </div>
     </>

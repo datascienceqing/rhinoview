@@ -9,6 +9,7 @@
  */
 import { useCallback, useEffect, useRef, useState } from 'react';
 import type { KeyboardEvent, PointerEvent } from 'react';
+import { useI18n } from '../i18n';
 
 export const SIDEBAR_DEFAULT_PX = 300;
 export const SIDEBAR_MIN_PX = 240;
@@ -96,6 +97,7 @@ export interface SidebarResizerProps {
 export function SidebarResizer({ width, onResize, controls }: SidebarResizerProps) {
   const drag = useRef<{ pointerId: number; startX: number; startWidth: number; last: number } | null>(null);
   const [active, setActive] = useState(false);
+  const { t } = useI18n();
 
   function onPointerDown(e: PointerEvent<HTMLDivElement>) {
     if (e.button !== 0) return;
@@ -144,12 +146,12 @@ export function SidebarResizer({ width, onResize, controls }: SidebarResizerProp
       role="separator"
       tabIndex={0}
       aria-orientation="vertical"
-      aria-label="Resize watchlist"
+      aria-label={t('sidebar.resize')}
       aria-controls={controls}
       aria-valuenow={width}
       aria-valuemin={SIDEBAR_MIN_PX}
       aria-valuemax={SIDEBAR_MAX_PX}
-      title="Drag to resize the watchlist. Double-click to reset."
+      title={t('sidebar.resizeTitle')}
       className={`sidebar-resizer${active ? ' active' : ''}`}
       data-testid="sidebar-resizer"
       onPointerDown={onPointerDown}

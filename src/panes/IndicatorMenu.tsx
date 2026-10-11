@@ -2,7 +2,8 @@ import { useEffect, useRef, useState } from 'react';
 import type { IndicatorKind } from '@shared/types';
 import type { IndicatorActions } from './hooks';
 import type { ComputedIndicator } from './computeCache';
-import { INDICATOR_KINDS, KIND_LABEL, indicatorTitle } from './config';
+import { useI18n } from '../i18n';
+import { INDICATOR_KINDS, indicatorTitle, kindLabel } from './config';
 import { ParamsEditor } from './ParamsEditor';
 import './panes.css';
 
@@ -13,6 +14,7 @@ export interface IndicatorMenuProps {
 
 /** "Indicators" button and its panel: add any kind (several of one kind may coexist), then edit, hide or remove each. */
 export function IndicatorMenu({ items, actions }: IndicatorMenuProps) {
+  const { t } = useI18n();
   const [open, setOpen] = useState(false);
   const root = useRef<HTMLDivElement>(null);
 
@@ -41,18 +43,18 @@ export function IndicatorMenu({ items, actions }: IndicatorMenuProps) {
         aria-controls="indicator-panel"
         onClick={() => setOpen((o) => !o)}
       >
-        Indicators{items.length > 0 ? ` (${items.length})` : ''}
+        {items.length > 0 ? t('indicator.menuCount', { count: items.length }) : t('indicator.menu')}
       </button>
       {open && (
-        <div className="indicator-panel" id="indicator-panel" role="dialog" aria-label="Indicators">
-          <div className="indicator-add" role="group" aria-label="Add indicator">
+        <div className="indicator-panel" id="indicator-panel" role="dialog" aria-label={t('indicator.menu')}>
+          <div className="indicator-add" role="group" aria-label={t('indicator.add')}>
             {INDICATOR_KINDS.map((kind: IndicatorKind) => (
-              <button type="button" key={kind} aria-label={`Add ${KIND_LABEL[kind]}`} onClick={() => actions.add(kind)}>
-                + {KIND_LABEL[kind]}
+              <button type="button" key={kind} aria-label={t('indicator.addKind', { name: kindLabel(kind) })} onClick={() => actions.add(kind)}>
+                + {kindLabel(kind)}
               </button>
             ))}
           </div>
-          {items.length === 0 && <p className="indicator-empty">No indicators. Add one above.</p>}
+          {items.length === 0 && <p className="indicator-empty">{t('indicator.empty')}</p>}
           <ul className="indicator-list">
             {items.map(({ config, error }) => {
               const title = indicatorTitle(config);
@@ -61,13 +63,13 @@ export function IndicatorMenu({ items, actions }: IndicatorMenuProps) {
                   <div className="indicator-item-head">
                     <input
                       type="checkbox"
-                      aria-label={`Show ${title}`}
+                      aria-label={t('indicator.show', { title })}
                       checked={config.visible}
                       onChange={(e) => actions.setVisible(config.id, e.target.checked)}
                     />
                     <input
                       type="color"
-                      aria-label={`Colour of ${title}`}
+                      aria-label={t('indicator.colour', { title })}
                       value={config.color}
                       onChange={(e) => actions.setColor(config.id, e.target.value)}
                     />
@@ -75,7 +77,7 @@ export function IndicatorMenu({ items, actions }: IndicatorMenuProps) {
                     <button
                       type="button"
                       className="indicator-remove"
-                      aria-label={`Remove ${title}`}
+                      aria-label={t('indicator.remove', { title })}
                       onClick={() => actions.remove(config.id)}
                     >
                       ×

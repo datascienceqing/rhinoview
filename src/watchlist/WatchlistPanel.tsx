@@ -2,6 +2,7 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import type { DragEvent, FormEvent, KeyboardEvent } from 'react';
 import type { SearchResult, Snapshot, Watchlist } from '@shared/types';
 import { MAX_NAME_LENGTH, MAX_QUOTE_SYMBOLS } from '@shared/types';
+import { useSyntheticData } from '../data';
 import { SymbolSearch } from '../ui/SymbolSearch';
 import { useActiveChart } from '../workspace';
 import { direction, fmtChange, fmtPercent, fmtPrice, fmtRange, fmtVolume, normKey } from './format';
@@ -10,23 +11,26 @@ import type { SortKey, SortState } from './sort';
 import { useQuotes } from './useQuotes';
 import { useWatchlists } from './useWatchlists';
 import './watchlist.css';
+import { t as translate, useI18n } from '../i18n';
 
 type Editor = 'none' | 'create' | 'rename' | 'delete';
 
 /** `extra` columns collapse when the panel is narrow (see watchlist.css). */
-const COLUMNS: { key: SortKey; label: string; title: string; align: 'left' | 'right'; extra?: true }[] = [
-  { key: 'symbol', label: 'Symbol', title: 'Symbol', align: 'left' },
-  { key: 'price', label: 'Last', title: 'Last price', align: 'right' },
-  { key: 'change', label: 'Chg', title: 'Change', align: 'right', extra: true },
-  { key: 'changePercent', label: 'Chg %', title: 'Change percent', align: 'right' },
-  { key: 'dayVolume', label: 'Vol', title: 'Volume', align: 'right', extra: true },
-  { key: 'range', label: 'Day range', title: 'Day range (sorts by width)', align: 'right', extra: true },
+/** Labels are `wl.col.<key>` and titles `wl.col.<key>.title` in the message catalogs. */
+const COLUMNS: { key: SortKey; align: 'left' | 'right'; extra?: true }[] = [
+  { key: 'symbol', align: 'left' },
+  { key: 'price', align: 'right' },
+  { key: 'change', align: 'right', extra: true },
+  { key: 'changePercent', align: 'right' },
+  { key: 'dayVolume', align: 'right', extra: true },
+  { key: 'range', align: 'right', extra: true },
 ];
 
 const ariaSort = (sort: SortState | null, key: SortKey): 'ascending' | 'descending' | 'none' =>
   sort?.key === key ? (sort.dir === 'asc' ? 'ascending' : 'descending') : 'none';
 
 export function WatchlistPanel() {
+  const { t } = useI18n();
   const { chart, setSymbol } = useActiveChart();
   const wl = useWatchlists();
   const active: Watchlist | undefined = wl.lists.find((w) => w.id === wl.activeId);
@@ -60,7 +64,7 @@ export function WatchlistPanel() {
 
   const shown = useMemo(() => sortSymbols(symbols, q.quotes, sort), [symbols, q.quotes, sort]);
   const sorted = sort !== null;
-  const delayed = [...q.quotes.values()].some((s) => s.delayed);
+  const synthetic = useSyntheticData();
   const atCap = symbols.length >= MAX_QUOTE_SYMBOLS;
 
   function openEditor(kind: Editor) {
@@ -73,12 +77,12 @@ export function WatchlistPanel() {
     e.preventDefault();
     const name = draft.trim();
     if (name.length < 1 || name.length > MAX_NAME_LENGTH) {
-      setFormError(`Enter a name of 1 to ${MAX_NAME_LENGTH} characters.`);
+      setFormError(t('wl.nameLength', { max: MAX_NAME_LENGTH }));
       return;
     }
     const done = editor === 'create' ? await wl.create(name) : active ? await wl.rename(active.id, name) : false;
     if (done) setEditor('none');
-    else setFormError('The name was not accepted. Read the message below.');
+    else setFormError(t('wl.nameRefused'));
   }
 
   async function confirmDelete() {
@@ -89,11 +93,11 @@ export function WatchlistPanel() {
     if (!active) return;
     const symbol = result.symbol.toUpperCase();
     if (symbols.includes(symbol)) {
-      setLocalNotice(`${symbol} is already in this list.`);
+      setLocalNotice(t('wl.alreadyIn', { symbol }));
       return;
     }
     if (atCap) {
-      setLocalNotice(`A list holds at most ${MAX_QUOTE_SYMBOLS} symbols.`);
+      setLocalNotice(t('wl.full', { max: MAX_QUOTE_SYMBOLS }));
       return;
     }
     setLocalNotice(null);
@@ -127,21 +131,21 @@ export function WatchlistPanel() {
   }
 
   return (
-    <section className="watchlist-panel wl" data-testid="watchlist-panel" aria-label="Watchlist">
+    <section className="watchlist-panel wl" data-testid="watchlist-panel" aria-label={t('wl.title')}>
       <header className="panel-header">
-        <span>Watchlist</span>
-        {delayed && (
-          <span className="wl-badge" title="Quotes are delayed, not live.">
-            Delayed
+        <span>{t('wl.title')}</span>
+        {synthetic && (
+          <span className="wl-badge" data-testid="wl-synthetic-badge" title={t('wl.syntheticTitle')}>
+            {t('wl.synthetic')}
           </span>
         )}
       </header>
 
-      {wl.status === 'loading' && <p className="wl-note" role="status">Loading watchlists…</p>}
+      {wl.status === 'loading' && <p className="wl-note" role="status">{t('wl.loading')}</p>}
       {wl.status === 'error' && (
         <div className="wl-note" role="alert">
-          Could not load the watchlists.{' '}
-          <button type="button" onClick={wl.reload}>Retry</button>
+          {t('wl.loadFailed')}{' '}
+          <button type="button" onClick={wl.reload}>{t('common.retry')}</button>
         </div>
       )}
 
@@ -149,75 +153,75 @@ export function WatchlistPanel() {
         <>
           <div className="wl-toolbar">
             <select
-              aria-label="Watchlist"
+              aria-label={t('wl.select')}
               value={wl.activeId ?? ''}
               disabled={wl.lists.length === 0}
               onChange={(e) => wl.select(e.target.value)}
             >
-              {wl.lists.length === 0 && <option value="">No lists</option>}
+              {wl.lists.length === 0 && <option value="">{t('wl.noLists')}</option>}
               {wl.lists.map((w) => (
                 <option key={w.id} value={w.id}>{w.name}</option>
               ))}
             </select>
-            <button type="button" onClick={() => openEditor('create')}>New list</button>
-            <button type="button" disabled={!active} onClick={() => openEditor('rename')}>Rename list</button>
-            <button type="button" disabled={!active} onClick={() => openEditor('delete')}>Delete list</button>
+            <button type="button" onClick={() => openEditor('create')}>{t('wl.newList')}</button>
+            <button type="button" disabled={!active} onClick={() => openEditor('rename')}>{t('wl.renameList')}</button>
+            <button type="button" disabled={!active} onClick={() => openEditor('delete')}>{t('wl.deleteList')}</button>
           </div>
 
           {(editor === 'create' || editor === 'rename') && (
             <form className="wl-form" onSubmit={submitName}>
               <input
-                aria-label={editor === 'create' ? 'New list name' : 'List name'}
+                aria-label={editor === 'create' ? t('wl.newListName') : t('wl.listName')}
                 value={draft}
                 maxLength={MAX_NAME_LENGTH}
                 autoFocus
                 onChange={(e) => setDraft(e.target.value)}
                 onKeyDown={(e) => e.key === 'Escape' && setEditor('none')}
               />
-              <button type="submit">{editor === 'create' ? 'Create' : 'Save name'}</button>
-              <button type="button" onClick={() => setEditor('none')}>Cancel</button>
+              <button type="submit">{editor === 'create' ? t('wl.create') : t('wl.saveName')}</button>
+              <button type="button" onClick={() => setEditor('none')}>{t('common.cancel')}</button>
               {formError && <p className="wl-error" role="alert">{formError}</p>}
             </form>
           )}
           {editor === 'delete' && active && (
-            <div className="wl-form" role="alertdialog" aria-label="Confirm delete">
-              <p>Delete the list “{active.name}”? This cannot be undone.</p>
-              <button type="button" onClick={confirmDelete}>Delete “{active.name}”</button>
-              <button type="button" onClick={() => setEditor('none')}>Cancel</button>
+            <div className="wl-form" role="alertdialog" aria-label={t('wl.confirmDelete')}>
+              <p>{t('wl.deleteQuestion', { name: active.name })}</p>
+              <button type="button" onClick={confirmDelete}>{t('wl.deleteNamed', { name: active.name })}</button>
+              <button type="button" onClick={() => setEditor('none')}>{t('common.cancel')}</button>
             </div>
           )}
 
           {wl.notice && (
             <p className={wl.notice.kind === 'error' ? 'wl-error' : 'wl-note'} role="alert">
-              {wl.notice.text} <button type="button" onClick={wl.dismissNotice}>Dismiss</button>
+              {wl.notice.text} <button type="button" onClick={wl.dismissNotice}>{t('common.dismiss')}</button>
             </p>
           )}
 
           {active ? (
             <>
               <div className="wl-add">
-                <SymbolSearch onSelect={addSymbol} label="Add symbol to watchlist" />
+                <SymbolSearch onSelect={addSymbol} label={t('wl.addLabel')} />
               </div>
               {localNotice && <p className="wl-note" role="status">{localNotice}</p>}
 
               {sorted ? (
                 <p className="wl-note" id="wl-reorder-hint" role="status">
-                  Reorder is off while the list is sorted. Clear the sort to drag or move rows.{' '}
-                  <button type="button" onClick={() => setSort(null)}>Clear sort</button>
+                  {t('wl.sortedHint')}{' '}
+                  <button type="button" onClick={() => setSort(null)}>{t('wl.clearSort')}</button>
                 </p>
               ) : (
-                <p className="wl-hint" id="wl-reorder-hint">Drag a row, or press Alt+Up or Alt+Down on a symbol, to reorder.</p>
+                <p className="wl-hint" id="wl-reorder-hint">{t('wl.reorderHint')}</p>
               )}
 
               {q.error && (
                 <p className="wl-error" role="alert">
-                  Quotes did not refresh. {q.error}{' '}
-                  <button type="button" onClick={q.refresh}>Retry</button>
+                  {t('wl.quotesFailed', { reason: q.error })}{' '}
+                  <button type="button" onClick={q.refresh}>{t('common.retry')}</button>
                 </p>
               )}
 
               {symbols.length === 0 ? (
-                <p className="wl-note">This list is empty. Search for a symbol to add it.</p>
+                <p className="wl-note">{t('wl.empty')}</p>
               ) : (
                 <div className="wl-scroll">
                   <table className="wl-table" ref={tableRef}>
@@ -227,16 +231,16 @@ export function WatchlistPanel() {
                           <th key={c.key} scope="col" aria-sort={ariaSort(sort, c.key)} className={c.extra ? `${c.align} wl-extra` : c.align}>
                             <button
                               type="button"
-                              title={c.title}
-                              aria-label={`Sort by ${c.title.toLowerCase()}`}
+                              title={t(`wl.col.${c.key}.title`)}
+                              aria-label={t('wl.sortBy', { column: t(`wl.col.${c.key}.title`) })}
                               onClick={() => setSort((s) => nextSort(s, c.key))}
                             >
-                              {c.label}
+                              {t(`wl.col.${c.key}`)}
                               <span aria-hidden="true">{sort?.key === c.key ? (sort.dir === 'asc' ? ' ▲' : ' ▼') : ''}</span>
                             </button>
                           </th>
                         ))}
-                        <th scope="col"><span className="sr-only">Remove</span></th>
+                        <th scope="col"><span className="sr-only">{t('wl.removeHeader')}</span></th>
                       </tr>
                     </thead>
                     <tbody>
@@ -277,7 +281,7 @@ export function WatchlistPanel() {
               )}
             </>
           ) : (
-            <p className="wl-note">There are no watchlists. Choose New list to make one.</p>
+            <p className="wl-note">{t('wl.none')}</p>
           )}
         </>
       )}
@@ -306,14 +310,22 @@ interface RowProps {
 
 /** Every value, for the row tooltip: the narrow layout hides some columns but never the data. */
 function detail(q: Snapshot): string {
-  return `${q.symbol}: last ${fmtPrice(q.price)}, change ${fmtChange(q.change)} (${fmtPercent(q.changePercent)}), volume ${fmtVolume(q.dayVolume)}, day range ${fmtRange(q.dayLow, q.dayHigh)}`;
+  return translate('wl.rowDetail', {
+    symbol: q.symbol,
+    last: fmtPrice(q.price),
+    change: fmtChange(q.change),
+    percent: fmtPercent(q.changePercent),
+    volume: fmtVolume(q.dayVolume),
+    range: fmtRange(q.dayLow, q.dayHigh),
+  });
 }
 
 function Row(p: RowProps) {
+  const { t } = useI18n();
   const { quote } = p;
   const dir = quote ? direction(quote.change) : 'flat';
   // Never blank, never zero: a symbol without a quote says why.
-  const reason = p.missing ? 'not found' : p.failed || p.unavailable ? 'unavailable' : null;
+  const reason = p.missing ? 'missing' : p.failed || p.unavailable ? 'failed' : null;
   const cls = [p.isActive ? 'active' : '', p.isDropTarget ? 'drop' : '', p.canReorder ? 'movable' : ''].filter(Boolean).join(' ');
   return (
     <tr
@@ -337,7 +349,7 @@ function Row(p: RowProps) {
           data-symbol={p.symbol}
           aria-describedby="wl-reorder-hint"
           aria-keyshortcuts={p.canReorder ? 'Alt+ArrowUp Alt+ArrowDown' : undefined}
-          title={`Show ${p.symbol} on the chart`}
+          title={t('wl.showOnChart', { symbol: p.symbol })}
           onKeyDown={p.onKey}
         >
           {p.symbol}
@@ -352,12 +364,12 @@ function Row(p: RowProps) {
           <td className="right wl-extra">{fmtRange(quote.dayLow, quote.dayHigh)}</td>
         </>
       ) : (
-        <td colSpan={5} className={`right wl-reason${reason ? ` ${reason === 'not found' ? 'missing' : 'failed'}` : ''}`}>
-          {reason ?? 'loading…'}
+        <td colSpan={5} className={`right wl-reason${reason ? ` ${reason}` : ''}`}>
+          {reason === 'missing' ? t('wl.notFound') : reason === 'failed' ? t('wl.unavailable') : t('wl.rowLoading')}
         </td>
       )}
       <td className="right">
-        <button type="button" className="wl-remove" aria-label={`Remove ${p.symbol}`} onClick={(e) => {
+        <button type="button" className="wl-remove" aria-label={t('wl.removeSymbol', { symbol: p.symbol })} onClick={(e) => {
             e.stopPropagation();
             p.onRemove();
           }}

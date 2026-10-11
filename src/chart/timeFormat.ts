@@ -1,4 +1,6 @@
 import type { Time } from 'lightweight-charts';
+import { INTL_LOCALE, getLocale } from '../i18n/locale';
+import type { Locale } from '../i18n/locale';
 
 /**
  * Intraday bars are labelled in the viewer's local time zone; daily/weekly bars in
@@ -9,23 +11,42 @@ import type { Time } from 'lightweight-charts';
  * Intraday labels in UTC would be worse (a 09:30 ET open reads as 13:30) and
  * exchange time zones are not in the contract, hence the viewer's local zone.
  */
-const localTime = new Intl.DateTimeFormat('en-US', { hour: '2-digit', minute: '2-digit', hour12: false });
-const localDateTime = new Intl.DateTimeFormat('en-US', {
-  month: 'short',
-  day: 'numeric',
-  hour: '2-digit',
-  minute: '2-digit',
-  hour12: false,
-});
-const localDay = new Intl.DateTimeFormat('en-US', { day: 'numeric' });
-const localMonth = new Intl.DateTimeFormat('en-US', { month: 'short' });
-const localYear = new Intl.DateTimeFormat('en-US', { year: 'numeric' });
-const utcDate = new Intl.DateTimeFormat('en-US', {
-  timeZone: 'UTC',
-  year: 'numeric',
-  month: 'short',
-  day: 'numeric',
-});
+interface Formats {
+  localTime: Intl.DateTimeFormat;
+  localDateTime: Intl.DateTimeFormat;
+  localDay: Intl.DateTimeFormat;
+  localMonth: Intl.DateTimeFormat;
+  localYear: Intl.DateTimeFormat;
+  utcDate: Intl.DateTimeFormat;
+  utcDay: Intl.DateTimeFormat;
+  utcMonth: Intl.DateTimeFormat;
+  utcYear: Intl.DateTimeFormat;
+}
+
+function makeFormats(tag: string): Formats {
+  const utc = { timeZone: 'UTC' } as const;
+  return {
+    localTime: new Intl.DateTimeFormat(tag, { hour: '2-digit', minute: '2-digit', hour12: false }),
+    localDateTime: new Intl.DateTimeFormat(tag, { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit', hour12: false }),
+    localDay: new Intl.DateTimeFormat(tag, { day: 'numeric' }),
+    localMonth: new Intl.DateTimeFormat(tag, { month: 'short' }),
+    localYear: new Intl.DateTimeFormat(tag, { year: 'numeric' }),
+    utcDate: new Intl.DateTimeFormat(tag, { ...utc, year: 'numeric', month: 'short', day: 'numeric' }),
+    utcDay: new Intl.DateTimeFormat(tag, { ...utc, day: 'numeric' }),
+    utcMonth: new Intl.DateTimeFormat(tag, { ...utc, month: 'short' }),
+    utcYear: new Intl.DateTimeFormat(tag, { ...utc, year: 'numeric' }),
+  };
+}
+
+const cache = new Map<Locale, Formats>();
+function formats(locale: Locale): Formats {
+  let f = cache.get(locale);
+  if (!f) {
+    f = makeFormats(INTL_LOCALE[locale]);
+    cache.set(locale, f);
+  }
+  return f;
+}
 
 // Mirrors lightweight-charts' TickMarkType values; kept numeric so this module has
 // no runtime import from the library (and so tests don't need it).
@@ -40,26 +61,32 @@ function toDate(time: Time): Date | null {
   return typeof time === 'number' ? new Date(time * MS_PER_SECOND) : null;
 }
 
-/** Crosshair label. */
-export function formatCrosshairTime(time: Time, intraday: boolean): string {
+/** Crosshair label, in the current language. */
+export function formatCrosshairTime(time: Time, intraday: boolean, locale: Locale = getLocale()): string {
   const d = toDate(time);
   if (!d) return String(time);
-  return (intraday ? localDateTime : utcDate).format(d);
+  const f = formats(locale);
+  return (intraday ? f.localDateTime : f.utcDate).format(d);
 }
 
-/** Axis tick label; `null` defers to the library default. */
-export function formatTick(time: Time, tickMarkType: number, intraday: boolean): string | null {
-  if (!intraday) return null;
+/**
+ * Axis tick label; `null` defers to the library default. English daily ticks use the
+ * library default (it formats in UTC, which is right for daily bars). Chinese daily ticks
+ * are formatted here, because the default writes English month names.
+ */
+export function formatTick(time: Time, tickMarkType: number, intraday: boolean, locale: Locale = getLocale()): string | null {
+  if (!intraday && locale === 'en') return null;
   const d = toDate(time);
   if (!d) return null;
+  const f = formats(locale);
   switch (tickMarkType) {
     case TICK.Year:
-      return localYear.format(d);
+      return (intraday ? f.localYear : f.utcYear).format(d);
     case TICK.Month:
-      return localMonth.format(d);
+      return (intraday ? f.localMonth : f.utcMonth).format(d);
     case TICK.DayOfMonth:
-      return localDay.format(d);
+      return (intraday ? f.localDay : f.utcDay).format(d);
     default:
-      return localTime.format(d);
+      return intraday ? f.localTime.format(d) : f.utcDay.format(d);
   }
 }

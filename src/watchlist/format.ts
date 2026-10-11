@@ -1,11 +1,13 @@
+import { formatCompactNumber } from '../i18n/format';
+
 const DASH = '—';
-const compact = new Intl.NumberFormat('en-US', { notation: 'compact', maximumFractionDigits: 2 });
 
 export const fmtPrice = (v: number | null) => (v === null ? DASH : v.toFixed(2));
 export const fmtChange = (v: number | null) => (v === null ? DASH : `${v > 0 ? '+' : ''}${v.toFixed(2)}`);
 /** `fraction` is the contract's fractional change: 0.0123 is +1.23%. */
 export const fmtPercent = (f: number | null) => (f === null ? DASH : `${f > 0 ? '+' : ''}${(f * 100).toFixed(2)}%`);
-export const fmtVolume = (v: number | null) => (v === null ? DASH : compact.format(v));
+/** 1.2M in English, 120万 in Chinese. */
+export const fmtVolume = (v: number | null) => (v === null ? DASH : formatCompactNumber(v));
 export const fmtRange = (lo: number | null, hi: number | null) =>
   lo === null || hi === null ? DASH : `${lo.toFixed(2)}–${hi.toFixed(2)}`;
 

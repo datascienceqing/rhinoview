@@ -6,6 +6,7 @@ import type { ComputedIndicator } from '../panes/computeCache';
 import { useTheme } from '../theme';
 import { PriceChart } from './PriceChart';
 import type { ChartMarker } from './markers';
+import { useI18n } from '../i18n';
 
 const NO_INDICATORS: readonly ComputedIndicator[] = [];
 const NO_MARKERS: readonly ChartMarker[] = [];
@@ -75,12 +76,20 @@ export function ChartView({
     };
   }, []);
 
-  // The theme is already on <html> when this runs (src/theme), so the chart reads the new
-  // colours. The panes paint with the chart's colours, so they refresh after it.
+  // The theme and the language are already on <html> when this runs (src/theme, src/i18n),
+  // so the chart reads the new colours: Chinese swaps up and down. The panes paint with the
+  // chart's colours, so they refresh after it. Labels on the canvas follow the language.
   const { theme } = useTheme();
+  const { locale, t } = useI18n();
+  const drawnLocale = useRef(locale);
   useEffect(() => {
-    if (chartRef.current?.refreshTheme()) panesRef.current?.refreshTheme();
-  }, [theme]);
+    const newLocale = drawnLocale.current !== locale;
+    drawnLocale.current = locale;
+    if (newLocale) chartRef.current?.refreshLocale();
+    const recoloured = chartRef.current?.refreshTheme();
+    // Liquidity and VRVP labels are on the canvas, so the panes redraw for a new language too.
+    if (recoloured || newLocale) panesRef.current?.refreshTheme();
+  }, [theme, locale]);
 
   useEffect(() => {
     chartRef.current?.setIntraday(intraday);
@@ -111,9 +120,9 @@ export function ChartView({
           type="button"
           className="chart-auto-scale"
           onClick={() => chartRef.current?.resetAutoScale()}
-          title="Fit the price axis to the visible bars again"
+          title={t('chart.autoTitle')}
         >
-          Auto
+          {t('chart.auto')}
         </button>
       )}
     </>

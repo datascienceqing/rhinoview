@@ -11,64 +11,66 @@ import {
   multipleCell,
 } from './format';
 import type { Cell } from './format';
+import { t, useI18n } from '../i18n';
+import type { MessageKey } from '../i18n';
 
 type Kind = 'multiple' | 'margin' | 'fraction' | 'ratio' | 'perShare';
+/** The label is `fund.metric.<key>`; a `hint` is `fund.metric.<key>.hint`. */
 interface MetricRow {
-  label: string;
   /** Tooltip on the label, for metrics whose name could be confused with another figure. */
-  hint?: string;
+  hint?: true;
   key: keyof KeyMetricsTTM;
   kind: Kind;
 }
 interface Group {
-  title: string;
+  id: 'valuation' | 'profitability' | 'health' | 'perShare' | 'dividend';
   rows: MetricRow[];
 }
 
 const GROUPS: Group[] = [
   {
-    title: 'Valuation',
+    id: 'valuation',
     rows: [
-      { label: 'P/E', key: 'peRatio', kind: 'multiple' },
-      { label: 'PEG', key: 'pegRatio', kind: 'multiple' },
-      { label: 'EV/EBITDA', key: 'evToEbitda', kind: 'multiple' },
-      { label: 'P/S', key: 'priceToSales', kind: 'multiple' },
-      { label: 'P/B', key: 'priceToBook', kind: 'multiple' },
+      { key: 'peRatio', kind: 'multiple' },
+      { key: 'pegRatio', kind: 'multiple' },
+      { key: 'evToEbitda', kind: 'multiple' },
+      { key: 'priceToSales', kind: 'multiple' },
+      { key: 'priceToBook', kind: 'multiple' },
     ],
   },
   {
-    title: 'Profitability',
+    id: 'profitability',
     rows: [
-      { label: 'Gross margin', key: 'grossMargin', kind: 'margin' },
-      { label: 'Operating margin', key: 'operatingMargin', kind: 'margin' },
-      { label: 'Net margin', key: 'netMargin', kind: 'margin' },
-      { label: 'Return on equity', key: 'returnOnEquity', kind: 'fraction' },
-      { label: 'Return on assets', key: 'returnOnAssets', kind: 'fraction' },
-      { label: 'Return on invested capital', key: 'returnOnInvestedCapital', kind: 'fraction' },
+      { key: 'grossMargin', kind: 'margin' },
+      { key: 'operatingMargin', kind: 'margin' },
+      { key: 'netMargin', kind: 'margin' },
+      { key: 'returnOnEquity', kind: 'fraction' },
+      { key: 'returnOnAssets', kind: 'fraction' },
+      { key: 'returnOnInvestedCapital', kind: 'fraction' },
     ],
   },
   {
-    title: 'Financial health',
+    id: 'health',
     rows: [
-      { label: 'Debt / equity', key: 'debtToEquity', kind: 'ratio' },
-      { label: 'Current ratio', key: 'currentRatio', kind: 'ratio' },
-      { label: 'Interest coverage', key: 'interestCoverage', kind: 'ratio' },
+      { key: 'debtToEquity', kind: 'ratio' },
+      { key: 'currentRatio', kind: 'ratio' },
+      { key: 'interestCoverage', kind: 'ratio' },
     ],
   },
   {
-    title: 'Per share',
+    id: 'perShare',
     rows: [
-      { label: 'EPS (TTM)', key: 'epsDiluted', kind: 'perShare', hint: 'Net income per share, trailing twelve months' },
-      { label: 'Revenue / share', key: 'revenuePerShare', kind: 'perShare' },
-      { label: 'Free cash flow / share', key: 'freeCashFlowPerShare', kind: 'perShare' },
-      { label: 'Book value / share', key: 'bookValuePerShare', kind: 'perShare' },
+      { key: 'epsDiluted', kind: 'perShare', hint: true },
+      { key: 'revenuePerShare', kind: 'perShare' },
+      { key: 'freeCashFlowPerShare', kind: 'perShare' },
+      { key: 'bookValuePerShare', kind: 'perShare' },
     ],
   },
   {
-    title: 'Dividend',
+    id: 'dividend',
     rows: [
-      { label: 'Dividend yield', key: 'dividendYield', kind: 'fraction' },
-      { label: 'Payout ratio', key: 'payoutRatio', kind: 'fraction' },
+      { key: 'dividendYield', kind: 'fraction' },
+      { key: 'payoutRatio', kind: 'fraction' },
     ],
   },
 ];
@@ -87,61 +89,66 @@ function metricCell(row: MetricRow, value: number | null, grossNotMeaningful: bo
 }
 
 export function OverviewTab({ symbol }: { symbol: string }) {
+  const { t } = useI18n();
   const state = useAsync(`overview:${symbol}`, () => fetchOverview(symbol));
   return (
-    <AsyncBlock state={state} loading="Loading overview…">
+    <AsyncBlock state={state} loading={t('fund.loadingOverview')}>
       {(o) => <OverviewBody overview={o} />}
     </AsyncBlock>
   );
 }
 
 function NotAvailable({ what }: { what: string }) {
+  const { t } = useI18n();
   return (
     <p className="fund-unavailable" data-testid={`unavailable-${what}`}>
-      Not available
+      {t('fund.notAvailable')}
     </p>
   );
 }
 
 function OverviewBody({ overview: o }: { overview: FundamentalsOverview }) {
+  const { t } = useI18n();
   const grossNotMeaningful = o.grossMarginNotMeaningful;
   const gone = (s: 'metrics' | 'scores' | 'analyst') => o.unavailable.includes(s);
   return (
     <div className="fund-overview">
-      <section className="fund-card fund-profile" aria-label="Company profile">
+      <section className="fund-card fund-profile" aria-label={t('fund.profile')}>
         <h3>{o.profile.name}</h3>
         <dl className="fund-facts">
-          <Fact label="Sector" value={o.profile.sector} />
-          <Fact label="Industry" value={o.profile.industry} />
-          <Fact label="Exchange" value={o.profile.exchange} />
-          <Fact label="Country" value={o.profile.country} />
-          <Fact label="CEO" value={o.profile.ceo} />
-          <Fact label="Employees" value={o.profile.employees === null ? null : formatNumber(o.profile.employees, 0)} />
-          <Fact label="IPO" value={o.profile.ipoDate} />
+          <Fact label={t('fund.fact.sector')} value={o.profile.sector} />
+          <Fact label={t('fund.fact.industry')} value={o.profile.industry} />
+          <Fact label={t('fund.fact.exchange')} value={o.profile.exchange} />
+          <Fact label={t('fund.fact.country')} value={o.profile.country} />
+          <Fact label={t('fund.fact.ceo')} value={o.profile.ceo} />
+          <Fact label={t('fund.fact.employees')} value={o.profile.employees === null ? null : formatNumber(o.profile.employees, 0)} />
+          <Fact label={t('fund.fact.ipo')} value={o.profile.ipoDate} />
           <Fact
-            label="Market cap"
+            label={t('fund.fact.marketCap')}
             value={o.profile.marketCap === null ? null : `${formatLarge(o.profile.marketCap)} ${o.profile.currency}`}
           />
-          <Fact label="Reports in" value={o.reportedCurrency} />
+          <Fact label={t('fund.fact.reportsIn')} value={o.reportedCurrency} />
         </dl>
         {o.profile.description && <p className="fund-description">{o.profile.description}</p>}
       </section>
 
-      <section className="fund-card fund-metrics" aria-label="Key metrics">
-        <h3>Key metrics (trailing twelve months)</h3>
+      <section className="fund-card fund-metrics" aria-label={t('fund.keyMetrics')}>
+        <h3>{t('fund.keyMetricsTitle')}</h3>
         {gone('metrics') ? (
           <NotAvailable what="metrics" />
         ) : (
           <div className="fund-groups">
             {GROUPS.map((g) => (
-              <div key={g.title} className="fund-group">
-                <h4>{g.title === 'Per share' ? `Per share (${o.reportedCurrency})` : g.title}</h4>
+              <div key={g.id} className="fund-group">
+                <h4>{g.id === 'perShare' ? t('fund.group.perShare', { currency: o.reportedCurrency }) : t(`fund.group.${g.id}`)}</h4>
                 <dl className="fund-facts">
                   {g.rows.map((row) => {
                     const cell = metricCell(row, o.metrics[row.key], grossNotMeaningful);
                     return (
                       <div key={row.key} className="fund-fact">
-                        <dt title={row.hint}>{row.label}</dt>
+                        <dt title={row.hint ? t(`fund.metric.${row.key}.hint` as 'fund.metric.epsDiluted.hint') : undefined}>
+                          {t(`fund.metric.${row.key}`)}
+                        </dt>
                         <dd title={cell.title} data-testid={`metric-${row.key}`}>
                           {cell.text}
                         </dd>
@@ -155,13 +162,13 @@ function OverviewBody({ overview: o }: { overview: FundamentalsOverview }) {
         )}
       </section>
 
-      <section className="fund-card" aria-label="Financial scores">
-        <h3>Scores</h3>
+      <section className="fund-card" aria-label={t('fund.scoresLabel')}>
+        <h3>{t('fund.scores')}</h3>
         {gone('scores') ? <NotAvailable what="scores" /> : <Scores scores={o.scores} />}
       </section>
 
-      <section className="fund-card" aria-label="Analyst consensus">
-        <h3>Analyst consensus</h3>
+      <section className="fund-card" aria-label={t('fund.analyst')}>
+        <h3>{t('fund.analyst')}</h3>
         {gone('analyst') ? <NotAvailable what="analyst" /> : <Analysts analyst={o.analyst} symbol={o.profile.symbol} />}
       </section>
     </div>
@@ -178,35 +185,51 @@ function Fact({ label, value }: { label: string; value: string | null }) {
 }
 
 function Scores({ scores }: { scores: FinancialScores }) {
+  const { t } = useI18n();
   return (
     <dl className="fund-facts">
       <div className="fund-fact">
-        <dt>Piotroski F-score (0–9)</dt>
+        <dt>{t('fund.piotroski')}</dt>
         <dd data-testid="piotroski">{scores.piotroskiScore === null ? DASH : String(scores.piotroskiScore)}</dd>
       </div>
       <div className="fund-fact">
-        <dt>Altman Z-score</dt>
+        <dt>{t('fund.altman')}</dt>
         <dd data-testid="altman">{formatNumber(scores.altmanZScore)}</dd>
       </div>
     </dl>
   );
 }
 
+/** The provider's consensus label in the current language; an unknown label is shown as it is. */
+function consensusLabel(label: string | null): string {
+  if (label === null) return DASH;
+  const key = RATING_KEYS[label.toLowerCase().replace(/\s+/g, '')];
+  return key ? t(key) : label;
+}
+const RATING_KEYS: Record<string, MessageKey> = {
+  strongbuy: 'fund.rating.strongBuy',
+  buy: 'fund.rating.buy',
+  hold: 'fund.rating.hold',
+  sell: 'fund.rating.sell',
+  strongsell: 'fund.rating.strongSell',
+};
+
 function Analysts({ analyst: a, symbol }: { analyst: AnalystConsensus; symbol: string }) {
+  useI18n(); // a new language renders the labels again
   const ds = useDataSource();
   const snapshot = useAsync(`price:${symbol}`, (signal) => ds.getSnapshot(symbol, { signal }));
   const price = snapshot.status === 'success' ? snapshot.data.price : null;
   const counts: [string, number | null][] = [
-    ['Strong buy', a.strongBuy],
-    ['Buy', a.buy],
-    ['Hold', a.hold],
-    ['Sell', a.sell],
-    ['Strong sell', a.strongSell],
+    [t('fund.rating.strongBuy'), a.strongBuy],
+    [t('fund.rating.buy'), a.buy],
+    [t('fund.rating.hold'), a.hold],
+    [t('fund.rating.sell'), a.sell],
+    [t('fund.rating.strongSell'), a.strongSell],
   ];
   return (
     <div className="fund-analyst">
       <p className="fund-consensus" data-testid="consensus">
-        {a.consensus ?? DASH}
+        {consensusLabel(a.consensus)}
       </p>
       <ul className="fund-counts">
         {counts.map(([label, n]) => (
@@ -227,6 +250,7 @@ function TargetRange(props: {
   median: number | null;
   price: number | null;
 }) {
+  const { t } = useI18n();
   const { low, high, consensus, median, price } = props;
   const pos = (v: number | null): number | null =>
     v === null || low === null || high === null || high <= low ? null : Math.min(100, Math.max(0, ((v - low) / (high - low)) * 100));
@@ -235,18 +259,18 @@ function TargetRange(props: {
   return (
     <div className="fund-target" data-testid="target-range">
       <div className="fund-target-labels">
-        <span>Low {formatNumber(low)}</span>
-        <span>Consensus {formatNumber(consensus)}</span>
-        <span>Median {formatNumber(median)}</span>
-        <span>High {formatNumber(high)}</span>
+        <span>{t('fund.target.low', { value: formatNumber(low) })}</span>
+        <span>{t('fund.target.consensus', { value: formatNumber(consensus) })}</span>
+        <span>{t('fund.target.median', { value: formatNumber(median) })}</span>
+        <span>{t('fund.target.high', { value: formatNumber(high) })}</span>
       </div>
-      <div className="fund-target-bar" role="img" aria-label={`Price target range ${formatNumber(low)} to ${formatNumber(high)}, current price ${formatNumber(price)}`}>
+      <div className="fund-target-bar" role="img" aria-label={t('fund.target.bar', { low: formatNumber(low), high: formatNumber(high), price: formatNumber(price) })}>
         {pos(consensus) !== null && <span className="fund-target-tick" style={{ left: `${pos(consensus)}%` }} />}
         {pricePos !== null && <span className="fund-target-price" style={{ left: `${pricePos}%` }} />}
       </div>
       <p className="fund-target-note">
-        Current price {formatNumber(price)}
-        {outside ? ` (${outside} the target range)` : ''}
+        {t('fund.target.price', { price: formatNumber(price) })}
+        {outside === 'below' ? t('fund.target.below') : outside === 'above' ? t('fund.target.above') : ''}
       </p>
     </div>
   );

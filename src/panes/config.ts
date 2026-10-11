@@ -9,18 +9,15 @@ import type {
   VpvrParams,
 } from '@shared/types';
 import { DEFAULT_PARAMS, LIQUIDITY_BOUNDS, PERIOD_MAX, PERIOD_MIN, VPVR_BOUNDS } from '../indicators/types';
+import { t } from '../i18n';
+import type { MessageKey } from '../i18n';
 
 export const INDICATOR_KINDS: readonly IndicatorKind[] = ['sma', 'ema', 'rsi', 'macd', 'volume', 'vpvr', 'liquidity'];
 
-export const KIND_LABEL: Record<IndicatorKind, string> = {
-  sma: 'SMA',
-  ema: 'EMA',
-  rsi: 'RSI',
-  macd: 'MACD',
-  volume: 'Volume',
-  vpvr: 'VRVP',
-  liquidity: 'Liquidity',
-};
+/** The kind's name in the current language. SMA, EMA, RSI, MACD and VRVP stay as they are. */
+export function kindLabel(kind: IndicatorKind): string {
+  return t(`indicator.kind.${kind}`);
+}
 
 export const MA_SOURCES = ['open', 'high', 'low', 'close'] as const;
 
@@ -58,40 +55,40 @@ export function newIndicatorId(): string {
 /** One editable numeric field. Bounds default to PERIOD_MIN..PERIOD_MAX. */
 export interface ParamField {
   key: string;
-  label: string;
+  labelKey: MessageKey;
   min?: number;
   max?: number;
 }
 
 /** Editable numeric fields per kind, in display order. */
 export const PARAM_FIELDS: Record<IndicatorKind, readonly ParamField[]> = {
-  sma: [{ key: 'period', label: 'Period' }],
-  ema: [{ key: 'period', label: 'Period' }],
-  rsi: [{ key: 'period', label: 'Period' }],
+  sma: [{ key: 'period', labelKey: 'param.period' }],
+  ema: [{ key: 'period', labelKey: 'param.period' }],
+  rsi: [{ key: 'period', labelKey: 'param.period' }],
   macd: [
-    { key: 'fastPeriod', label: 'Fast' },
-    { key: 'slowPeriod', label: 'Slow' },
-    { key: 'signalPeriod', label: 'Signal' },
+    { key: 'fastPeriod', labelKey: 'param.fast' },
+    { key: 'slowPeriod', labelKey: 'param.slow' },
+    { key: 'signalPeriod', labelKey: 'param.signal' },
   ],
-  volume: [{ key: 'period', label: 'MA length' }],
+  volume: [{ key: 'period', labelKey: 'param.maLength' }],
   vpvr: [
-    { key: 'rows', label: 'Rows', ...VPVR_BOUNDS.rows },
-    { key: 'widthPct', label: 'Width %', ...VPVR_BOUNDS.widthPct },
-    { key: 'valueAreaPct', label: 'Value area %', ...VPVR_BOUNDS.valueAreaPct },
+    { key: 'rows', labelKey: 'param.rows', ...VPVR_BOUNDS.rows },
+    { key: 'widthPct', labelKey: 'param.widthPct', ...VPVR_BOUNDS.widthPct },
+    { key: 'valueAreaPct', labelKey: 'param.valueAreaPct', ...VPVR_BOUNDS.valueAreaPct },
   ],
   liquidity: [
-    { key: 'lookback', label: 'Pivot lookback', ...LIQUIDITY_BOUNDS.lookback },
-    { key: 'minTouches', label: 'Min touches', ...LIQUIDITY_BOUNDS.minTouches },
-    { key: 'maxAge', label: 'Max age (bars)', ...LIQUIDITY_BOUNDS.maxAge },
-    { key: 'sweepExtend', label: 'Sweep length (bars)', ...LIQUIDITY_BOUNDS.sweepExtend },
+    { key: 'lookback', labelKey: 'param.lookback', ...LIQUIDITY_BOUNDS.lookback },
+    { key: 'minTouches', labelKey: 'param.minTouches', ...LIQUIDITY_BOUNDS.minTouches },
+    { key: 'maxAge', labelKey: 'param.maxAge', ...LIQUIDITY_BOUNDS.maxAge },
+    { key: 'sweepExtend', labelKey: 'param.sweepExtend', ...LIQUIDITY_BOUNDS.sweepExtend },
   ],
 };
 
 /** One select field: a string param with a fixed set of values. */
 export interface ParamChoice {
   key: string;
-  label: string;
-  options: readonly { value: string; label: string }[];
+  labelKey: MessageKey;
+  options: readonly { value: string; labelKey: MessageKey }[];
   /** A required choice makes stored params invalid when it is missing or unknown. */
   required: boolean;
   /** The value an optional choice takes when it is missing or unknown. */
@@ -100,8 +97,8 @@ export interface ParamChoice {
 
 const MA_SOURCE_CHOICE: ParamChoice = {
   key: 'source',
-  label: 'Source',
-  options: MA_SOURCES.map((s) => ({ value: s, label: s })),
+  labelKey: 'param.source',
+  options: MA_SOURCES.map((s) => ({ value: s, labelKey: `param.source.${s}` as const })),
   required: false,
   fallback: 'close',
 };
@@ -117,21 +114,21 @@ export const PARAM_CHOICES: Record<IndicatorKind, readonly ParamChoice[]> = {
   liquidity: [
     {
       key: 'zoneMode',
-      label: 'Zone',
+      labelKey: 'param.zoneMode',
       options: [
-        { value: 'wick', label: 'Wick' },
-        { value: 'range', label: 'Full range' },
+        { value: 'wick', labelKey: 'param.zoneMode.wick' },
+        { value: 'range', labelKey: 'param.zoneMode.range' },
       ],
       required: true,
       fallback: DEFAULT_PARAMS.liquidity.zoneMode,
     },
     {
       key: 'sweepMode',
-      label: 'Sweeps',
+      labelKey: 'param.sweepMode',
       options: [
-        { value: 'wicks', label: 'Wick sweeps' },
-        { value: 'retests', label: 'Retests' },
-        { value: 'both', label: 'Both' },
+        { value: 'wicks', labelKey: 'param.sweepMode.wicks' },
+        { value: 'retests', labelKey: 'param.sweepMode.retests' },
+        { value: 'both', labelKey: 'param.sweepMode.both' },
       ],
       required: true,
       fallback: DEFAULT_PARAMS.liquidity.sweepMode,
@@ -178,9 +175,9 @@ export function defaultParams(kind: IndicatorKind): IndicatorParams {
 export type ParamErrors = Partial<Record<string, string>>;
 
 function periodError(label: string, value: number, min = PERIOD_MIN, max = PERIOD_MAX): string | null {
-  if (!Number.isInteger(value)) return `${label} must be a whole number.`;
+  if (!Number.isInteger(value)) return t('param.wholeNumber', { label });
   if (value < min || value > max) {
-    return `${label} must be between ${min} and ${max}.`;
+    return t('param.between', { label, min, max });
   }
   return null;
 }
@@ -193,18 +190,19 @@ function periodError(label: string, value: number, min = PERIOD_MIN, max = PERIO
 export function validateParams(kind: IndicatorKind, params: Record<string, number>): ParamErrors {
   const errors: ParamErrors = {};
   for (const field of PARAM_FIELDS[kind]) {
-    const { key, label } = field;
+    const { key } = field;
+    const label = t(field.labelKey);
     const { min, max } = fieldBounds(field);
     const value = params[key];
-    const message = value === undefined ? `${label} is required.` : periodError(label, value, min, max);
+    const message = value === undefined ? t('param.required', { label }) : periodError(label, value, min, max);
     if (message) errors[key] = message;
   }
   if (kind === 'macd') {
     const fast = params['fastPeriod'];
     const slow = params['slowPeriod'];
     if (!errors['fastPeriod'] && !errors['slowPeriod'] && fast !== undefined && slow !== undefined && fast >= slow) {
-      errors['fastPeriod'] = 'Fast period must be less than slow period.';
-      errors['slowPeriod'] = 'Slow period must be greater than fast period.';
+      errors['fastPeriod'] = t('param.fastLess');
+      errors['slowPeriod'] = t('param.slowGreater');
     }
   }
   return errors;
@@ -299,11 +297,13 @@ export function createIndicator(kind: IndicatorKind, existing: readonly Indicato
 /** "SMA (20)", "MACD (12, 26, 9)". */
 export function indicatorTitle(config: Pick<IndicatorConfig, 'kind' | 'params'>): string {
   const p = config.params;
-  const name = KIND_LABEL[config.kind];
-  if (isMacdParams(p)) return `${name} (${p.fastPeriod}, ${p.slowPeriod}, ${p.signalPeriod})`;
-  if (isVpvrParams(p)) return `${name} (${p.rows} rows)`;
+  const name = kindLabel(config.kind);
+  if (isMacdParams(p)) return t('indicator.title', { name, args: `${p.fastPeriod}, ${p.slowPeriod}, ${p.signalPeriod}` });
+  if (isVpvrParams(p)) return t('indicator.title.vpvr', { name, rows: p.rows });
   // D2: "Liquidity" in the menu, "LIQ (10)" as the title.
-  if (isLiquidityParams(p)) return `LIQ (${p.lookback})`;
-  if (isMovingAverageParams(p) && p.source && p.source !== 'close') return `${name} (${p.period}, ${p.source})`;
-  return `${name} (${(p as RsiParams).period})`;
+  if (isLiquidityParams(p)) return t('indicator.title.liquidity', { lookback: p.lookback });
+  if (isMovingAverageParams(p) && p.source && p.source !== 'close') {
+    return t('indicator.title', { name, args: `${p.period}, ${t(`param.source.${p.source}`)}` });
+  }
+  return t('indicator.title', { name, args: String((p as RsiParams).period) });
 }

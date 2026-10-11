@@ -82,8 +82,9 @@ can deliver.
 
 - `timeframes` — the subset of `TIMEFRAMES` this provider serves. The client disables
   the rest rather than offering a control that will fail.
-- `delayed` — whether this provider's data is delayed; the UI badges it.
-- `provider` — the active provider's name, for diagnostics. **Never** any part of a key.
+- `delayed` — whether this provider's data is delayed. The UI does not badge it (user decision, 2026-10-11).
+- `provider` — the active provider's name. **Never** any part of a key. The UI badges the data
+  as synthetic when it is `synthetic` or `mock` (src/data/capabilities.ts).
 
 Requesting an unsupported timeframe from `/api/bars` is `UNAUTHORIZED` (500), which this
 contract has always defined as covering a key that "lacks the plan tier for this data".
@@ -246,9 +247,9 @@ Header readout: last price, day range, change vs previous close.
 
 - `changePercent` is **fractional** — `0.0123` means +1.23%. Do not pre-multiply by 100.
   The client formats it.
-- `delayed` must reflect the key's actual plan tier. If the tier serves 15-minute
-  delayed data, this is `true` and the UI badges it. Do not hardcode `false`:
-  showing delayed data as live is the one factual error a charting app cannot make.
+- `delayed` must reflect the key's actual plan tier. If the tier serves delayed data,
+  this is `true`. Do not hardcode `false`. The UI does not show a "Delayed" badge (user
+  decision, 2026-10-11); it shows a "Synthetic" badge on synthetic data instead.
 - Every price field is nullable. Outside market hours with no recorded trade, nulls
   are the correct answer, not zeros.
 

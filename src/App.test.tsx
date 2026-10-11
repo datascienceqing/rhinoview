@@ -37,11 +37,11 @@ async function selectSymbol(user: ReturnType<typeof userEvent.setup>, query: str
 }
 
 describe('App', () => {
-  it('loads AAPL 1D on start: header quote with delayed badge, and a chart with bars', async () => {
+  it('loads AAPL 1D on start: header quote with the synthetic badge (mock data), and a chart with bars', async () => {
     render(<App />);
     expect(await screen.findByTestId('snapshot-price')).toHaveTextContent('220.23');
     expect(screen.getByTestId('snapshot-change-percent')).toHaveTextContent('+0.67%');
-    expect(screen.getByTestId('delayed-badge')).toBeInTheDocument();
+    expect(await screen.findByTestId('synthetic-badge')).toHaveTextContent('SYNTHETIC');
     expect(await screen.findByTestId('crosshair-legend')).toBeInTheDocument();
     expect(lastChart().liveSeries).toHaveLength(1);
   });

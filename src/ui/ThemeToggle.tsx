@@ -1,3 +1,4 @@
+import { useI18n } from '../i18n';
 import { useTheme } from '../theme';
 
 /** Sun in the dark theme (go light), moon in the light theme (go dark). */
@@ -18,7 +19,8 @@ function Icon({ light }: { light: boolean }) {
 
 export function ThemeToggle() {
   const { theme, toggleTheme } = useTheme();
-  const label = theme === 'dark' ? 'Switch to light theme' : 'Switch to dark theme';
+  const { t } = useI18n();
+  const label = theme === 'dark' ? t('theme.toLight') : t('theme.toDark');
   return (
     <button type="button" className="toolbar-toggle theme-toggle" aria-label={label} title={label} onClick={toggleTheme}>
       <Icon light={theme === 'light'} />

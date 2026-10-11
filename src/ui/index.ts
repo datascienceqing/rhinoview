@@ -5,4 +5,6 @@ export { SnapshotReadout } from './SnapshotReadout';
 export { SymbolSearch } from './SymbolSearch';
 export { TimeframeSelector } from './TimeframeSelector';
 export { Attribution } from './Attribution';
+export { LocaleToggle } from './LocaleToggle';
+export { Logo } from './Logo';
 export { ThemeToggle } from './ThemeToggle';

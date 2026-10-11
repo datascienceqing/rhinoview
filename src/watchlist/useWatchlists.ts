@@ -8,6 +8,7 @@ import {
   setActiveWatchlist,
   updateWatchlist,
 } from './api';
+import { t } from '../i18n';
 
 export interface Notice {
   kind: 'info' | 'error';
@@ -29,8 +30,7 @@ export interface WatchlistsApi {
   setSymbols: (id: EntityId, symbols: string[]) => void;
 }
 
-const CONFLICT_TEXT =
-  'This list was changed somewhere else. Your change was not saved. The current list is shown.';
+/** Notices are made in the language in force when the event happens. The server's own message is not translated. */
 
 /**
  * Watchlist state plus every write, through /api/watchlists.
@@ -106,7 +106,7 @@ export function useWatchlists(): WatchlistsApi {
           const err = toDataError(e);
           setNotice({
             kind: 'error',
-            text: err.code === 'CONFLICT' ? CONFLICT_TEXT : `The change was not saved. ${err.message}`,
+            text: err.code === 'CONFLICT' ? t('wl.conflict') : t('wl.notSaved', { reason: err.message }),
           });
           // Roll back optimistic edits to what the server really holds.
           await adopt().catch(() => undefined);
@@ -186,7 +186,7 @@ export function useWatchlists(): WatchlistsApi {
           const rest = listsRef.current.filter((w) => w.id !== id);
           commit(rest);
           setActiveId((cur) => (cur === id ? (rest[0]?.id ?? null) : cur));
-          setNotice({ kind: 'info', text: 'The list was deleted. The panel could not refresh from the server. Reload to confirm.' });
+          setNotice({ kind: 'info', text: t('wl.deletedNoRefresh') });
         }
         return true;
       }),

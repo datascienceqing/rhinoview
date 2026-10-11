@@ -3,6 +3,7 @@
  * and SVG has nothing to dispose. Colours come from the theme's CSS variables.
  */
 import { DASH } from './format';
+import { useI18n } from '../i18n';
 
 export interface Series {
   name: string;
@@ -11,6 +12,8 @@ export interface Series {
 }
 
 interface Props {
+  /** Stable in every language: the test id. */
+  id: string;
   title: string;
   labels: string[];
   series: Series[];
@@ -22,13 +25,16 @@ const W = 320;
 const H = 140;
 const PAD = { l: 8, r: 8, t: 10, b: 22 };
 
-export function TrendChart({ title, labels, series, kind, format }: Props) {
+export function TrendChart({ id, title, labels, series, kind, format }: Props) {
+  const { t } = useI18n();
   const all = series.flatMap((s) => s.values).filter((v): v is number => v !== null);
   if (all.length === 0) {
     return (
-      <figure className="fund-chart" data-testid={`chart-${title}`}>
+      <figure className="fund-chart" data-testid={`chart-${id}`}>
         <figcaption>{title}</figcaption>
-        <p className="fund-unavailable">{DASH} no data</p>
+        <p className="fund-unavailable">
+          {DASH} {t('fund.chart.noData')}
+        </p>
       </figure>
     );
   }
@@ -44,7 +50,7 @@ export function TrendChart({ title, labels, series, kind, format }: Props) {
   const zero = y(0);
 
   return (
-    <figure className="fund-chart" data-testid={`chart-${title}`}>
+    <figure className="fund-chart" data-testid={`chart-${id}`}>
       <figcaption>
         {title}
         {series.length > 1 && (
@@ -57,7 +63,7 @@ export function TrendChart({ title, labels, series, kind, format }: Props) {
           </span>
         )}
       </figcaption>
-      <svg viewBox={`0 0 ${W} ${H}`} role="img" aria-label={`${title}, ${labels[0] ?? ''} to ${labels[n - 1] ?? ''}`}>
+      <svg viewBox={`0 0 ${W} ${H}`} role="img" aria-label={t('fund.chart.range', { title, from: labels[0] ?? '', to: labels[n - 1] ?? '' })}>
         <line className="fund-axis" x1={PAD.l} x2={W - PAD.r} y1={zero} y2={zero} />
         {kind === 'bar' &&
           series.map((s) =>

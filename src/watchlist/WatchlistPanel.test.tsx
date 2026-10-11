@@ -1,9 +1,9 @@
-import { fireEvent, render, screen, waitFor, within } from '@testing-library/react';
+import { act, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import type { ReactNode } from 'react';
 import type { Watchlist, Workspace } from '@shared/types';
-import { DataSourceProvider, HttpDataSource, apiRequest } from '../data';
+import { DataSourceProvider, HttpDataSource, apiRequest, fetchCapabilities, resetCapabilitiesCache } from '../data';
 import { http, HttpResponse } from 'msw';
 import { server } from '../../mocks/server';
 import { ok } from '../../mocks/envelope';
@@ -55,6 +55,7 @@ const byPrice = (symbols: string[], dir: 1 | -1) =>
   [...symbols].sort((a, b) => dir * ((mockSnapshot(a).price ?? 0) - (mockSnapshot(b).price ?? 0)));
 
 beforeEach(() => {
+  resetCapabilitiesCache();
   resetMockWorkspace();
   resetMockQuotes();
 });
@@ -90,16 +91,21 @@ describe('WatchlistPanel rows', () => {
     expect(within(rowOf('ZZNOPE')).queryByText(/0\.00/)).toBeNull();
   });
 
-  it('shows the Delayed badge only when quotes are delayed', async () => {
+  it('shows the Synthetic badge on synthetic data (the mock provider)', async () => {
     renderPanel();
-    await screen.findByText(mockSnapshot('AAPL').price?.toFixed(2) ?? '');
-    expect(screen.queryByText('Delayed')).toBeNull();
+    expect(await screen.findByTestId('wl-synthetic-badge')).toHaveTextContent('Synthetic');
   });
 
-  it('shows the Delayed badge when quotes are delayed', async () => {
+  it('shows no badge on real data, also when the quotes are delayed', async () => {
+    server.use(http.get('*/api/capabilities', () => ok({ timeframes: ['1D'], delayed: true, provider: 'fmp', fundamentals: true })));
     setMockQuotesDelayed(true);
     renderPanel();
-    expect(await screen.findByText('Delayed')).toBeInTheDocument();
+    await screen.findByText(mockSnapshot('AAPL').price?.toFixed(2) ?? '');
+    await act(async () => {
+      await fetchCapabilities();
+    });
+    expect(screen.queryByTestId('wl-synthetic-badge')).toBeNull();
+    expect(screen.queryByText('Delayed')).toBeNull();
   });
 
   it('calls setSymbol on row click and highlights the active symbol', async () => {

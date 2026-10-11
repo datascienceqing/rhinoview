@@ -14,21 +14,18 @@ import { OverviewTab } from './OverviewTab';
 import { StatementsTab } from './StatementsTab';
 import { TrendsTab } from './TrendsTab';
 import './fundamentals.css';
+import { useI18n } from '../i18n';
 
 export interface FundamentalsDrawerProps {
   symbol: string;
   onClose: () => void;
 }
 
-const TABS = [
-  { id: 'overview', label: 'Overview' },
-  { id: 'statements', label: 'Statements' },
-  { id: 'trends', label: 'Trends' },
-  { id: 'earnings', label: 'Earnings' },
-] as const;
-type TabId = (typeof TABS)[number]['id'];
+const TABS = ['overview', 'statements', 'trends', 'earnings'] as const;
+type TabId = (typeof TABS)[number];
 
 export function FundamentalsDrawer({ symbol, onClose }: FundamentalsDrawerProps) {
+  const { t } = useI18n();
   const [tab, setTab] = useState<TabId>('overview');
   const pageRef = useRef<HTMLElement>(null);
 
@@ -52,30 +49,31 @@ export function FundamentalsDrawer({ symbol, onClose }: FundamentalsDrawerProps)
       tabIndex={-1}
       className="fundamentals-page"
       data-testid="fundamentals-drawer"
-      aria-label={`Financials for ${symbol}`}
+      aria-label={t('fund.page', { symbol })}
       onKeyDown={onKeyDown}
     >
       <header className="fund-page-header">
         <button type="button" className="fund-back" onClick={onClose}>
-          <span aria-hidden="true">← </span>Back to chart
+          <span aria-hidden="true">← </span>
+          {t('fund.back')}
         </button>
         <h2 className="fund-page-title">
-          Financials <span className="fund-page-symbol">{symbol}</span>
+          {t('fund.title')} <span className="fund-page-symbol">{symbol}</span>
         </h2>
-        <span className="fund-page-hint">Esc closes this page</span>
+        <span className="fund-page-hint">{t('fund.escHint')}</span>
       </header>
-      <div className="fund-tabs" role="tablist" aria-label="Financials sections">
-        {TABS.map((t) => (
+      <div className="fund-tabs" role="tablist" aria-label={t('fund.sections')}>
+        {TABS.map((id) => (
           <button
-            key={t.id}
+            key={id}
             type="button"
             role="tab"
-            id={`fund-tab-${t.id}`}
-            aria-selected={tab === t.id}
+            id={`fund-tab-${id}`}
+            aria-selected={tab === id}
             aria-controls="fund-tabpanel"
-            onClick={() => setTab(t.id)}
+            onClick={() => setTab(id)}
           >
-            {t.label}
+            {t(`fund.tab.${id}`)}
           </button>
         ))}
       </div>

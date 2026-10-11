@@ -8,7 +8,7 @@
 .wl button:disabled { opacity: 0.5; cursor: default; }
 .wl button:focus-visible, .wl select:focus-visible, .wl input:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
 .wl-note, .wl-hint, .wl-error { margin: 0; padding: 4px 8px; color: var(--text-dim); }
-.wl-error { color: var(--down); }
+.wl-error { color: var(--error); }
 .wl-scroll { flex: 1 1 auto; min-height: 0; overflow: auto; }
 .wl-table { width: 100%; border-collapse: collapse; font-variant-numeric: tabular-nums; }
 .wl-table th, .wl-table td { padding: 3px 6px; white-space: nowrap; font-weight: 400; }
@@ -21,7 +21,7 @@
 .wl-table .up { color: var(--up); }
 .wl-table .down { color: var(--down); }
 .wl-table .wl-reason { color: var(--text-dim); font-style: italic; }
-.wl-table .wl-reason.failed, .wl-table .wl-reason.missing { color: var(--down); }
+.wl-table .wl-reason.failed, .wl-table .wl-reason.missing { color: var(--error); }
 .wl-table tbody tr { border-bottom: 1px solid var(--border); }
 .wl-table tbody tr.movable { cursor: grab; }
 .wl-table tbody tr.active { background: rgba(41, 98, 255, 0.18); }
