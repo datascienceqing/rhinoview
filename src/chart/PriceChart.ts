@@ -10,6 +10,7 @@ import {
 import type {
   IChartApi,
   ISeriesApi,
+  Logical,
   ISeriesMarkersPluginApi,
   ISeriesPrimitive,
   MouseEventParams,
@@ -119,6 +120,57 @@ export class PriceChart {
   resetAutoScale(): void {
     if (!this.chart) return;
     this.verticalPan.resetAutoScale();
+  }
+
+  // ───────────── geometry for overlays (the confluence latch handle) ─────────────
+
+  /** Pixel x of the centre of bar `index`, from the left of the chart, or null. */
+  barX(index: number): number | null {
+    return this.chart?.timeScale().logicalToCoordinate(index as Logical) ?? null;
+  }
+
+  /** The bar index nearest pixel `x`, not clamped to the loaded bars, or null. */
+  barAt(x: number): number | null {
+    const logical = this.chart?.timeScale().coordinateToLogical(x) ?? null;
+    return logical === null ? null : Math.round(logical);
+  }
+
+  /** The visible logical range, or null. */
+  visibleRange(): { from: number; to: number } | null {
+    return this.chart?.timeScale().getVisibleLogicalRange() ?? null;
+  }
+
+  /** Width of the plot area in px, without the price scale. */
+  plotWidth(): number {
+    return this.chart?.timeScale().width() ?? 0;
+  }
+
+  /** Height of the price pane in px. */
+  pricePaneHeight(): number {
+    return this.chart?.panes()[0]?.getHeight() ?? 0;
+  }
+
+  /** Scroll so bar `index` is at the centre, with the same number of bars in view. */
+  scrollToBar(index: number): void {
+    const range = this.visibleRange();
+    if (!this.chart || !range) return;
+    const half = (range.to - range.from) / 2;
+    this.chart.timeScale().setVisibleLogicalRange({ from: index - half, to: index + half });
+  }
+
+  /** Call `listener` when the bars move on screen: a scroll, a zoom or a resize. Returns the unsubscribe. */
+  subscribeView(listener: () => void): () => void {
+    const chart = this.chart;
+    if (!chart) return () => undefined;
+    const timeScale = chart.timeScale();
+    timeScale.subscribeVisibleLogicalRangeChange(listener);
+    timeScale.subscribeSizeChange(listener);
+    return () => {
+      // A disposed chart has already dropped its subscribers, and throws on any call.
+      if (this.chart !== chart) return;
+      timeScale.unsubscribeVisibleLogicalRangeChange(listener);
+      timeScale.unsubscribeSizeChange(listener);
+    };
   }
 
   /** The underlying chart, for panes/indicators that add series at a pane index. Null once disposed. */

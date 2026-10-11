@@ -51,6 +51,8 @@ export class FakePane {
   setStretchFactor = (factor: number): void => {
     this.stretchFactor = factor;
   };
+  /** A fixed height for tests. */
+  getHeight = (): number => 400;
   getHTMLElement = (): HTMLElement => this.element;
   private readonly scales = new Map<string, FakePriceScale>();
   priceScale = (id: string): FakePriceScale => {
@@ -101,6 +103,7 @@ export class FakeChart {
   series: FakeSeries[] = [];
   crosshairHandlers = new Set<CrosshairHandler>();
   rangeHandlers = new Set<RangeHandler>();
+  sizeHandlers = new Set<() => void>();
   visibleRange: { from: number; to: number } | null = null;
   options: unknown;
   applyOptions = vi.fn();
@@ -238,6 +241,23 @@ export class FakeChart {
     logicalToCoordinate: (logical: number) => {
       this.assertLive();
       return 100 + 8 * logical;
+    },
+    coordinateToLogical: (x: number) => {
+      this.assertLive();
+      return (x - 100) / 8;
+    },
+    /** The plot width for tests, without the price scale. */
+    width: () => {
+      this.assertLive();
+      return 700;
+    },
+    subscribeSizeChange: (h: () => void) => {
+      this.assertLive();
+      this.sizeHandlers.add(h);
+    },
+    unsubscribeSizeChange: (h: () => void) => {
+      this.assertLive();
+      this.sizeHandlers.delete(h);
     },
   });
 
