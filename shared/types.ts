@@ -691,6 +691,8 @@ export interface UpdateAlertBody {
 /** `GET /api/alerts`. */
 export interface AlertsResponse {
   alerts: Alert[];
+  /** The expected time between two checks of one symbol, for "Checked every 7 min". */
+  checkIntervalSeconds: number;
 }
 
 /** One time an alert fired. It keeps a copy of the condition, so it reads well after the alert is deleted. */

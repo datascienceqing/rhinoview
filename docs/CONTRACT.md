@@ -408,7 +408,7 @@ never change the workspace revision. The server checks the alerts; the client on
 
 | Method & path | Body | Success |
 |---|---|---|
-| `GET /api/alerts` | — | `AlertsResponse` (`{ alerts }`, newest first) |
+| `GET /api/alerts` | — | `AlertsResponse` (`{ alerts, checkIntervalSeconds }`, newest first) |
 | `POST /api/alerts` | `CreateAlertBody` | `Alert` (201) |
 | `PUT /api/alerts/:id` | `UpdateAlertBody` | `Alert` |
 | `DELETE /api/alerts/:id` | — | `{ id }` |
@@ -450,5 +450,14 @@ never change the workspace revision. The server checks the alerts; the client on
   - `alerts`: alerts were created, edited, deleted, or changed status. Load the list again.
 
   A client that reconnects loads the events it missed with `GET /api/alerts/events?since=`.
+- **The checker** (`server/alerts/scheduler.ts`) runs once per server, so two open tabs
+  never fire one alert twice. It checks each symbol with active alerts in turn:
+  - Price alerts of one symbol share one quote, at most each `ALERT_MIN_CHECK_SECONDS` (30 s).
+    The quote cache is shared with `/api/quotes`; a cached quote costs no call.
+  - Indicator alerts of one symbol and timeframe share one bars call, after a bar close.
+  - Upstream calls in any 60 s window stay at or below `ALERT_CALL_BUDGET` (default 150).
+    The synthetic provider has no budget.
+  - `checkIntervalSeconds` in `GET /api/alerts` is `max(30, symbols / budget × 60)`.
+  - State-only changes are saved within 60 s; events and status changes are saved at once.
 - The MSW mock (`mocks/alerts.ts`) implements this table. It has no checker; `mockFireAlert`
   fires an alert for tests and pushes a `fired` message to the open streams.

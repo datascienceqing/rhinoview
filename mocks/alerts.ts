@@ -17,7 +17,7 @@ import type {
   SetCheckedBody,
   UpdateAlertBody,
 } from '@shared/types';
-import { DEFAULT_ALERT_EXPIRY, MAX_ALERT_EVENTS, MAX_ALERTS } from '@shared/types';
+import { ALERT_MIN_CHECK_SECONDS, DEFAULT_ALERT_EXPIRY, MAX_ALERT_EVENTS, MAX_ALERTS } from '@shared/types';
 import { createAlertBodySchema, setCheckedBodySchema, updateAlertBodySchema } from '../server/alerts/schemas';
 import { ALERT_SYMBOL_RE, checkAlertCondition, checkAlertMessage } from '../src/alerts/condition';
 import { computeExpiresAt } from '../src/alerts/expiry';
@@ -148,7 +148,7 @@ function sseResponse(): Response {
 
 export function createAlertsHandlers() {
   return [
-    http.get('*/api/alerts', () => handle(() => ({ alerts: structuredClone(alerts) }))),
+    http.get('*/api/alerts', () => handle(() => ({ alerts: structuredClone(alerts), checkIntervalSeconds: ALERT_MIN_CHECK_SECONDS }))),
 
     http.post('*/api/alerts', ({ request }) =>
       handle(async () => {

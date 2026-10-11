@@ -71,6 +71,13 @@ interface AlertsState {
   events: AlertEvent[];
 }
 
+/**
+ * State-only changes (no event, no status change) are saved at most this late. A restart can
+ * lose them. That is safe: each crossing that fires is saved at once, so a lost change is a
+ * side change that did not fire, and the next check only finds that same change again.
+ */
+export const STATE_FLUSH_SECONDS = 60;
+
 const bad = (message: string): never => {
   throw new ApiFailure('BAD_REQUEST', message);
 };
@@ -169,6 +176,8 @@ export async function openAlertsStore(filePath: string, opts: AlertsStoreOptions
   }
 
   let state = await load();
+  /** When a check first changed state that is not on disk yet; null when the file is current. */
+  let dirtySince: number | null = null;
 
   let tail: Promise<unknown> = Promise.resolve();
   function serial<T>(task: () => Promise<T>): Promise<T> {
@@ -178,11 +187,19 @@ export async function openAlertsStore(filePath: string, opts: AlertsStoreOptions
   }
 
   /** Change a copy, persist it, adopt it, then send the stream messages. */
-  function mutate<T>(change: (draft: AlertsState) => { result: T; messages: AlertStreamMessage[]; write?: boolean }): Promise<T> {
+  function mutate<T>(
+    change: (draft: AlertsState) => { result: T; messages: AlertStreamMessage[]; write?: boolean; keep?: boolean },
+  ): Promise<T> {
     return serial(async () => {
       const draft = structuredClone(state);
-      const { result, messages, write = true } = change(draft);
-      if (write) await persist(draft);
+      // `keep`: only `lastCheckedAt` moved; it is not worth a write or a dirty mark.
+      const { result, messages, write = true, keep = false } = change(draft);
+      if (write || (dirtySince !== null && clock() - dirtySince >= STATE_FLUSH_SECONDS)) {
+        await persist(draft);
+        dirtySince = null;
+      } else if (!keep && dirtySince === null) {
+        dirtySince = clock();
+      }
       state = draft;
       for (const m of messages) for (const l of listeners) l(structuredClone(m));
       return structuredClone(result);
@@ -289,13 +306,15 @@ export async function openAlertsStore(filePath: string, opts: AlertsStoreOptions
         const fired: AlertEvent[] = [];
         const messages: AlertStreamMessage[] = [];
         let write = false;
+        let changed = false;
         let statusChanged = false;
         for (const c of checks) {
           const a = s.alerts.find((x) => x.id === c.alertId);
           // Deleted or edited while the check ran: the user's change wins.
           if (!a || a.revision !== c.revision) continue;
-          // `lastCheckedAt` alone changes each check; it rides along with the next real write.
-          if (!sameIgnoringCheckTime(a.state, c.result.state)) write = true;
+          // A state change alone (the side, the day range, the last bar) is saved within
+          // STATE_FLUSH_SECONDS; `lastCheckedAt` alone rides along with the next write.
+          if (!sameIgnoringCheckTime(a.state, c.result.state)) changed = true;
           a.state = c.result.state;
           if (a.status !== c.result.status) {
             a.status = c.result.status;
@@ -325,6 +344,7 @@ export async function openAlertsStore(filePath: string, opts: AlertsStoreOptions
         s.events.length = Math.min(s.events.length, MAX_ALERT_EVENTS);
         // `fired` already carries the alert; `alerts` covers an expiry with no event.
         if (statusChanged && fired.length === 0) messages.push({ type: 'alerts' });
+        if (!changed && !write) return { result: fired, messages, write: false, keep: true };
         return { result: fired, messages, write };
       });
     },

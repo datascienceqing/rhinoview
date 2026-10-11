@@ -9,7 +9,7 @@ import { ApiFailure } from '../provider/errors';
 import { nodeWorkspaceFs } from '../workspace/store';
 import type { WorkspaceFs } from '../workspace/store';
 import type { AlertCheckResult } from './evaluate';
-import { openAlertsStore } from './store';
+import { openAlertsStore, STATE_FLUSH_SECONDS } from './store';
 import type { AlertsStore, AlertsStoreOptions } from './store';
 
 const T0 = 1_790_000_000;
@@ -220,6 +220,19 @@ describe('alerts store: checks and events', () => {
     await s.applyChecks([{ alertId: a.id, revision: 1, result: { state: state({ lastCheckedAt: t }), status: 'active', fires: [] }, delayed: false }]);
     expect(await readFile(file, 'utf8')).toBe(before);
     expect(s.list()[0]?.state.lastCheckedAt).toBe(t);
+  });
+
+  it('a side change without an event is saved within STATE_FLUSH_SECONDS', async () => {
+    const a = await s.create(priceBody());
+    const onDisk = async () => JSON.parse(await readFile(file, 'utf8')).alerts[0].state.lastSide;
+    await s.applyChecks([{ alertId: a.id, revision: 1, result: { state: state(), status: 'active', fires: [] }, delayed: false }]);
+    expect(await onDisk()).toBeNull();
+    t += STATE_FLUSH_SECONDS - 1;
+    await s.applyChecks([{ alertId: a.id, revision: 1, result: { state: state({ lastCheckedAt: t }), status: 'active', fires: [] }, delayed: false }]);
+    expect(await onDisk()).toBeNull();
+    t += 1;
+    await s.applyChecks([{ alertId: a.id, revision: 1, result: { state: state({ lastCheckedAt: t }), status: 'active', fires: [] }, delayed: false }]);
+    expect(await onDisk()).toBe('below');
   });
 
   it('an expiry with no event sends an `alerts` message', async () => {

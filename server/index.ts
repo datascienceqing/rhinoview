@@ -18,6 +18,9 @@ import { registerWorkspaceRoutes } from './routes/workspace';
 import { registerAlertsRoutes } from './routes/alerts';
 import { openAlertsStore } from './alerts/store';
 import type { AlertsStore } from './alerts/store';
+import { AlertScheduler } from './alerts/scheduler';
+import { serviceAlertSource } from './alerts/source';
+import { QuotesCache } from './cache/quotesCache';
 import { UNAVAILABLE_FUNDAMENTALS, createFundamentalsProvider } from './fundamentals';
 import type { FundamentalsProvider } from './fundamentals';
 import { createWorkspaceStore } from './workspace';
@@ -43,6 +46,11 @@ export interface BuildServerOptions {
   workspace?: WorkspaceStore | null;
   /** Null means the alerts routes answer "not implemented". */
   alerts?: AlertsStore | null;
+  /**
+   * Run the alert checker. Off unless given: tests that only need the routes start no timers.
+   * `budgetPerMinute` null means no cap (the synthetic provider).
+   */
+  alertChecks?: { budgetPerMinute: number | null; tickMs?: number };
 }
 
 export function buildServer(opts: BuildServerOptions): FastifyInstance {
@@ -69,10 +77,28 @@ export function buildServer(opts: BuildServerOptions): FastifyInstance {
   app.get('/api/health', async () => ({ ok: true as const, data: { status: 'up' } }));
   const fundamentals = opts.fundamentals ?? UNAVAILABLE_FUNDAMENTALS;
   registerApiRoutes(app, service, { fundamentalsAvailable: fundamentals.available });
-  registerQuotesRoutes(app, { service });
+  // One quote cache for the watchlist and the alert checker: a symbol in both costs one call.
+  const quotesCache = new QuotesCache();
+  registerQuotesRoutes(app, { service, cache: quotesCache });
   registerFundamentalsRoutes(app, { fundamentals });
   registerWorkspaceRoutes(app, { store: opts.workspace ?? null });
-  registerAlertsRoutes(app, { store: opts.alerts ?? null });
+  let scheduler: AlertScheduler | null = null;
+  if (opts.alerts && opts.alertChecks) {
+    const checker = new AlertScheduler({
+      store: opts.alerts,
+      source: serviceAlertSource(service, quotesCache),
+      now: opts.now ?? (() => Math.floor(Date.now() / 1000)),
+      budgetPerMinute: opts.alertChecks.budgetPerMinute,
+      warn: (m) => app.log.warn(m),
+    });
+    checker.start(opts.alertChecks.tickMs);
+    app.addHook('onClose', async () => checker.stop());
+    scheduler = checker;
+  }
+  registerAlertsRoutes(app, {
+    store: opts.alerts ?? null,
+    ...(scheduler ? { checkIntervalSeconds: () => (scheduler as AlertScheduler).checkIntervalSeconds() } : {}),
+  });
 
   return app;
 }
@@ -83,7 +109,11 @@ export async function createServer(): Promise<FastifyInstance> {
   const fundamentals = await createFundamentalsProvider();
   const workspace = await createWorkspaceStore(env.WORKSPACE_FILE);
   const alerts = await openAlertsStore(env.ALERTS_FILE);
-  return buildServer({ engine, provider: env.DATA_PROVIDER, faults: faultsFromEnv(), fundamentals, workspace, alerts });
+  return buildServer({ engine, provider: env.DATA_PROVIDER, faults: faultsFromEnv(), fundamentals,
+    workspace,
+    alerts,
+    alertChecks: { budgetPerMinute: env.DATA_PROVIDER === 'synthetic' ? null : env.ALERT_CALL_BUDGET },
+  });
 }
 
 // Only listen when run directly, so tests can import buildServer() without binding a port.

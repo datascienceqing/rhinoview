@@ -9,6 +9,7 @@ import type { FastifyInstance, FastifyReply } from 'fastify';
 import type { ZodType } from 'zod';
 import { z } from 'zod';
 import type { AlertStreamMessage, ApiResult } from '@shared/types';
+import { ALERT_MIN_CHECK_SECONDS } from '@shared/types';
 import { createAlertBodySchema, setCheckedBodySchema, updateAlertBodySchema } from '../alerts/schemas';
 import type { AlertsStore } from '../alerts/store';
 import { ApiFailure, MESSAGES } from '../provider/errors';
@@ -19,6 +20,8 @@ export interface AlertsRouteDeps {
   store: AlertsStore | null;
   /** Interval of the SSE comment that keeps proxies from closing an idle stream. */
   heartbeatMs?: number;
+  /** The checker's current interval; without a checker the answer is ALERT_MIN_CHECK_SECONDS. */
+  checkIntervalSeconds?: () => number;
 }
 
 /** Keeps idle connections open through proxies that close a silent stream. */
@@ -54,7 +57,9 @@ export function registerAlertsRoutes(app: FastifyInstance, deps: AlertsRouteDeps
 
   const idOf = (req: { params: unknown }) => String((req.params as { id: string }).id);
 
-  app.get('/api/alerts', (_req, reply) => respond(reply, 200, (s) => ({ alerts: s.list() })));
+  app.get('/api/alerts', (_req, reply) =>
+    respond(reply, 200, (s) => ({ alerts: s.list(), checkIntervalSeconds: deps.checkIntervalSeconds?.() ?? ALERT_MIN_CHECK_SECONDS })),
+  );
   app.post('/api/alerts', (req, reply) =>
     respond(reply, 201, (s) => s.create(parse(createAlertBodySchema, req.body, 'request body'))),
   );
