@@ -533,6 +533,37 @@ describe('layout contents (invariant 10)', () => {
     expect(l.indicators).toEqual([liq]);
   });
 
+  it('stores a confluence indicator with decimals, enums and a latch date, and keeps it after a reopen', async () => {
+    const conf: IndicatorConfig = {
+      id: 'c1',
+      kind: 'confluence',
+      params: {
+        mode: 'breakdown', swingLookback: 120, tolerancePct: 0.6, bandWidthMult: 2.5, pivotLeft: 3, pivotRight: 4,
+        pivotMaxAge: 300, turnMinConfluence: 2, turnMinDistancePct: 0.2, breakdownMinConfluence: 4,
+        breakdownMinDistancePct: 0.75, volumeLength: 20, volumeMult: 1.8, closeQuality: 0.35, sources: 'fibs',
+        latch: 'on', latchTime: 1_790_000_000,
+      },
+      color: '#00bcd4',
+      visible: true,
+    };
+    const l = await (await open()).createLayout({ name: 'C', indicators: [conf] });
+    expect(l.indicators).toEqual([conf]);
+    const again = (await (await open()).getWorkspace()).layouts.find((x) => x.id === l.id);
+    expect(again?.indicators).toEqual([conf]);
+  });
+
+  it('rejects a confluence indicator with a bad mode or a fractional count', async () => {
+    const store = await open();
+    const base = { id: 'c1', kind: 'confluence' as const, color: '#00bcd4', visible: true };
+    const { DEFAULT_PARAMS } = await import('../../src/indicators/types');
+    await expect(
+      store.createLayout({ name: 'C', indicators: [{ ...base, params: { ...DEFAULT_PARAMS.confluence, mode: 'up' as never } }] }),
+    ).rejects.toThrow(/mode/);
+    await expect(
+      store.createLayout({ name: 'C', indicators: [{ ...base, params: { ...DEFAULT_PARAMS.confluence, pivotLeft: 2.5 } }] }),
+    ).rejects.toThrow(/pivotLeft/);
+  });
+
   it('stores a vpvr indicator', async () => {
     const vpvr: IndicatorConfig = { id: 'p1', kind: 'vpvr', params: { rows: 24, widthPct: 30, valueAreaPct: 70 }, color: '#2962ff', visible: true };
     const l = await (await open()).createLayout({ name: 'P', indicators: [vpvr] });

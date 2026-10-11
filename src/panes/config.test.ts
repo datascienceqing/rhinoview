@@ -1,4 +1,4 @@
-import { LIQUIDITY_SWEEP_MODES, LIQUIDITY_ZONE_MODES, PERIOD_MAX, PERIOD_MIN } from '../indicators/types';
+import { CONFLUENCE_MODES, CONFLUENCE_SOURCES, DEFAULT_PARAMS, LIQUIDITY_SWEEP_MODES, LIQUIDITY_ZONE_MODES, PERIOD_MAX, PERIOD_MIN } from '../indicators/types';
 import {
   kindLabel,
   PARAM_CHOICES,
@@ -6,6 +6,9 @@ import {
   createIndicator,
   defaultParams,
   indicatorTitle,
+  isFieldShown,
+  PARAM_FIELDS,
+  parseDecimal,
   parseWholeNumber,
   sanitizeParams,
   validateParams,
@@ -13,7 +16,7 @@ import {
 
 describe('validateParams', () => {
   it('accepts the defaults for every kind', () => {
-    for (const kind of ['sma', 'ema', 'rsi', 'macd', 'volume', 'vpvr', 'liquidity'] as const) {
+    for (const kind of ['sma', 'ema', 'rsi', 'macd', 'volume', 'vpvr', 'liquidity', 'confluence'] as const) {
       const p = defaultParams(kind) as unknown as Record<string, number>;
       expect(validateParams(kind, p)).toEqual({});
     }
@@ -214,3 +217,65 @@ describe('PARAM_CHOICES', () => {
   });
 });
 
+
+describe('confluence config', () => {
+  const ok = DEFAULT_PARAMS.confluence;
+  const shown = (mode: string) =>
+    PARAM_FIELDS.confluence.filter((f) => isFieldShown(f, { mode, sources: 'both', latch: 'off' })).map((f) => f.key);
+
+  it('is named "Confluence" and titled with the mode in English (decision D8)', () => {
+    const c = createIndicator('confluence', []);
+    expect(kindLabel('confluence')).toBe('Confluence');
+    expect(c.params).toEqual(ok);
+    expect(indicatorTitle(c)).toBe('CONF Turn (250)');
+    expect(indicatorTitle({ kind: 'confluence', params: { ...ok, mode: 'breakdown', swingLookback: 100 } })).toBe('CONF Breakdown (100)');
+  });
+
+  it('shows the fields of the selected mode only (decision D2)', () => {
+    const common = ['swingLookback', 'tolerancePct', 'bandWidthMult', 'pivotLeft', 'pivotRight', 'pivotMaxAge', 'volumeLength', 'volumeMult'];
+    expect(shown('turn').sort()).toEqual([...common, 'turnMinConfluence', 'turnMinDistancePct'].sort());
+    expect(shown('breakdown').sort()).toEqual([...common, 'breakdownMinConfluence', 'breakdownMinDistancePct', 'closeQuality'].sort());
+  });
+
+  it('accepts decimals in decimal fields and rejects them in whole-number fields', () => {
+    const nums = { ...ok } as unknown as Record<string, number>;
+    expect(validateParams('confluence', { ...nums, tolerancePct: 0.33, volumeMult: 1.25 })).toEqual({});
+    expect(validateParams('confluence', { ...nums, swingLookback: 250.5 }).swingLookback).toMatch(/whole number/);
+    expect(validateParams('confluence', { ...nums, tolerancePct: Number.NaN }).tolerancePct).toMatch(/must be a number/);
+    expect(validateParams('confluence', { ...nums, closeQuality: 1.5 }).closeQuality).toMatch(/between 0.1 and 1/);
+  });
+
+  it('sanitizes stored params, keeps latchTime, and rejects bad ones', () => {
+    const stored = { ...ok, latch: 'on', latchTime: 1_700_000_000, extra: 1 };
+    expect(sanitizeParams('confluence', stored)).toEqual({ ...ok, latch: 'on', latchTime: 1_700_000_000 });
+    expect(sanitizeParams('confluence', { ...ok, latchTime: undefined })).toEqual(ok);
+    expect(sanitizeParams('confluence', { ...ok, latchTime: -5 })).toBeNull();
+    expect(sanitizeParams('confluence', { ...ok, mode: 'sideways' })).toBeNull();
+    expect(sanitizeParams('confluence', { ...ok, tolerancePct: 9 })).toBeNull();
+    expect(sanitizeParams('confluence', DEFAULT_PARAMS.liquidity)).toBeNull();
+  });
+
+  it('offers exactly the enum values the param check accepts, with the mode first', () => {
+    const choices = PARAM_CHOICES.confluence;
+    expect(choices.map((c) => [c.key, Boolean(c.first)])).toEqual([['mode', true], ['sources', false], ['latch', false]]);
+    expect(choices[0]?.options.map((o) => o.value)).toEqual([...CONFLUENCE_MODES]);
+    expect(choices[1]?.options.map((o) => o.value)).toEqual([...CONFLUENCE_SOURCES]);
+    expect(choices[2]?.options.map((o) => o.value)).toEqual(['off', 'on']);
+  });
+});
+
+describe('parseDecimal', () => {
+  it.each([
+    ['0.75', 0.75],
+    ['.5', 0.5],
+    [' 2 ', 2],
+    ['3.', 3],
+    ['-1.5', -1.5],
+  ])('parses %j', (text, value) => {
+    expect(parseDecimal(text)).toBe(value);
+  });
+
+  it.each(['', '.', 'abc', '1e3', '1.2.3', '0x10'])('rejects %j', (text) => {
+    expect(parseDecimal(text)).toBeNull();
+  });
+});
