@@ -638,6 +638,12 @@ export interface AlertCheckState {
   /** The side of the last observation against the target; null before the first check. */
   lastSide: 'above' | 'below' | null;
   lastCheckedAt: UnixSeconds | null;
+  /**
+   * Price alerts: the day high and low of the quote at the last check. A higher day high
+   * (or a lower day low) shows a move between two checks (plan section 4.2).
+   */
+  lastDayHigh: number | null;
+  lastDayLow: number | null;
   /** Indicator alerts: the last CLOSED bar that was checked. */
   lastBarTime: UnixSeconds | null;
   firedCount: number;

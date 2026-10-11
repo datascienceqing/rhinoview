@@ -127,7 +127,9 @@ function find(id: string): Alert {
   return a;
 }
 
-const newState = (): Alert['state'] => ({ lastSide: null, lastCheckedAt: null, lastBarTime: null, firedCount: 0, lastFiredAt: null });
+const newState = (): Alert['state'] => ({
+  lastSide: null, lastCheckedAt: null, lastDayHigh: null, lastDayLow: null, lastBarTime: null, firedCount: 0, lastFiredAt: null,
+});
 
 function sseResponse(): Response {
   let self: ReadableStreamDefaultController<Uint8Array> | null = null;
@@ -222,7 +224,7 @@ export function createAlertsHandlers() {
         const t = now();
         if (b.condition !== undefined) {
           a.condition = b.condition;
-          a.state = { ...a.state, lastSide: null, lastBarTime: null };
+          a.state = { ...a.state, lastSide: null, lastDayHigh: null, lastDayLow: null, lastBarTime: null };
         }
         if (b.frequency !== undefined) a.frequency = b.frequency;
         if (b.message !== undefined) a.message = b.message;
@@ -231,7 +233,7 @@ export function createAlertsHandlers() {
           a.expiresAt = computeExpiresAt(t, b.expiry);
         }
         if (b.status !== undefined && b.status !== a.status) {
-          if (b.status === 'active') a.state = { ...a.state, lastSide: null, lastBarTime: null };
+          if (b.status === 'active') a.state = { ...a.state, lastSide: null, lastDayHigh: null, lastDayLow: null, lastBarTime: null };
           a.status = b.status;
         }
         // Enabled again after its expiry time: the expiry choice counts from now.

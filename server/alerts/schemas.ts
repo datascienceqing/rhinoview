@@ -77,6 +77,8 @@ const checkState = z
   .object({
     lastSide: z.enum(['above', 'below']).nullable(),
     lastCheckedAt: seconds.nullable(),
+    lastDayHigh: finite.nullable(),
+    lastDayLow: finite.nullable(),
     lastBarTime: seconds.nullable(),
     firedCount: z.number().int().min(0),
     lastFiredAt: seconds.nullable(),

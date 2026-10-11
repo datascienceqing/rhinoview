@@ -28,7 +28,7 @@ describe('alerts mock: create', () => {
     expect(r.status).toBe(201);
     const a = data(r);
     expect(a).toMatchObject({ symbol: 'AAPL', frequency: 'once', expiry: '1M', message: '', status: 'active', revision: 1 });
-    expect(a.state).toEqual({ lastSide: null, lastCheckedAt: null, lastBarTime: null, firedCount: 0, lastFiredAt: null });
+    expect(a.state).toEqual({ lastSide: null, lastCheckedAt: null, lastDayHigh: null, lastDayLow: null, lastBarTime: null, firedCount: 0, lastFiredAt: null });
     expect(a.expiresAt).toBeGreaterThan(a.createdAt + 27 * 86400);
     expect(data(await call<AlertsResponse>('GET', '/alerts')).alerts).toHaveLength(1);
   });
@@ -54,7 +54,7 @@ describe('alerts mock: create', () => {
     const many: Alert[] = Array.from({ length: MAX_ALERTS }, (_, i) => ({
       id: `a${i}`, symbol: `S${i}`, condition: { type: 'price', direction: 'cross', level: 1 }, frequency: 'once',
       expiry: '1M', expiresAt: 2_000_000_000, message: '', status: 'active', revision: 1, createdAt: 1, updatedAt: 1,
-      state: { lastSide: null, lastCheckedAt: null, lastBarTime: null, firedCount: 0, lastFiredAt: null },
+      state: { lastSide: null, lastCheckedAt: null, lastDayHigh: null, lastDayLow: null, lastBarTime: null, firedCount: 0, lastFiredAt: null },
     }));
     resetMockAlerts({ alerts: many.slice(1) });
     expect((await call('POST', '/alerts', priceBody())).status).toBe(201);

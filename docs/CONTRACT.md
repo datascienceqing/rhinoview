@@ -436,8 +436,8 @@ never change the workspace revision. The server checks the alerts; the client on
   `CONFLICT` (409). Only user edits raise `revision`. The checker writes `state`, `status`
   (`triggered`, `expired`) and events, and never raises `revision`.
 - `PUT` with `status: 'active'` enables a `paused`, `triggered` or `expired` alert again. A
-  new `condition` or a status change to `active` resets `state.lastSide` and
-  `state.lastBarTime`, so the first check after it only records the side and does not fire.
+  new `condition` or a status change to `active` resets `state.lastSide`,
+  `state.lastDayHigh`, `state.lastDayLow` and `state.lastBarTime`, so the first check after it only records the side and does not fire.
   When `expiresAt` already passed, enabling counts the expiry choice from now. A new
   `expiry` on an `expired` alert also makes it `active`.
 - Unknown id → `NOT_FOUND` (404).
