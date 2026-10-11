@@ -68,15 +68,15 @@ describe('App in Chinese', () => {
     expect(localStorage.getItem(LOCALE_KEY)).toBe('en');
   });
 
-  it('the indicator menu and editor are in Chinese, with the agreed abbreviations kept', async () => {
+  it('the indicator menu and editor are in Chinese, and the indicator names stay in English', async () => {
     localStorage.setItem(LOCALE_KEY, 'zh');
     const user = userEvent.setup();
     render(<App />);
     await screen.findByTestId('crosshair-legend');
     await user.click(screen.getByRole('button', { name: /^指标/ }));
     expect(screen.getByRole('button', { name: '添加 RSI' })).toBeInTheDocument();
-    await user.click(screen.getByRole('button', { name: '添加 流动性' }));
-    expect(screen.getByRole('button', { name: '删除 流动性 (10)' })).toBeInTheDocument();
+    await user.click(screen.getByRole('button', { name: '添加 Liquidity' }));
+    expect(screen.getByRole('button', { name: '删除 LIQ (10)' })).toBeInTheDocument();
     expect(screen.getByLabelText('区域')).toBeInTheDocument();
     expect(screen.getByRole('option', { name: '整根 K 线' })).toBeInTheDocument();
   });

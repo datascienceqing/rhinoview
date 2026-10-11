@@ -1,5 +1,5 @@
 /** 简体中文。键和参数类型必须与 `en.ts` 相同（类型检查会强制）。 */
-import type { en } from './en';
+import { en } from './en';
 
 export const zh: typeof en = {
   // ── common ──
@@ -67,16 +67,17 @@ export const zh: typeof en = {
   'sidebar.resizeTitle': '拖动以调整自选列表宽度。双击恢复默认。',
 
   // ── indicators ──
-  'indicator.kind.sma': 'SMA',
-  'indicator.kind.ema': 'EMA',
-  'indicator.kind.rsi': 'RSI',
-  'indicator.kind.macd': 'MACD',
-  'indicator.kind.volume': '成交量',
-  'indicator.kind.vpvr': 'VRVP',
-  'indicator.kind.liquidity': '流动性',
-  'indicator.title': (p) => `${p.name} (${p.args})`,
-  'indicator.title.vpvr': (p) => `${p.name} (${p.rows} 行)`,
-  'indicator.title.liquidity': (p) => `流动性 (${p.lookback})`,
+  // Indicator names, titles and legend line names stay in English (user decision, 2026-10-11).
+  'indicator.kind.sma': en['indicator.kind.sma'],
+  'indicator.kind.ema': en['indicator.kind.ema'],
+  'indicator.kind.rsi': en['indicator.kind.rsi'],
+  'indicator.kind.macd': en['indicator.kind.macd'],
+  'indicator.kind.volume': en['indicator.kind.volume'],
+  'indicator.kind.vpvr': en['indicator.kind.vpvr'],
+  'indicator.kind.liquidity': en['indicator.kind.liquidity'],
+  'indicator.title': en['indicator.title'],
+  'indicator.title.vpvr': en['indicator.title.vpvr'],
+  'indicator.title.liquidity': en['indicator.title.liquidity'],
   'indicator.menu': '指标',
   'indicator.menuCount': (p) => `指标 (${p.count})`,
   'indicator.add': '添加指标',
@@ -85,11 +86,11 @@ export const zh: typeof en = {
   'indicator.show': (p) => `显示 ${p.title}`,
   'indicator.colour': (p) => `${p.title} 的颜色`,
   'indicator.remove': (p) => `删除 ${p.title}`,
-  'indicator.line.macd': 'MACD',
-  'indicator.line.signal': '信号',
-  'indicator.line.histogram': '柱',
-  'indicator.line.volume': '量',
-  'indicator.line.ma': 'MA',
+  'indicator.line.macd': en['indicator.line.macd'],
+  'indicator.line.signal': en['indicator.line.signal'],
+  'indicator.line.histogram': en['indicator.line.histogram'],
+  'indicator.line.volume': en['indicator.line.volume'],
+  'indicator.line.ma': en['indicator.line.ma'],
   'param.period': '周期',
   'param.fast': '快线',
   'param.slow': '慢线',

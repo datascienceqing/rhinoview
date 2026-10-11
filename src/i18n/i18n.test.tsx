@@ -77,15 +77,21 @@ describe('catalogs', () => {
     }
   });
 
-  // Standard abbreviations and symbols stay the same in Chinese (user decision).
-  const SAME = new Set<string>([
-    'indicator.kind.sma', 'indicator.kind.ema', 'indicator.kind.rsi', 'indicator.kind.macd', 'indicator.kind.vpvr',
-    'indicator.line.macd', 'indicator.line.ma', 'indicator.title', 'fund.metric.pegRatio', 'fund.metric.evToEbitda',
-  ]);
-  it('every Chinese message is Chinese, except the agreed abbreviations', () => {
+  // Indicator names, titles and legend line names stay in English (user decision, 2026-10-11).
+  const INDICATOR_NAME = /^indicator\.(kind\.|title|line\.)/;
+  // Standard abbreviations stay the same in Chinese (user decision).
+  const SAME = new Set<string>(['fund.metric.pegRatio', 'fund.metric.evToEbitda']);
+
+  it('every Chinese message is Chinese, except indicator names and the agreed abbreviations', () => {
     const cjk = /[一-鿿]/;
-    const untranslated = keys.filter((k) => !SAME.has(k) && !k.startsWith('locale.') && !cjk.test(text('zh', k)));
+    const untranslated = keys.filter((k) => !SAME.has(k) && !INDICATOR_NAME.test(k) && !k.startsWith('locale.') && !cjk.test(text('zh', k)));
     expect(untranslated).toEqual([]);
+  });
+
+  it('keeps every indicator name, title and legend line name exactly as in English', () => {
+    const names = keys.filter((k) => INDICATOR_NAME.test(k));
+    expect(names.length).toBeGreaterThanOrEqual(15);
+    for (const k of names) expect(zh[k], k).toBe(en[k]);
   });
 
   it('the language toggle names the other language', () => {
