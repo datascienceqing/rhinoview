@@ -9,7 +9,17 @@ import { WatchlistPanel } from './watchlist';
 import { WorkspaceProvider, useActiveChart } from './workspace';
 import { I18nProvider, useI18n } from './i18n';
 import { ThemeProvider } from './theme';
-import { Attribution, ChartPanel, ChartTypeSelector, LocaleToggle, SnapshotReadout, SymbolSearch, ThemeToggle, TimeframeSelector } from './ui';
+import {
+  Attribution,
+  ChartPanel,
+  ChartTypeSelector,
+  LocaleToggle,
+  Logo,
+  SnapshotReadout,
+  SymbolSearch,
+  ThemeToggle,
+  TimeframeSelector,
+} from './ui';
 import { SidebarResizer, useSidebarWidth } from './ui/SidebarResizer';
 
 /**
@@ -105,6 +115,7 @@ function Shell() {
   return (
     <div className="app-shell">
       <header className="toolbar">
+        <Logo />
         <LayoutSwitcher />
         <SymbolSearch onSelect={select} />
         <SnapshotReadout symbol={chart.symbol} name={names[chart.symbol] ?? null} />
