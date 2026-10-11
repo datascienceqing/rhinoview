@@ -77,10 +77,17 @@ export function LatchHandles({ chart, bars, indicators, intraday, onChange }: La
   const change = useRef(onChange);
   change.current = onChange;
 
-  // Follow scrolls, zooms and resizes, only while a handle shows.
+  // Follow scrolls, zooms and resizes, only while a handle shows. One more redraw a frame
+  // later picks up a first layout that the chart did before this subscription.
   useEffect(() => {
     if (!chart || !any) return;
-    return chart.subscribeView(() => setView((v) => v + 1));
+    const redraw = () => setView((v) => v + 1);
+    const off = chart.subscribeView(redraw);
+    const frame = requestAnimationFrame(redraw);
+    return () => {
+      cancelAnimationFrame(frame);
+      off();
+    };
   }, [chart, any]);
 
   // First position: a latch with no date takes the bar at the centre of the view, and saves it at once.
