@@ -10,6 +10,12 @@ import { useI18n } from '../i18n';
 
 const NO_INDICATORS: readonly ComputedIndicator[] = [];
 const NO_MARKERS: readonly ChartMarker[] = [];
+const NO_LEVELS: readonly number[] = [];
+
+/** Where the chart menu opens, and what is under it (docs/ALERTS_PLAN.md, section 4.1). */
+export type ChartMenuTarget =
+  | { x: number; y: number; pane: 'price'; price: number }
+  | { x: number; y: number; pane: 'indicator'; indicatorId: string; value: number };
 
 export interface ChartViewProps {
   bars: Bar[];
@@ -24,6 +30,10 @@ export interface ChartViewProps {
   onPaneLayout?: (layout: PaneLayout) => void;
   /** Flags on the price series, for example earnings. Phase 5 seam; see markers.ts. */
   markers?: readonly ChartMarker[];
+  /** A right-click on a pane's plot area, or the menu key. Not called on a scale or a legend. */
+  onContextMenu?: (target: ChartMenuTarget) => void;
+  /** Levels of the active price alerts of this symbol: dashed lines (plan section 4.7). */
+  alertLevels?: readonly number[];
 }
 
 /**
@@ -43,6 +53,8 @@ export function ChartView({
   indicators = NO_INDICATORS,
   onPaneLayout,
   markers = NO_MARKERS,
+  onContextMenu,
+  alertLevels = NO_LEVELS,
 }: ChartViewProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const chartRef = useRef<PriceChart | null>(null);
@@ -50,9 +62,9 @@ export function ChartView({
   const [autoScaled, setAutoScaled] = useState(true);
   const panesRef = useRef<IndicatorPanes | null>(null);
   // Callbacks are read through refs so changing them never recreates the chart.
-  const handlers = useRef({ onCrosshairTime, onNearStart, onPaneLayout });
+  const handlers = useRef({ onCrosshairTime, onNearStart, onPaneLayout, onContextMenu });
   useEffect(() => {
-    handlers.current = { onCrosshairTime, onNearStart, onPaneLayout };
+    handlers.current = { onCrosshairTime, onNearStart, onPaneLayout, onContextMenu };
   });
 
   useEffect(() => {
@@ -67,7 +79,25 @@ export function ChartView({
     const panes = new IndicatorPanes(chart, (layout) => handlers.current.onPaneLayout?.(layout));
     chartRef.current = chart;
     panesRef.current = panes;
+    // A right-click on a plot area opens our menu; anywhere else the browser menu shows.
+    const onMenu = (e: MouseEvent) => {
+      const open = handlers.current.onContextMenu;
+      const point = open ? chart.pointAt(e.clientX, e.clientY) : null;
+      if (!open || !point) return;
+      const base = { x: e.clientX, y: e.clientY };
+      if (point.paneIndex === 0) {
+        e.preventDefault();
+        open({ ...base, pane: 'price', price: point.value });
+        return;
+      }
+      const indicatorId = panes.idAtPane(point.pane);
+      if (indicatorId === null) return;
+      e.preventDefault();
+      open({ ...base, pane: 'indicator', indicatorId, value: point.value });
+    };
+    container.addEventListener('contextmenu', onMenu);
     return () => {
+      container.removeEventListener('contextmenu', onMenu);
       chartRef.current = null;
       panesRef.current = null;
       // Panes first: it only drops its references, so it never touches a removed chart.
@@ -111,9 +141,31 @@ export function ChartView({
     chartRef.current?.setMarkers(markers);
   }, [markers]);
 
+  useEffect(() => {
+    chartRef.current?.setAlertLines(alertLevels);
+  }, [alertLevels]);
+
+  // The keyboard opens the same menu: the menu key or Shift+F10. The price is the middle
+  // of the visible range, and the menu opens at the middle of the chart.
+  function onKeyDown(e: React.KeyboardEvent<HTMLDivElement>) {
+    const isMenuKey = e.key === 'ContextMenu' || (e.shiftKey && e.key === 'F10');
+    const price = isMenuKey && onContextMenu ? chartRef.current?.centerPrice() : null;
+    if (price === null || price === undefined || !onContextMenu) return;
+    e.preventDefault();
+    const r = e.currentTarget.getBoundingClientRect();
+    onContextMenu({ x: r.left + r.width / 2, y: r.top + r.height / 2, pane: 'price', price });
+  }
+
   return (
     <>
-      <div ref={containerRef} className="chart-container" data-testid="chart-container" />
+      <div
+        ref={containerRef}
+        className="chart-container"
+        data-testid="chart-container"
+        tabIndex={onContextMenu ? 0 : undefined}
+        aria-label={onContextMenu ? t('menu.chartLabel') : undefined}
+        onKeyDown={onKeyDown}
+      />
       {/* A sibling of the container, never inside it: the library owns that element's DOM. */}
       {!autoScaled && (
         <button
