@@ -1,6 +1,17 @@
-<p align="center">
-  <img src="docs/images/logo.svg" width="96" height="96" alt="RhinoView logo: a rhino head whose horn is a rising chart line">
-</p>
+<div align="center">
+  <table>
+    <tr>
+      <td>
+        <i>There are wolfs who know<br>
+        There are sheep who don't know<br>
+        There are Rhinos who have armor</i>
+      </td>
+      <td>
+        <img src="docs/images/logo.svg" width="96" height="96" alt="RhinoView logo: a rhino head whose horn is a rising chart line">
+      </td>
+    </tr>
+  </table>
+</div>
 
 <h1 align="center">RhinoView</h1>
 
