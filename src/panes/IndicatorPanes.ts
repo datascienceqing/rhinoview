@@ -18,7 +18,7 @@ import type { VpvrStyle } from './vpvr/VpvrPrimitive';
 /** What the layer needs from the chart that owns it. `api` is null once that chart is disposed. */
 export interface ChartHost {
   readonly api: IChartApi | null;
-  readonly colors: Pick<ChartTheme, 'up' | 'down' | 'text'>;
+  readonly colors: Pick<ChartTheme, 'up' | 'down' | 'text' | 'background'>;
   /** Drawings on the price series (volume profile, liquidity, confluence). The host keeps them across chart type changes. */
   attachPricePrimitive?(primitive: ISeriesPrimitive<Time>): void;
   detachPricePrimitive?(primitive: ISeriesPrimitive<Time>): void;
@@ -272,9 +272,9 @@ export class IndicatorPanes {
 
   /** D6: the up colour in mode "turn", the down colour in mode "breakdown"; the indicator colour for the sources. */
   private confluenceStyle(config: IndicatorConfig): ConfluenceStyle {
-    const { up, down, text } = this.host.colors;
+    const { up, down, text, background } = this.host.colors;
     const turn = (config.params as ConfluenceParams).mode === 'turn';
-    return { modeColor: turn ? up : down, sourceColor: config.color, textColor: text, visible: config.visible };
+    return { modeColor: turn ? up : down, sourceColor: config.color, textColor: text, labelBackground: background, visible: config.visible };
   }
 
   private update(entry: Entry, item: ComputedIndicator): void {

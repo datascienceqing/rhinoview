@@ -5,7 +5,7 @@ import { DEFAULT_PARAMS } from '../../indicators/types';
 import { ConfluencePrimitive } from './ConfluencePrimitive';
 import type { ConfluenceStyle } from './ConfluencePrimitive';
 
-const style: ConfluenceStyle = { modeColor: 'MODE', sourceColor: 'SRC', textColor: 'TEXT', visible: true };
+const style: ConfluenceStyle = { modeColor: 'MODE', sourceColor: 'SRC', textColor: 'TEXT', labelBackground: 'BG', visible: true };
 const params: ConfluenceParams = { ...DEFAULT_PARAMS.confluence, swingLookback: 20, pivotLeft: 2, pivotRight: 2, volumeLength: 3, volumeMult: 1.2 };
 
 /** A rising zig-zag with a volume spike every 7 bars, so breakouts happen. */
@@ -38,6 +38,7 @@ function draw(prim: ConfluencePrimitive) {
   const context = {
     fillRect: vi.fn(),
     fillText,
+    measureText: (text: string) => ({ width: 6 * text.length }),
     beginPath: vi.fn(),
     moveTo: vi.fn(),
     lineTo: vi.fn(),

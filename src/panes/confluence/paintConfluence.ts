@@ -7,6 +7,8 @@
  * Each has a label at the right edge; labels that would overlap move down. Each event in
  * view has a triangle: below the bar for a breakout, above it for a breakdown.
  *
+ * Labels sit on a box in the pane colour, so they stay legible over the last candles.
+ *
  * Colours (decision D6): the mode colour for the clusters, the retest line and the marks;
  * the indicator colour for the source lines; the text colour for the invalidation level.
  * An item whose position is off the scale (no pixel) is skipped.
@@ -25,6 +27,10 @@ export const LABEL_FONT = '10px sans-serif';
 export const LABEL_HEIGHT = 12;
 /** Gap in px between a label and the right edge, and between a mark and its bar. */
 export const EDGE_GAP = 4;
+/** Opacity of the box behind a label. */
+export const LABEL_BOX_ALPHA = 0.8;
+/** Horizontal padding in px inside the label box. */
+const LABEL_PAD = 3;
 /** Half the width of an event triangle, in px. */
 export const MARK_SIZE = 5;
 
@@ -33,6 +39,7 @@ export type ConfluenceContext = Pick<
   CanvasRenderingContext2D,
   | 'fillRect'
   | 'fillText'
+  | 'measureText'
   | 'beginPath'
   | 'moveTo'
   | 'lineTo'
@@ -66,6 +73,8 @@ export interface ConfluencePaintStyle {
   modeColor: string;
   sourceColor: string;
   textColor: string;
+  /** The pane background, behind the labels. */
+  labelBackground: string;
 }
 
 /** The label words in the current language. */
@@ -228,6 +237,10 @@ export function paintConfluence(
   ctx.textAlign = 'right';
   ctx.textBaseline = 'middle';
   for (const l of spreadLabels(labels)) {
+    const w = ctx.measureText(l.text).width + 2 * LABEL_PAD;
+    ctx.globalAlpha = LABEL_BOX_ALPHA;
+    ctx.fillStyle = style.labelBackground;
+    ctx.fillRect(x1 - EDGE_GAP - w + LABEL_PAD, l.y - LABEL_HEIGHT / 2, w, LABEL_HEIGHT);
     ctx.globalAlpha = l.alpha;
     ctx.fillStyle = l.color;
     ctx.fillText(l.text, x1 - EDGE_GAP, l.y);

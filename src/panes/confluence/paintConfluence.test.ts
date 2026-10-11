@@ -26,6 +26,7 @@ function recorder() {
   const context = Object.assign(ctx, {
     fillRect: vi.fn(rec('fillRect')),
     fillText: vi.fn(rec('fillText')),
+    measureText: (text: string) => ({ width: 6 * text.length }) as TextMetrics,
     beginPath: vi.fn(),
     moveTo: vi.fn(rec('moveTo')),
     lineTo: vi.fn(rec('lineTo')),
@@ -44,7 +45,7 @@ const geom: ConfluenceGeom = {
   width: 800,
   formatPrice: (p) => p.toFixed(2),
 };
-const style = { modeColor: 'MODE', sourceColor: 'SRC', textColor: 'TEXT' };
+const style = { modeColor: 'MODE', sourceColor: 'SRC', textColor: 'TEXT', labelBackground: 'BG' };
 const words = { trigger: 'Trigger', secondary: 'Secondary', invalidation: 'Invalidation', retest: 'Retest', latched: '(latched)' };
 
 const state: ConfluenceState = {
@@ -137,6 +138,16 @@ describe('paintConfluence', () => {
     };
     expect(tips('turn')).toBe(804); // low 100 -> y 800, 4 px below
     expect(tips('breakdown')).toBe(788); // high 104 -> y 792, 4 px above
+  });
+
+  it('puts each label on a box in the pane colour', () => {
+    const { context, calls } = recorder();
+    paintConfluence(context, drawing(), geom, style, words);
+    const boxes = calls.filter((c) => c.op === 'fillRect' && c.fill === 'BG');
+    expect(boxes).toHaveLength(texts(calls).length);
+    // "Trigger 4× 112.00" is 17 characters: 102 px plus 6 px padding, ending 1 px right of the text end.
+    const trigger = calls.find((c) => c.op === 'fillText' && c.args[0] === 'Trigger 4× 112.00');
+    expect(boxes.some((b) => b.args[0] === 796 - 108 + 3 && b.args[2] === 108 && b.args[1] === (trigger?.args[2] as number) - 6)).toBe(true);
   });
 
   it('skips an item that has no pixel', () => {
