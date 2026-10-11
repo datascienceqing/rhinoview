@@ -1,6 +1,6 @@
 # Plan — Chart context menu and alerts
 
-Status: approved for implementation by one agent, step by step (2026-10-11). Branch: `feat/alerts`, from `main` at `3d24afc`.
+Status: implemented on `feat/alerts` (2026-10-11), steps 1–8. Section 10 lists the changes from this plan. Branch: `feat/alerts`, from `main` at `3d24afc`.
 
 Decisions D1–D12 (section 9) use the recommendations. The user confirmed D1, D5, D6, D9 and
 D10, and asked for D3 and D7 (2026-10-11). D2, D4, D8, D11 and D12 are still recommendations;
@@ -376,3 +376,26 @@ Tests that must exist:
 | D10 | Where is the docked Alerts window? | Along the right edge, 360 px wide, over the watchlist sidebar. The chart keeps its size. **Confirmed by the user.** |
 | D11 | A click on an indicator alert: symbol only, or also its timeframe? | Symbol and timeframe, so the user sees the indicator that fired. |
 | D12 | How many events does the log keep? | The last 1000. |
+
+## 10. Changes made during the implementation
+
+These are the differences between the plan above and the code. Each one has a test.
+
+1. **DELETE answers.** Every answer uses the JSON envelope, so there is no 204.
+   `DELETE /api/alerts/:id` gives `{ id }`. `DELETE /api/alerts/events/:id` gives `{ unchecked }`.
+2. **Stream event names.** The SSE event name is the message type: `fired`, `checked`, `alerts`.
+3. **Day high and low.** The check state has two more fields: `lastDayHigh` and `lastDayLow`.
+   A higher day high (or a lower day low) since the last check counts as a move through the
+   level. Without these fields, a day high from before the alert could fire it by mistake.
+4. **No `server/alerts/events.ts`.** The store keeps the event log and sends the stream
+   messages. The route `server/routes/alerts.ts` writes them to each open stream.
+5. **Fewer disk writes.** The checker writes all results of one tick in one write. A state
+   change with no event is saved within 60 s. An event or a status change is saved at once.
+6. **Check interval.** `GET /api/alerts` also gives `checkIntervalSeconds`, for the window.
+7. **Docked width.** The docked window takes the width of the watchlist, not 360 px. At
+   360 px it also covered the price scale of the chart. A floating window is 360 px wide.
+8. **Daily and weekly indicator alerts** check a bar when its full period ended (00:00 UTC for
+   a daily bar). So a daily alert comes some hours after the US close.
+9. **Browser check.** The synthetic market was closed on the day of the check. A test wrapper
+   (not committed) moved the synthetic price, to make an alert fire through the real server.
+

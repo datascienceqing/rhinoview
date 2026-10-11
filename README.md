@@ -27,8 +27,12 @@ proxy holds the API key and normalizes the upstream data.
 - A Financials page: Overview, Statements, Trends, and Earnings.
 - A dark theme and a light theme.
 - An English interface and a Simplified Chinese interface. See [Languages](#languages).
+- A chart menu: right-click the chart, or press Shift+F10. It adds an alert, and switches the theme and the language.
+- Price alerts and indicator alerts (SMA, EMA, RSI, MACD), up to 1000, on any number of symbols.
+  The server checks them. A fired alert shows a popup with a chime, and the bell keeps a log.
 
 The proxy keeps layouts and watchlists in one JSON file on the server (`WORKSPACE_FILE`).
+It keeps alerts and their log in a second file (`ALERTS_FILE`).
 
 ## Languages
 
@@ -141,6 +145,7 @@ mocks/             MSW handlers, and fixtures recorded from real upstream respon
 - [`docs/PHASE5_PLAN.md`](docs/PHASE5_PLAN.md): The plan for watchlists, layouts, and financials.
 - [`docs/PHASE5_REPORT.md`](docs/PHASE5_REPORT.md): The Phase 5 report.
 - [`docs/LIQUIDITY_PLAN.md`](docs/LIQUIDITY_PLAN.md): The specification of the Liquidity indicator.
+- [`docs/ALERTS_PLAN.md`](docs/ALERTS_PLAN.md): The specification of the chart menu and the alerts.
 
 ## License
 

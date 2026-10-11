@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
-import type { ReactNode } from 'react';
+import type { CSSProperties, ReactNode } from 'react';
 import type { SearchResult } from '@shared/types';
 import { AlertBell, AlertDialog, AlertToasts, AlertsProvider, AlertsWindow } from './alerts';
 import type { EventSourceFactory } from './alerts';
@@ -144,7 +144,8 @@ function Shell() {
         <ThemeToggle />
         <AlertBell />
       </header>
-      <div className="app-body">
+      {/* The docked Alerts window takes the width of the watchlist it covers. */}
+      <div className="app-body" style={{ '--sidebar-width': `${sidebarWidth}px` } as CSSProperties}>
         <div className="app-center">
           <main className="workspace">
             <ChartPanel

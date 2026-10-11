@@ -179,15 +179,17 @@ function AlertDialogForm({ draft, onClose }: { draft: AlertDraft; onClose: () =>
           </label>
         )}
 
-        <fieldset className="alert-field alert-radios">
-          <legend>{t('alerts.field.trigger')}</legend>
-          {(['once', 'every'] as const).map((f) => (
-            <label key={f}>
-              <input type="radio" name={`${id}-frequency`} checked={frequency === f} onChange={() => setFrequency(f)} />
-              {t(`alerts.frequency.${f}`)}
-            </label>
-          ))}
-        </fieldset>
+        <div className="alert-field">
+          <span id={`${id}-trigger`}>{t('alerts.field.trigger')}</span>
+          <div className="alert-radios" role="radiogroup" aria-labelledby={`${id}-trigger`}>
+            {(['once', 'every'] as const).map((f) => (
+              <label key={f}>
+                <input type="radio" name={`${id}-frequency`} checked={frequency === f} onChange={() => setFrequency(f)} />
+                {t(`alerts.frequency.${f}`)}
+              </label>
+            ))}
+          </div>
+        </div>
 
         <div className="alert-field">
           <label htmlFor={`${id}-expiry`}>{t('alerts.field.expiry')}</label>

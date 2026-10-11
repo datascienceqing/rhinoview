@@ -108,6 +108,18 @@ describe('Alerts window: dock, float, minimize', () => {
     expect(windowEl()).toHaveClass('docked');
   });
 
+  it('a click on the bell while the window floats docks it again', async () => {
+    await seed();
+    await renderApp();
+    openFromBell();
+    const win = windowEl();
+    win.getBoundingClientRect = () => ({ left: 600, top: 50, width: 360, height: 400, right: 960, bottom: 450, x: 600, y: 50, toJSON: () => ({}) });
+    fireEvent.keyDown(win.querySelector('.alerts-window-bar') as HTMLElement, { key: 'ArrowLeft' });
+    expect(windowEl()).toHaveClass('floating');
+    openFromBell();
+    expect(windowEl()).toHaveClass('docked');
+  });
+
   it('a drag cannot take the window outside the app window', async () => {
     await seed();
     await renderApp();

@@ -90,6 +90,9 @@
   top: 0;
   right: 0;
   bottom: 0;
+  /* Over the watchlist only: the chart and its price scale stay visible. */
+  width: var(--sidebar-width, 360px);
+  min-width: 280px;
   border-width: 0 0 0 1px;
 }
 .alerts-window.floating {
@@ -146,6 +149,11 @@
   display: flex;
   gap: 8px;
   padding: 8px 10px;
+}
+.alerts-tools .button-secondary {
+  padding: 4px 8px;
+  font-size: 12px;
+  white-space: nowrap;
 }
 .alerts-search {
   flex: 1;
@@ -254,7 +262,7 @@
   text-decoration: line-through;
 }
 .alert-row.status-triggered .alert-row-status {
-  color: var(--up);
+  color: var(--text-dim);
 }
 .alerts-settings {
   display: flex;
@@ -373,13 +381,15 @@
   border-radius: 4px;
   padding: 5px 8px;
 }
-.alert-radios legend {
-  float: left;
-  width: 96px;
-  padding: 0;
+.alert-radios {
+  display: flex;
+  gap: 16px;
 }
 .alert-radios label {
-  margin-right: 12px;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  white-space: nowrap;
 }
 .alert-hint {
   grid-column: 2;

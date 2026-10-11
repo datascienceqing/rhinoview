@@ -27,8 +27,12 @@ RhinoView 是一款金融图表应用。客户端使用 React、TypeScript 和
 - 财务页面：概览、财务报表、趋势和财报。
 - 深色主题和浅色主题。
 - 英文界面和简体中文界面。详见[语言](#语言)。
+- 图表菜单：在图表上右键单击，或按 Shift+F10。可以添加警报，也可以切换主题和语言。
+- 价格警报和指标警报（SMA、EMA、RSI、MACD），最多 1000 条，代码数量不限。
+  由服务器检查。警报触发时弹出提示并播放提示音，铃铛按钮保存触发记录。
 
-代理服务把布局和自选列表保存在服务器上的一个 JSON 文件中（`WORKSPACE_FILE`）。
+代理服务把布局和自选列表保存在服务器上的一个 JSON 文件中（`WORKSPACE_FILE`），
+把警报及其触发记录保存在另一个文件中（`ALERTS_FILE`）。
 
 ## 语言
 
@@ -141,6 +145,7 @@ mocks/             MSW 处理程序，以及从真实上游响应录制的测试
 - [`docs/PHASE5_PLAN.md`](docs/PHASE5_PLAN.md)：自选列表、布局和财务功能的计划。
 - [`docs/PHASE5_REPORT.md`](docs/PHASE5_REPORT.md)：第 5 阶段报告。
 - [`docs/LIQUIDITY_PLAN.md`](docs/LIQUIDITY_PLAN.md)：流动性指标的规格说明。
+- [`docs/ALERTS_PLAN.md`](docs/ALERTS_PLAN.md)：图表菜单和警报的规格说明。
 
 ## 致谢与许可
 
