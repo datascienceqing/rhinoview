@@ -2,7 +2,7 @@
   <table>
     <tr>
       <td>
-        <i>There are wolfs who know<br>
+        <i>There are wolves who know<br>
         There are sheep who don't know<br>
         There are Rhinos who have armor</i>
       </td>
