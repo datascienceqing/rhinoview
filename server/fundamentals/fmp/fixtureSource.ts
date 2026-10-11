@@ -1,5 +1,5 @@
 /**
- * Replay of the recorded FMP responses as an `FmpJsonSource`, for tests and for offline
+ * Replay of the FMP fixture responses (synthetic values) as an `FmpJsonSource`, for tests and for offline
  * use of the mapper.
  *
  * Run the mapper over the fixtures (for example to generate client mock data):
@@ -11,7 +11,7 @@
  *   const earnings = await provider.getEarnings('MSFT');
  *
  * Symbols with fixtures: AAPL, MSFT, JPM, TSM, RIVN. Any other symbol answers `[]`, which
- * the provider reads as an unknown symbol, exactly like FMP does. A recorded 402 throws
+ * the provider reads as an unknown symbol, exactly like FMP does. A fixture 402 throws
  * `FmpPaymentRequiredError`, like the real client. Each request is served from
  * `__fixtures__/fmp/<SYMBOL>/<name>.json`.
  */

@@ -1,6 +1,7 @@
 /**
- * Test helpers: replay recorded FMP responses through `FetchLike`, no network.
- * Fixtures in `__fixtures__/` are real responses with the API key scrubbed.
+ * Test helpers: replay FMP fixture responses through `FetchLike`, no network.
+ * Fixtures in `__fixtures__/` have the shape of real FMP responses, with SYNTHETIC values
+ * (scripts/gen-synthetic-fmp-fixtures.ts). Error bodies are FMP's own text.
  */
 import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';

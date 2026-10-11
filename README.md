@@ -109,6 +109,29 @@ mocks/             MSW handlers, and fixtures recorded from real upstream respon
 - [`docs/PHASE5_PLAN.md`](docs/PHASE5_PLAN.md): The plan for watchlists, layouts, and financials.
 - [`docs/PHASE5_REPORT.md`](docs/PHASE5_REPORT.md): The Phase 5 report.
 
+## License
+
+Copyright (C) 2026 datascienceqing.
+
+RhinoView is free software. You can redistribute it and change it under the terms of the
+GNU Affero General Public License, version 3 or (at your option) any later version. See
+[LICENSE](LICENSE).
+
+The AGPL also covers use over a network. If you run a changed version of RhinoView as a
+website or a service, you must offer its source code to its users.
+
+RhinoView comes with NO WARRANTY, to the extent that the law permits.
+
+Third-party parts keep their own licenses:
+
+- TradingView Lightweight Charts: Apache-2.0. Read [NOTICE](NOTICE).
+- The VRVP code ported from [Vela](https://github.com/datascienceqing/Vela): Apache-2.0.
+  Each ported file names its source.
+- The npm dependencies: their own licenses (MIT, BSD, ISC, Apache-2.0).
+
+The test data in this repository is synthetic. It has the shape of real API responses,
+but it holds no real market or company data.
+
 ## Attribution
 
 RhinoView draws its charts with TradingView Lightweight Charts™. The on-chart logo of

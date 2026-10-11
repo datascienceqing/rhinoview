@@ -1,6 +1,6 @@
 /**
  * The client MSW fundamentals data, built by running the real FMP mapper over the
- * recorded fixtures. Used by scripts/gen-fundamentals-mock.ts and guarded by
+ * (synthetic) FMP fixtures. Used by scripts/gen-fundamentals-mock.ts and guarded by
  * generatedMock.test.ts, so the client mock always matches the server mapping.
  */
 import type {

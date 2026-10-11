@@ -2,19 +2,20 @@
   "status": 200,
   "path": "/financial-scores?symbol=TSM",
   "fetchedAt": "2026-10-04T22:01:52.889Z",
+  "synthetic": true,
   "body": [
     {
       "symbol": "TSM",
       "reportedCurrency": "TWD",
-      "altmanZScore": 18.685183941970248,
-      "piotroskiScore": 8,
-      "workingCapital": 2707939000000,
-      "totalAssets": 9375655000000,
-      "retainedEarnings": 5739966000000,
-      "ebit": 2507368403000,
-      "marketCap": 77965827401862.39,
-      "totalLiabilities": 2901184000000,
-      "revenue": 4450378591000
+      "altmanZScore": 6.295676,
+      "piotroskiScore": 9,
+      "workingCapital": 59595642293,
+      "totalAssets": 6140062916825,
+      "retainedEarnings": 5632680816227,
+      "ebit": 1623687122982,
+      "marketCap": 1573110000000,
+      "totalLiabilities": 2087621391720,
+      "revenue": 3454385576563
     }
   ]
 }

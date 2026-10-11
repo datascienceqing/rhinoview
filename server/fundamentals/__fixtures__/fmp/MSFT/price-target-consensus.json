@@ -2,13 +2,14 @@
   "status": 200,
   "path": "/price-target-consensus?symbol=MSFT",
   "fetchedAt": "2026-10-04T22:01:52.889Z",
+  "synthetic": true,
   "body": [
     {
       "symbol": "MSFT",
-      "targetHigh": 725,
-      "targetLow": 440,
-      "targetConsensus": 563.5,
-      "targetMedian": 550
+      "targetHigh": 579.7,
+      "targetLow": 300.59,
+      "targetConsensus": 429.41,
+      "targetMedian": 433.7
     }
   ]
 }

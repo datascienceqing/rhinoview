@@ -43,7 +43,7 @@ describe('dateToNySeconds', () => {
 describe('eodRowsToBars', () => {
   const fixture = eodResponseSchema.parse(fixtureRows('eod-aapl-dst'));
 
-  it('the recorded FMP response really is newest-first (the premise of the reversal)', () => {
+  it('the fixture is newest-first like the real FMP response (the premise of the reversal)', () => {
     expect(fixture[0]?.date).toBe('2025-11-07');
     expect(fixture.at(-1)?.date).toBe('2025-10-27');
   });
@@ -66,12 +66,12 @@ describe('eodRowsToBars', () => {
     const bar = eodRowsToBars(fixture).at(-1);
     expect(bar).toEqual({
       time: dateToNySeconds('2025-11-07'),
-      open: 269.8,
-      high: 272.29,
-      low: 266.77,
-      close: 268.47,
-      volume: 48227400,
-      vwap: 269.3325,
+      open: 183.13,
+      high: 184.09,
+      low: 181.8,
+      close: 182.4,
+      volume: 36472790,
+      vwap: 182.855,
       transactions: null,
     });
   });
@@ -90,18 +90,18 @@ describe('aggregateWeekly', () => {
   const daily = eodRowsToBars(eodResponseSchema.parse(fixtureRows('eod-aapl-dst')));
   const weeks = aggregateWeekly(daily);
 
-  // Expected values were summed by hand from the recorded rows (see the fixture), not
-  // computed by the code under test.
+  // Expected values were summed from the fixture rows by a separate script, not computed
+  // by the code under test.
   it('stamps each week on its New York Monday, across the DST change', () => {
     expect(weeks.map((w) => iso(w.time))).toEqual(['2025-10-27T04:00:00.000Z', '2025-11-03T05:00:00.000Z']);
   });
 
   it('week 1 (27-31 Oct): open from Monday, close from Friday, extremes and volume summed', () => {
-    expect(weeks[0]).toMatchObject({ open: 264.88, high: 277.32, low: 264.65, close: 270.37, volume: 293563399, transactions: null });
+    expect(weeks[0]).toMatchObject({ open: 184.87, high: 185.16, low: 181.77, close: 182.74, volume: 118386538, transactions: null });
   });
 
   it('week 2 (3-7 Nov): open from Monday, close from Friday, extremes and volume summed', () => {
-    expect(weeks[1]).toMatchObject({ open: 270.42, high: 273.4, low: 266.25, close: 268.47, volume: 242583991 });
+    expect(weeks[1]).toMatchObject({ open: 183.42, high: 184.09, low: 179.67, close: 182.4, volume: 135051098 });
   });
 
   it('weekly volume equals the sum of its daily volumes', () => {
@@ -143,10 +143,10 @@ describe('snapshotFromQuote', () => {
   if (!quote) throw new Error('fixture has no row');
 
   it('divides FMP changePercentage (a percentage) by 100 to get our fraction', () => {
-    expect(quote.changePercentage).toBe(1.02022);
+    expect(quote.changePercentage).toBe(0.18125);
     const snap = snapshotFromQuote(quote, true);
-    expect(snap.changePercent).toBeCloseTo(0.0102022, 10);
-    // A 100x error would put this at ~1.02, i.e. "+102%" in the header.
+    expect(snap.changePercent).toBeCloseTo(0.0018125, 10);
+    // A 100x error would put this at ~0.18, i.e. "+18%" in the header.
     expect(Math.abs(snap.changePercent ?? 99)).toBeLessThan(0.1);
   });
 
@@ -158,14 +158,14 @@ describe('snapshotFromQuote', () => {
   it('maps the other fields and takes the timestamp as seconds, unconverted', () => {
     expect(snapshotFromQuote(quote, false)).toEqual({
       symbol: 'AAPL',
-      price: 333.69,
-      change: 3.37,
+      price: 182.4,
+      change: 0.33,
       changePercent: quote.changePercentage === null ? null : quote.changePercentage / 100,
-      previousClose: 330.32,
-      dayOpen: 333.205,
-      dayHigh: 334.54,
-      dayLow: 330.61,
-      dayVolume: 31878433,
+      previousClose: 182.07,
+      dayOpen: 182.77,
+      dayHigh: 183.35,
+      dayLow: 181.89,
+      dayVolume: 43588453,
       updated: 1790971201,
       delayed: false,
     });
