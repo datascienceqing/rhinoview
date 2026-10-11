@@ -90,7 +90,7 @@ export interface Snapshot {
 
 // ───────────────────────────── Indicators ─────────────────────────────
 
-export type IndicatorKind = 'sma' | 'ema' | 'rsi' | 'macd' | 'volume' | 'vpvr' | 'liquidity';
+export type IndicatorKind = 'sma' | 'ema' | 'rsi' | 'macd' | 'volume' | 'vpvr' | 'liquidity' | 'confluence';
 
 /** Where an indicator draws: on the price pane, or in its own pane below. */
 export type IndicatorPlacement = 'overlay' | 'separate';
@@ -106,6 +106,8 @@ export const INDICATOR_PLACEMENT: Record<IndicatorKind, IndicatorPlacement> = {
   vpvr: 'overlay',
   // Zones and sweeps drawn on the price pane, at price levels.
   liquidity: 'overlay',
+  // Trigger clusters and their breaks drawn on the price pane, at price levels.
+  confluence: 'overlay',
 };
 
 export interface MovingAverageParams {
@@ -152,13 +154,51 @@ export interface LiquidityParams {
   sweepExtend: number;
 }
 
+/** Which side the confluence indicator watches: resistance above ('turn') or support below ('breakdown'). */
+export type ConfluenceMode = 'turn' | 'breakdown';
+/** Which level sources the confluence indicator draws as lines. */
+export type ConfluenceSources = 'both' | 'fibs' | 'mas' | 'none';
+
+/**
+ * Confluence trigger levels, after the user's Turn Confirmation Levels and Breakdown
+ * Confluence Levels scripts (docs/CONFLUENCE_PLAN.md §4–5). Counts of bars and levels are
+ * integers; `*Pct`, `*Mult` and `closeQuality` are decimals. `latchTime` is Unix seconds,
+ * 0 for "no date"; only the latch handle on the chart sets it.
+ */
+export interface ConfluenceParams {
+  mode: ConfluenceMode;
+  swingLookback: number;
+  tolerancePct: number;
+  bandWidthMult: number;
+  pivotLeft: number;
+  pivotRight: number;
+  pivotMaxAge: number;
+  turnMinConfluence: number;
+  turnMinDistancePct: number;
+  breakdownMinConfluence: number;
+  breakdownMinDistancePct: number;
+  volumeLength: number;
+  volumeMult: number;
+  closeQuality: number;
+  sources: ConfluenceSources;
+  latch: 'off' | 'on';
+  latchTime: number;
+}
+
 export interface MacdParams {
   fastPeriod: number;
   slowPeriod: number;
   signalPeriod: number;
 }
 
-export type IndicatorParams = MovingAverageParams | RsiParams | MacdParams | VolumeParams | VpvrParams | LiquidityParams;
+export type IndicatorParams =
+  | MovingAverageParams
+  | RsiParams
+  | MacdParams
+  | VolumeParams
+  | VpvrParams
+  | LiquidityParams
+  | ConfluenceParams;
 
 /**
  * One point of a computed indicator line.
@@ -173,7 +213,7 @@ export interface IndicatorPoint {
   value: number | null;
 }
 
-/** A single named line. MACD yields three of these; Volume two ('volume', 'ma'); SMA/EMA/RSI one; VPVR and Liquidity none. */
+/** A single named line. MACD yields three of these; Volume two ('volume', 'ma'); SMA/EMA/RSI one; VPVR, Liquidity and Confluence none. */
 export interface IndicatorLine {
   /** Stable key within the indicator, e.g. 'macd' | 'signal' | 'histogram' | 'value'. */
   key: string;

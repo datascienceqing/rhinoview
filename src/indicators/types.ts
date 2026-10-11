@@ -12,6 +12,9 @@
  */
 import type {
   Bar,
+  ConfluenceMode,
+  ConfluenceParams,
+  ConfluenceSources,
   IndicatorKind,
   IndicatorParams,
   IndicatorSeries,
@@ -48,6 +51,7 @@ export const DEFAULT_PARAMS: {
   volume: VolumeParams;
   vpvr: VpvrParams;
   liquidity: LiquidityParams;
+  confluence: ConfluenceParams;
 } = {
   sma: { period: 20, source: 'close' },
   ema: { period: 20, source: 'close' },
@@ -56,6 +60,26 @@ export const DEFAULT_PARAMS: {
   volume: { period: 20 },
   vpvr: { rows: 24, widthPct: 30, valueAreaPct: 70 },
   liquidity: { lookback: 10, zoneMode: 'wick', sweepMode: 'wicks', minTouches: 0, maxAge: 300, sweepExtend: 20 },
+  // The defaults of the two Pine scripts, so the result matches TradingView (docs/CONFLUENCE_PLAN.md §5).
+  confluence: {
+    mode: 'turn',
+    swingLookback: 250,
+    tolerancePct: 0.75,
+    bandWidthMult: 0,
+    pivotLeft: 5,
+    pivotRight: 5,
+    pivotMaxAge: 250,
+    turnMinConfluence: 1,
+    turnMinDistancePct: 0,
+    breakdownMinConfluence: 3,
+    breakdownMinDistancePct: 0.5,
+    volumeLength: 10,
+    volumeMult: 1.5,
+    closeQuality: 0.5,
+    sources: 'both',
+    latch: 'off',
+    latchTime: 0,
+  },
 };
 
 /** Numeric liquidity fields and their bounds (docs/LIQUIDITY_PLAN.md §5). */
@@ -68,6 +92,43 @@ export const LIQUIDITY_BOUNDS: Record<LiquidityNumericKey, { min: number; max: n
 };
 export const LIQUIDITY_ZONE_MODES: readonly LiquidityZoneMode[] = ['wick', 'range'];
 export const LIQUIDITY_SWEEP_MODES: readonly LiquiditySweepMode[] = ['wicks', 'retests', 'both'];
+
+/** Numeric confluence fields the editor shows (docs/CONFLUENCE_PLAN.md §5). `latchTime` is not one. */
+export type ConfluenceNumericKey =
+  | 'swingLookback'
+  | 'tolerancePct'
+  | 'bandWidthMult'
+  | 'pivotLeft'
+  | 'pivotRight'
+  | 'pivotMaxAge'
+  | 'turnMinConfluence'
+  | 'turnMinDistancePct'
+  | 'breakdownMinConfluence'
+  | 'breakdownMinDistancePct'
+  | 'volumeLength'
+  | 'volumeMult'
+  | 'closeQuality';
+/** `integer: false` marks a decimal field: any finite number inside the bounds. */
+export const CONFLUENCE_BOUNDS: Record<ConfluenceNumericKey, { min: number; max: number; integer: boolean }> = {
+  swingLookback: { min: 20, max: 1000, integer: true },
+  tolerancePct: { min: 0.05, max: 5, integer: false },
+  bandWidthMult: { min: 0, max: 20, integer: false },
+  pivotLeft: { min: 1, max: 25, integer: true },
+  pivotRight: { min: 1, max: 25, integer: true },
+  pivotMaxAge: { min: 10, max: 5000, integer: true },
+  turnMinConfluence: { min: 1, max: 20, integer: true },
+  turnMinDistancePct: { min: 0, max: 20, integer: false },
+  breakdownMinConfluence: { min: 1, max: 20, integer: true },
+  breakdownMinDistancePct: { min: 0, max: 20, integer: false },
+  volumeLength: { min: 1, max: 500, integer: true },
+  volumeMult: { min: 1, max: 10, integer: false },
+  closeQuality: { min: 0.1, max: 1, integer: false },
+};
+export const CONFLUENCE_MODES: readonly ConfluenceMode[] = ['turn', 'breakdown'];
+export const CONFLUENCE_SOURCES: readonly ConfluenceSources[] = ['both', 'fibs', 'mas', 'none'];
+export const CONFLUENCE_LATCH: readonly ConfluenceParams['latch'][] = ['off', 'on'];
+/** Pivots kept per side, newest first: a safety cap, not a setting (plan §4.2). */
+export const CONFLUENCE_MAX_PIVOTS = 50;
 
 /** Bounds of the VPVR fields. VPVR params are not periods, so PERIOD_MIN/MAX do not apply. */
 export const VPVR_BOUNDS: Record<keyof VpvrParams, { min: number; max: number }> = {
@@ -93,6 +154,7 @@ export const LINE_KEYS: Record<IndicatorKind, readonly string[]> = {
   volume: ['volume', 'ma'],
   vpvr: [],
   liquidity: [],
+  confluence: [],
 };
 
 /** Thrown for parameters outside the bounds above, or a MACD with `fast >= slow`. */

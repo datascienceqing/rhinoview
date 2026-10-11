@@ -8,6 +8,7 @@ import { charts, lastChart, resetFakeCharts } from '../chart/testing/fakeLightwe
 import type { FakeChart, FakeSeries } from '../chart/testing/fakeLightweightCharts';
 import { DEFAULT_ACTIVE_CHART, InMemoryWorkspaceProvider, WorkspaceProvider, useActiveChart } from '../workspace';
 import { resetMockWorkspace, mockWorkspace } from '../../mocks/workspace';
+import { DEFAULT_PARAMS } from '../indicators/types';
 import { ChartPanel } from './ChartPanel';
 import type { ChartPanelProps } from './ChartPanel';
 import { renderWithDataSource } from './testUtils';
@@ -445,5 +446,30 @@ describe('disposal under StrictMode', () => {
 
     unmount();
     expect(charts.every((c) => c.removed)).toBe(true);
+  });
+});
+
+describe('confluence latch handle', () => {
+  const confluence = (latch: 'on' | 'off', latchTime = 0): IndicatorConfig => ({
+    id: 'cf',
+    kind: 'confluence',
+    params: { ...DEFAULT_PARAMS.confluence, latch, latchTime },
+    color: '#00bcd4',
+    visible: true,
+  });
+
+  it('shows the handle for a confluence indicator with the latch on, and gives a new latch a date at once', async () => {
+    renderWithDataSource(inMemory(<ChartPanel {...props} />, [confluence('on')]));
+    await screen.findByTestId('crosshair-legend');
+    const tab = await screen.findByRole('button', { name: /^Latch date / });
+    // The handle saved the centre bar of the view: the date is a 2025 or 2026 bar, not 1 January 1970.
+    await waitFor(() => expect(tab.getAttribute('aria-label')).not.toMatch(/Jan 1\./));
+    expect(tab.closest('.latch-handle')).toHaveClass('latch-turn');
+  });
+
+  it('shows no handle while the latch is off', async () => {
+    renderWithDataSource(inMemory(<ChartPanel {...props} />, [confluence('off', 1_780_000_000)]));
+    await screen.findByTestId('crosshair-legend');
+    expect(screen.queryByRole('button', { name: /^Latch date / })).toBeNull();
   });
 });

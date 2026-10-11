@@ -295,6 +295,17 @@ but this endpoint does not serve it: its output is drawings, not lines. `Liquidi
 (default 300), `sweepExtend` 1–500 (default 20). All numbers are integers. The workspace store
 refuses any other value with `BAD_REQUEST`.
 
+`confluence` (turn and breakdown trigger levels, docs/CONFLUENCE_PLAN.md) is a valid
+`IndicatorKind` for layouts, but this endpoint does not serve it: its output is drawings, not
+lines. `ConfluenceParams`: `mode` `turn`|`breakdown` (default `turn`); integers `swingLookback`
+20–1000 (250), `pivotLeft` and `pivotRight` 1–25 (5), `pivotMaxAge` 10–5000 (250),
+`turnMinConfluence` and `breakdownMinConfluence` 1–20 (1 and 3), `volumeLength` 1–500 (10);
+decimals `tolerancePct` 0.05–5 (0.75), `bandWidthMult` 0–20 (0), `turnMinDistancePct` and
+`breakdownMinDistancePct` 0–20 (0 and 0.5), `volumeMult` 1–10 (1.5), `closeQuality` 0.1–1
+(0.5); `sources` `both`|`fibs`|`mas`|`none` (`both`); `latch` `off`|`on` (`off`); `latchTime`
+integer Unix seconds 0–4102444800 (0, no date). The workspace store refuses any other value
+with `BAD_REQUEST`.
+
 Upstream: `/rest/stocks/technical-indicators/{sma,ema,macd,rsi}`.
 
 ---
