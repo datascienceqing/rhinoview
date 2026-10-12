@@ -17,7 +17,7 @@
 
 <p align="center"><b>English</b> · <a href="README.zh-CN.md">简体中文</a></p>
 
-![RhinoView with AAPL on the daily chart, Volume, Liquidity zones and RSI, in the dark theme](docs/images/app-en.png)
+![RhinoView with AAPL on the daily chart, in the dark theme. Callouts show four points: 1, 1,000 alerts; 2, a more intuitive UI with the right-click menu; 3, tested indicators; 4, faster earnings updates, which depend on the data source](docs/images/app-en.png)
 
 **New user? Read the [user guide](docs/USER_GUIDE.md).**
 
@@ -64,7 +64,7 @@ The Chinese interface changes more than the text:
 Data from the provider does not change: company names, descriptions, and sectors stay in
 the provider's language. Some error messages come from the server, and they stay in English.
 
-![RhinoView in Chinese and in the light theme: rises are red and falls are green](docs/images/app-zh.png)
+![RhinoView in Chinese and in the light theme: rises are red and falls are green. The callouts show the same four points in Chinese](docs/images/app-zh.png)
 
 ## Data providers
 
@@ -151,7 +151,7 @@ mocks/             MSW handlers, and fixtures recorded from real upstream respon
 
 ## Documentation
 
-- [`docs/USER_GUIDE.md`](docs/USER_GUIDE.md): The user guide: the right-click menu, indicators, alerts, the call budget, and notifications.
+- [`docs/USER_GUIDE.md`](docs/USER_GUIDE.md) ([简体中文](docs/USER_GUIDE.zh-CN.md)): The user guide: the right-click menu, indicators, alerts, the call budget, and notifications.
 - [`AGENTS.md`](AGENTS.md): Instructions for AI agents, and the ASD-STE100 output style.
 - [`docs/MULTIAGENT_PLAN.md`](docs/MULTIAGENT_PLAN.md): The build plan, phases, and review gates.
 - [`docs/CONTRACT.md`](docs/CONTRACT.md): The HTTP contract between the client and the proxy.

@@ -6,7 +6,9 @@
 
 <p align="center"><a href="README.md">English</a> · <b>简体中文</b></p>
 
-![RhinoView 中文界面（浅色主题）：AAPL 日线、成交量、流动性区域与 RSI。上涨为红色，下跌为绿色](docs/images/app-zh.png)
+![RhinoView 中文界面（浅色主题）：AAPL 日线。标注说明四个要点：1. 1,000 条警报；2. 更直观的界面（右键菜单）；3. 经过测试的指标；4. 更快的财报更新（取决于数据源）。上涨为红色，下跌为绿色](docs/images/app-zh.png)
+
+**新用户？请阅读[用户指南](docs/USER_GUIDE.zh-CN.md)。**
 
 RhinoView 是一款金融图表应用。客户端使用 React、TypeScript 和
 [Lightweight Charts](https://github.com/tradingview/lightweight-charts)。一个轻量的 Fastify
@@ -136,9 +138,10 @@ mocks/             MSW 处理程序，以及从真实上游响应录制的测试
 
 ## 文档
 
+- [`docs/USER_GUIDE.zh-CN.md`](docs/USER_GUIDE.zh-CN.md)：用户指南：右键菜单、指标、警报、调用预算和通知。
+
 以下文档目前只有英文版：
 
-- [`docs/USER_GUIDE.md`](docs/USER_GUIDE.md)：用户指南：右键菜单、指标、警报、调用预算和通知。
 - [`AGENTS.md`](AGENTS.md)：给 AI 代理的说明，以及 ASD-STE100 输出风格。
 - [`docs/MULTIAGENT_PLAN.md`](docs/MULTIAGENT_PLAN.md)：构建计划、阶段和评审关口。
 - [`docs/CONTRACT.md`](docs/CONTRACT.md)：客户端与代理服务之间的 HTTP 接口约定。

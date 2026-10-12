@@ -1,5 +1,7 @@
 # RhinoView user guide
 
+<p><b>English</b> · <a href="USER_GUIDE.zh-CN.md">简体中文</a></p>
+
 This guide tells you how to use RhinoView. To install and start the application, read
 [Setup](../README.md#setup) in the README.
 
