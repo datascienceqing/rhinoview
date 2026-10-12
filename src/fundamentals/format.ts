@@ -48,18 +48,37 @@ export function formatSignedPercent(v: number | null | undefined): string {
  */
 export function formatLarge(v: number | null | undefined): string {
   if (!isNum(v)) return DASH;
+  return scaleLarge(v, (x) => formatNumber(x), (x) => formatNumber(x, 0));
+}
+
+/** An axis tick: no zeros after the point. 2 -> "2", 2.5 -> "2.5", 0.025 -> "0.03". */
+export function formatTick(v: number): string {
+  return v.toLocaleString('en-US', { maximumFractionDigits: 2 });
+}
+
+/** A large amount as an axis tick, in the units of formatLarge: 400B, 2.5B, 500M. */
+export function formatLargeTick(v: number): string {
+  return scaleLarge(v, formatTick, formatTick);
+}
+
+/** A fraction as an axis tick: 0.1 -> "10%", 0.025 -> "2.5%". */
+export function formatFractionTick(v: number): string {
+  return `${formatTick(v * 100)}%`;
+}
+
+function scaleLarge(v: number, scaled: (x: number) => string, plain: (x: number) => string): string {
   const abs = Math.abs(v);
   const sign = v < 0 ? '-' : '';
   if (getLocale() === 'zh') {
-    if (abs >= 1e12) return `${sign}${formatNumber(abs / 1e12)}万亿`;
-    if (abs >= 1e8) return `${sign}${formatNumber(abs / 1e8)}亿`;
-    if (abs >= 1e4) return `${sign}${formatNumber(abs / 1e4)}万`;
-    return formatNumber(v, 0);
+    if (abs >= 1e12) return `${sign}${scaled(abs / 1e12)}万亿`;
+    if (abs >= 1e8) return `${sign}${scaled(abs / 1e8)}亿`;
+    if (abs >= 1e4) return `${sign}${scaled(abs / 1e4)}万`;
+    return plain(v);
   }
-  if (abs >= 1e12) return `${sign}${formatNumber(abs / 1e12)}T`;
-  if (abs >= 1e9) return `${sign}${formatNumber(abs / 1e9)}B`;
-  if (abs >= 1e6) return `${sign}${formatNumber(abs / 1e6)}M`;
-  return formatNumber(v, 0);
+  if (abs >= 1e12) return `${sign}${scaled(abs / 1e12)}T`;
+  if (abs >= 1e9) return `${sign}${scaled(abs / 1e9)}B`;
+  if (abs >= 1e6) return `${sign}${scaled(abs / 1e6)}M`;
+  return plain(v);
 }
 
 /** A P/E, PEG, EV/EBITDA, P/S or P/B. Zero or negative is not meaningful. */

@@ -3,7 +3,7 @@ import type { StatementPeriod } from '@shared/types';
 import { useAsync } from '../data';
 import { fetchOverview, fetchStatements } from './api';
 import { AsyncBlock } from './AsyncBlock';
-import { formatFraction, formatLarge, formatNumber } from './format';
+import { formatFraction, formatFractionTick, formatLarge, formatLargeTick, formatNumber, formatTick } from './format';
 import { PeriodToggle } from './StatementsTab';
 import { TrendChart } from './TrendChart';
 import { buildTrend } from './trends';
@@ -58,6 +58,7 @@ function Charts({ points, currency, grossNotMeaningful }: { points: TrendPoint[]
           kind="bar"
           labels={labels}
           format={money}
+          tick={formatLargeTick}
           series={[{ name: t('fund.chart.revenue'), color: 'var(--accent)', values: points.map((p) => p.revenue) }]}
         />
         <TrendChart
@@ -66,6 +67,7 @@ function Charts({ points, currency, grossNotMeaningful }: { points: TrendPoint[]
           kind="bar"
           labels={labels}
           format={money}
+          tick={formatLargeTick}
           series={[{ name: t('fund.chart.netIncome'), color: 'var(--accent)', values: points.map((p) => p.netIncome) }]}
         />
         <TrendChart
@@ -74,6 +76,7 @@ function Charts({ points, currency, grossNotMeaningful }: { points: TrendPoint[]
           kind="bar"
           labels={labels}
           format={(v) => `${formatNumber(v)} ${currency}`.trim()}
+          tick={formatTick}
           series={[{ name: t('fund.chart.epsSeries'), color: 'var(--accent)', values: points.map((p) => p.eps) }]}
         />
         <TrendChart
@@ -82,6 +85,7 @@ function Charts({ points, currency, grossNotMeaningful }: { points: TrendPoint[]
           kind="line"
           labels={labels}
           format={formatFraction}
+          tick={formatFractionTick}
           series={[
             // A lender's gross margin is a lending spread: leave out only that line.
             ...(grossNotMeaningful
@@ -98,6 +102,7 @@ function Charts({ points, currency, grossNotMeaningful }: { points: TrendPoint[]
           kind="bar"
           labels={labels}
           format={money}
+          tick={formatLargeTick}
           series={[{ name: t('fund.chart.fcf'), color: 'var(--accent)', values: points.map((p) => p.freeCashFlow) }]}
         />
       </div>
