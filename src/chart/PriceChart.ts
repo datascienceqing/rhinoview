@@ -1,5 +1,5 @@
 import {
-  AreaSeries,
+  BarSeries,
   CandlestickSeries,
   ColorType,
   CrosshairMode,
@@ -25,7 +25,7 @@ import type { ChartMarker } from './markers';
 import type { Bar, ChartType } from '@shared/types';
 import { classifyUpdate, toCandles, toCloseLine } from './convert';
 import { VerticalPan } from './verticalPan';
-import { readTheme, withAlpha } from './theme';
+import { readTheme } from './theme';
 import type { ChartTheme } from './theme';
 import { INTL_LOCALE, getLocale } from '../i18n/locale';
 import { formatCrosshairTime, formatTick } from './timeFormat';
@@ -59,7 +59,7 @@ export interface ChartPoint {
 type ActiveSeries =
   | { type: 'candlestick'; api: ISeriesApi<'Candlestick'> }
   | { type: 'line'; api: ISeriesApi<'Line'> }
-  | { type: 'area'; api: ISeriesApi<'Area'> };
+  | { type: 'bar'; api: ISeriesApi<'Bar'> };
 
 /**
  * Imperative owner of one lightweight-charts instance, with no React in it.
@@ -381,10 +381,10 @@ export class PriceChart {
     if (!s) return;
     switch (s.type) {
       case 'candlestick':
+      case 'bar':
         s.api.setData(toCandles(this.bars));
         break;
       case 'line':
-      case 'area':
         s.api.setData(toCloseLine(this.bars));
         break;
     }
@@ -454,8 +454,8 @@ export class PriceChart {
         };
       case 'line':
         return { color: t.accent };
-      case 'area':
-        return { lineColor: t.accent, topColor: withAlpha(t.accent, 0.4), bottomColor: withAlpha(t.accent, 0) };
+      case 'bar':
+        return { upColor: t.up, downColor: t.down };
     }
   }
 
@@ -465,8 +465,9 @@ export class PriceChart {
         return { type, api: chart.addSeries(CandlestickSeries, this.seriesColors(type)) };
       case 'line':
         return { type, api: chart.addSeries(LineSeries, { ...this.seriesColors(type), lineWidth: 2 }) };
-      case 'area':
-        return { type, api: chart.addSeries(AreaSeries, { ...this.seriesColors(type), lineWidth: 2 }) };
+      case 'bar':
+        // OHLC bars as TradingView draws them: open tick left, close tick right.
+        return { type, api: chart.addSeries(BarSeries, { ...this.seriesColors(type), openVisible: true, thinBars: false }) };
     }
   }
 }

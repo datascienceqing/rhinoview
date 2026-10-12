@@ -19,13 +19,15 @@
 
 ![RhinoView with AAPL on the daily chart, Volume, Liquidity zones and RSI, in the dark theme](docs/images/app-en.png)
 
+**New user? Read the [user guide](docs/USER_GUIDE.md).**
+
 RhinoView is a financial charting application. The client uses React, TypeScript, and
 [Lightweight Charts](https://github.com/tradingview/lightweight-charts). A thin Fastify
 proxy holds the API key and normalizes the upstream data.
 
 ## Features
 
-- Symbol search, and candlestick, line, and area charts.
+- Symbol search, and candlestick, line, and OHLC bar charts.
 - Six timeframes: 1m, 5m, 15m, 1h, 1D, and 1W. The provider decides which ones it serves.
 - Pan and zoom in two directions, with lazy load of older history.
 - A crosshair OHLCV readout.
@@ -149,6 +151,7 @@ mocks/             MSW handlers, and fixtures recorded from real upstream respon
 
 ## Documentation
 
+- [`docs/USER_GUIDE.md`](docs/USER_GUIDE.md): The user guide: the right-click menu, indicators, alerts, the call budget, and notifications.
 - [`AGENTS.md`](AGENTS.md): Instructions for AI agents, and the ASD-STE100 output style.
 - [`docs/MULTIAGENT_PLAN.md`](docs/MULTIAGENT_PLAN.md): The build plan, phases, and review gates.
 - [`docs/CONTRACT.md`](docs/CONTRACT.md): The HTTP contract between the client and the proxy.

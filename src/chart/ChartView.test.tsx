@@ -122,8 +122,8 @@ describe('ChartView series types', () => {
     rerender(<ChartView bars={mk(1, 2)} chartType="line" intraday={false} />);
     expect(chart.liveSeries.map((s) => s.definition)).toEqual([fakeModule.LineSeries]);
 
-    rerender(<ChartView bars={mk(1, 2)} chartType="area" intraday={false} />);
-    expect(chart.liveSeries.map((s) => s.definition)).toEqual([fakeModule.AreaSeries]);
+    rerender(<ChartView bars={mk(1, 2)} chartType="bar" intraday={false} />);
+    expect(chart.liveSeries.map((s) => s.definition)).toEqual([fakeModule.BarSeries]);
   });
 
   it('switches type on the same chart instance and re-applies the data (no rebuild)', () => {

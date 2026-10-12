@@ -158,6 +158,19 @@ describe('corrupt file (invariant 4)', () => {
   });
 });
 
+describe('a retired chart type in the file (invariant 4)', () => {
+  it("reads chartType 'area' as 'bar' and keeps the layout", async () => {
+    const store = await open();
+    const layout = await store.createLayout({ name: 'Old', indicators: [sma] });
+    const saved = (await onDisk()) as { layouts: { id: string; chartType: string }[] };
+    for (const l of saved.layouts) if (l.id === layout.id) l.chartType = 'area';
+    await writeFile(file, JSON.stringify(saved));
+    const ws = await (await open()).getWorkspace();
+    expect(ws.layouts.find((l) => l.id === layout.id)).toMatchObject({ name: 'Old', chartType: 'bar', indicators: [sma] });
+    expect((await readdir(join(dir, 'nested'))).some((f) => f.includes('.corrupt-'))).toBe(false);
+  });
+});
+
 describe('an invalid indicator in the file (invariant 4)', () => {
   const rsi: IndicatorConfig = { id: 'i2', kind: 'rsi', params: { period: 14 }, color: '#0f0', visible: true };
 
@@ -625,8 +638,8 @@ describe('layout contents (invariant 10)', () => {
     const store = await open();
     const l = await store.createLayout({ name: 'D' });
     expect(l).toMatchObject({ symbol: 'AAPL', timeframe: '1D', chartType: 'candlestick', indicators: [], revision: 1 });
-    const u = await store.updateLayout(l.id, { revision: 1, chartType: 'area', indicators: [sma] });
-    expect(u).toMatchObject({ name: 'D', symbol: 'AAPL', chartType: 'area', indicators: [sma], revision: 2 });
+    const u = await store.updateLayout(l.id, { revision: 1, chartType: 'bar', indicators: [sma] });
+    expect(u).toMatchObject({ name: 'D', symbol: 'AAPL', chartType: 'bar', indicators: [sma], revision: 2 });
   });
 
   it('returns copies: changing a result does not change the store', async () => {

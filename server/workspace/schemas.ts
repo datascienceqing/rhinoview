@@ -7,13 +7,18 @@ import { z } from 'zod';
 import { TIMEFRAMES } from '@shared/types';
 import type { IndicatorKind, IndicatorParams } from '@shared/types';
 
-const CHART_TYPES = ['candlestick', 'line', 'area'] as const;
+const CHART_TYPES = ['candlestick', 'line', 'bar'] as const;
 const KINDS = ['sma', 'ema', 'rsi', 'macd', 'volume', 'vpvr', 'liquidity', 'confluence'] as const satisfies readonly IndicatorKind[];
 
 const timeframe = z.enum(TIMEFRAMES as readonly [string, ...string[]]) as unknown as z.ZodType<
   (typeof TIMEFRAMES)[number]
 >;
 const chartType = z.enum(CHART_TYPES);
+/**
+ * The file can hold 'area', a chart type that 'bar' replaced. Read it as 'bar', so that an
+ * old file keeps its layouts instead of being renamed as corrupt (invariant 4).
+ */
+const storedChartType = z.enum([...CHART_TYPES, 'area']).transform((t) => (t === 'area' ? 'bar' : t));
 
 /**
  * `params` keys are not restricted here on purpose: the bounds and the allowed shapes
@@ -94,7 +99,7 @@ export const workspaceFileSchema = z
             ...entityBase,
             symbol: z.string(),
             timeframe,
-            chartType,
+            chartType: storedChartType,
             indicators: z.array(z.unknown()),
           })
           .strict(),

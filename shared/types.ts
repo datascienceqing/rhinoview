@@ -317,7 +317,7 @@ export interface IndicatorConfig {
   visible: boolean;
 }
 
-export type ChartType = 'candlestick' | 'line' | 'area';
+export type ChartType = 'candlestick' | 'line' | 'bar';
 
 // ═══════════════════════════════════════════════════════════════════════════════
 // PHASE 5 — capabilities, batch quotes, workspace (layouts + watchlists), fundamentals

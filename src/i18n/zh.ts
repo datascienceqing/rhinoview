@@ -17,7 +17,7 @@ export const zh: typeof en = {
   'chartType.group': '图表类型',
   'chartType.candlestick': 'K线',
   'chartType.line': '折线',
-  'chartType.area': '面积',
+  'chartType.bar': '美国线',
   'timeframe.group': '周期',
   'timeframe.1m': '1分',
   'timeframe.5m': '5分',

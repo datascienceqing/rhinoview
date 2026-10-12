@@ -398,5 +398,5 @@ export async function openWorkspaceStore(filePath: string, opts: WorkspaceStoreO
 /** Runtime backstop for callers that bypass the zod route schemas. */
 function assertEnums(layout: ChartLayout): void {
   if (!(TIMEFRAMES as readonly string[]).includes(layout.timeframe)) bad('Invalid timeframe.');
-  if (!['candlestick', 'line', 'area'].includes(layout.chartType)) bad('Invalid chartType.');
+  if (!['candlestick', 'line', 'bar'].includes(layout.chartType)) bad('Invalid chartType.');
 }

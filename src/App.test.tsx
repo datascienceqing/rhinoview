@@ -73,8 +73,8 @@ describe('App', () => {
     const chart = lastChart();
     await userEvent.setup().click(screen.getByRole('button', { name: 'Line' }));
     expect(chart.liveSeries.map((s) => (s.definition as { tag: string }).tag)).toEqual(['Line']);
-    await userEvent.setup().click(screen.getByRole('button', { name: 'Area' }));
-    expect(chart.liveSeries.map((s) => (s.definition as { tag: string }).tag)).toEqual(['Area']);
+    await userEvent.setup().click(screen.getByRole('button', { name: 'Bars' }));
+    expect(chart.liveSeries.map((s) => (s.definition as { tag: string }).tag)).toEqual(['Bar']);
   });
 
   it('searching and picking an unknown symbol shows symbol-not-found in the chart and the quote', async () => {

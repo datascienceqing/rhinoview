@@ -14,7 +14,7 @@ RhinoView 是一款金融图表应用。客户端使用 React、TypeScript 和
 
 ## 功能
 
-- 代码搜索，以及 K 线图、折线图和面积图。
+- 代码搜索，以及 K 线图、折线图和美国线（OHLC 柱状图）。
 - 六个周期：1 分钟、5 分钟、15 分钟、1 小时、日线和周线。具体提供哪些周期由数据源决定。
 - 双向平移和缩放；向左滚动时按需加载更早的历史数据。
 - 十字光标处显示开、高、低、收和成交量。
@@ -138,6 +138,7 @@ mocks/             MSW 处理程序，以及从真实上游响应录制的测试
 
 以下文档目前只有英文版：
 
+- [`docs/USER_GUIDE.md`](docs/USER_GUIDE.md)：用户指南：右键菜单、指标、警报、调用预算和通知。
 - [`AGENTS.md`](AGENTS.md)：给 AI 代理的说明，以及 ASD-STE100 输出风格。
 - [`docs/MULTIAGENT_PLAN.md`](docs/MULTIAGENT_PLAN.md)：构建计划、阶段和评审关口。
 - [`docs/CONTRACT.md`](docs/CONTRACT.md)：客户端与代理服务之间的 HTTP 接口约定。
