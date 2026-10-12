@@ -4,11 +4,14 @@ import {
   ColorType,
   CrosshairMode,
   LineSeries,
+  LineStyle,
   createChart,
   createSeriesMarkers,
 } from 'lightweight-charts';
 import type {
   IChartApi,
+  IPaneApi,
+  IPriceLine,
   ISeriesApi,
   Logical,
   ISeriesMarkersPluginApi,
@@ -43,6 +46,15 @@ export interface PriceChartHandlers {
   onAutoScaleChange?: (autoScaled: boolean) => void;
 }
 
+/** A point on the chart: the pane under it and the price (or indicator value) at its height. */
+export interface ChartPoint {
+  /** 0 is the price pane. */
+  paneIndex: number;
+  pane: IPaneApi<Time>;
+  /** The price in the price pane; the indicator value in an indicator pane. */
+  value: number;
+}
+
 /** One live series, tagged so `setData` is checked against the right data shape. */
 type ActiveSeries =
   | { type: 'candlestick'; api: ISeriesApi<'Candlestick'> }
@@ -68,6 +80,9 @@ export class PriceChart {
   private readonly pricePrimitives = new Set<ISeriesPrimitive<Time>>();
   private intraday = false;
   private theme: ChartTheme;
+  /** Levels of the active price alerts of the shown symbol (plan section 4.7). */
+  private alertLevels: readonly number[] = [];
+  private alertLines: IPriceLine[] = [];
 
   private readonly onCrosshair = (param: MouseEventParams<Time>) => {
     const t = param.time;
@@ -114,6 +129,46 @@ export class PriceChart {
     this.verticalPan = new VerticalPan(container, this.chart, () =>
       this.handlers.onAutoScaleChange?.(this.verticalPan.isAutoScaled()),
     );
+  }
+
+  /**
+   * The pane and the value at a point in client (viewport) coordinates, or null when the
+   * point is not on a pane's plot area: on a price scale, on the time scale, or outside.
+   */
+  pointAt(clientX: number, clientY: number): ChartPoint | null {
+    const chart = this.chart;
+    if (!chart) return null;
+    const panes = chart.panes();
+    for (let i = 0; i < panes.length; i++) {
+      const pane = panes[i] as IPaneApi<Time>;
+      const el = pane.getHTMLElement();
+      if (!el) continue;
+      const r = el.getBoundingClientRect();
+      if (clientY < r.top || clientY >= r.bottom) continue;
+      const x = clientX - r.left;
+      // The pane's row holds the plot area and then the right price scale.
+      if (x < 0 || x >= chart.paneSize(i).width) return null;
+      const series = i === 0 ? this.series?.api : pane.getSeries()[0];
+      const value = series?.coordinateToPrice(clientY - r.top);
+      if (value === null || value === undefined || !Number.isFinite(value)) return null;
+      return { paneIndex: i, pane, value };
+    }
+    return null;
+  }
+
+  /** The price at the middle of the visible price range (keyboard menu), or null. */
+  centerPrice(): number | null {
+    const range = this.series?.api.priceScale().getVisibleRange();
+    if (!range) return null;
+    const mid = (range.from + range.to) / 2;
+    return Number.isFinite(mid) ? mid : null;
+  }
+
+  /** Dashed lines at the levels of the active price alerts. They survive a chart type change. */
+  setAlertLines(levels: readonly number[]): void {
+    if (!this.chart) return;
+    this.alertLevels = levels;
+    this.writeAlertLines();
   }
 
   /** Fit the price axis of every pane to its data again (the "Auto" button). */
@@ -207,6 +262,7 @@ export class PriceChart {
     chart.applyOptions(this.chartColors());
     if (this.series) this.series.api.applyOptions(this.seriesColors(this.series.type));
     this.writeMarkers(); // the default marker colour is the accent
+    for (const line of this.alertLines) line.applyOptions({ color: this.theme.accent });
     return true;
   }
 
@@ -245,7 +301,10 @@ export class PriceChart {
     // would show no flags — ChartView.test.tsx "keeps the markers when the chart type
     // changes" fails exactly that way.
     this.markersApi = null;
+    // The price lines went with the old series too.
+    this.alertLines = [];
     this.series = this.addSeriesFor(chart, type);
+    this.writeAlertLines();
     for (const p of this.pricePrimitives) this.series.api.attachPrimitive(p);
     this.writeData();
     if (range && this.bars.length > 0) chart.timeScale().setVisibleLogicalRange(range);
@@ -294,6 +353,7 @@ export class PriceChart {
     this.chart = null;
     this.series = null;
     this.markersApi = null;
+    this.alertLines = [];
     this.pricePrimitives.clear();
     this.verticalPan.dispose();
     chart.unsubscribeCrosshairMove(this.onCrosshair);
@@ -330,6 +390,22 @@ export class PriceChart {
     }
     // Bars or series changed, so the markers must snap again.
     this.writeMarkers();
+  }
+
+  private writeAlertLines(): void {
+    const s = this.series;
+    if (!s) return;
+    for (const line of this.alertLines) s.api.removePriceLine(line);
+    this.alertLines = this.alertLevels.map((price) =>
+      s.api.createPriceLine({
+        price,
+        color: this.theme.accent,
+        lineWidth: 1,
+        lineStyle: LineStyle.Dashed,
+        axisLabelVisible: true,
+        title: '🔔',
+      }),
+    );
   }
 
   private writeMarkers(): void {

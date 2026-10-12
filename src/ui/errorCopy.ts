@@ -8,7 +8,7 @@ export interface ErrorCopy {
   retryable: boolean;
 }
 
-export type Subject = 'chart' | 'quote' | 'search' | 'history' | 'workspace' | 'watchlist' | 'fundamentals';
+export type Subject = 'chart' | 'quote' | 'search' | 'history' | 'workspace' | 'watchlist' | 'fundamentals' | 'alerts';
 
 /**
  * User-facing copy for a failure, in the current language. Branches on `error.code`

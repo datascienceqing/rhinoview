@@ -84,6 +84,7 @@ export interface FakeSeries {
   setData: ReturnType<typeof vi.fn>;
   applyOptions: ReturnType<typeof vi.fn>;
   createPriceLine: ReturnType<typeof vi.fn>;
+  removePriceLine: ReturnType<typeof vi.fn>;
   priceLines: FakePriceLine[];
   getPane: () => FakePane;
   /** Like the library: the scale named by the series' `priceScaleId` (default 'right') on its pane. */
@@ -94,6 +95,8 @@ export interface FakeSeries {
   detachPrimitive: ReturnType<typeof vi.fn>;
   /** A fixed linear scale for tests: y = 1000 - 2 * price. */
   priceToCoordinate: (price: number) => number;
+  /** The inverse: price = (1000 - y) / 2. */
+  coordinateToPrice: (y: number) => number;
   /** Like the library's default price format: two decimals. */
   priceFormatter: () => { format: (price: number) => string };
   removed: boolean;
@@ -159,6 +162,11 @@ export class FakeChart {
         priceLines.push(line);
         return line;
       }),
+      removePriceLine: vi.fn((line: FakePriceLine) => {
+        this.assertLive();
+        const i = priceLines.indexOf(line);
+        if (i >= 0) priceLines.splice(i, 1);
+      }),
       priceLines,
       getPane: () => {
         this.assertLive();
@@ -178,6 +186,7 @@ export class FakeChart {
         p.detached?.();
       }),
       priceToCoordinate: (price: number) => 1000 - 2 * price,
+      coordinateToPrice: (y: number) => (1000 - y) / 2,
       priceFormatter: () => ({ format: (price: number) => price.toFixed(2) }),
       removed: false,
     };
@@ -214,6 +223,9 @@ export class FakeChart {
     this.paneList.splice(index, 1);
   };
   chartElement = (): HTMLElement => this.element;
+  /** The plot area of each pane; tests may change it. */
+  plotWidth = 800;
+  paneSize = (): { width: number; height: number } => ({ width: this.plotWidth, height: 300 });
 
   subscribeCrosshairMove = (h: CrosshairHandler): void => {
     this.assertLive();

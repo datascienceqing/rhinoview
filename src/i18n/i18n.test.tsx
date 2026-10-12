@@ -81,10 +81,12 @@ describe('catalogs', () => {
   const INDICATOR_NAME = /^indicator\.(kind\.|title|line\.)/;
   // Standard abbreviations stay the same in Chinese (user decision).
   const SAME = new Set<string>(['fund.metric.pegRatio', 'fund.metric.evToEbitda']);
+  // Alert messages are compositions of parts that are translated one by one (the verb, the line).
+  const COMPOSED = new Set<string>(['alerts.message.price', 'alerts.message.indicator']);
 
   it('every Chinese message is Chinese, except indicator names and the agreed abbreviations', () => {
     const cjk = /[一-鿿]/;
-    const untranslated = keys.filter((k) => !SAME.has(k) && !INDICATOR_NAME.test(k) && !k.startsWith('locale.') && !cjk.test(text('zh', k)));
+    const untranslated = keys.filter((k) => !SAME.has(k) && !COMPOSED.has(k) && !INDICATOR_NAME.test(k) && !k.startsWith('locale.') && !cjk.test(text('zh', k)));
     expect(untranslated).toEqual([]);
   });
 

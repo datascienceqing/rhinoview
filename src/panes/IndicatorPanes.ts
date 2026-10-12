@@ -86,6 +86,12 @@ export class IndicatorPanes {
     private readonly onLayout?: (layout: PaneLayout) => void,
   ) {}
 
+  /** The id of the separate indicator drawn in `pane`, or null (the price pane, or no indicator). */
+  idAtPane(pane: IPaneApi<Time>): string | null {
+    for (const [id, entry] of this.entries) if (entry.pane === pane) return id;
+    return null;
+  }
+
   /** Number of indicators currently drawn. */
   get size(): number {
     return this.entries.size;

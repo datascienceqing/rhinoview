@@ -1,8 +1,18 @@
-import { useCallback, useState } from 'react';
+import { useCallback, useMemo, useState } from 'react';
 import type { ChartMarker } from '../chart/markers';
 import { INDICATOR_PLACEMENT, isIntraday } from '@shared/types';
 import type { ChartType, Timeframe } from '@shared/types';
 import { ChartView } from '../chart';
+import type { ChartMenuTarget } from '../chart';
+import { ChartContextMenu } from '../chart/ChartContextMenu';
+import type { ChartMenuItem } from '../chart/ChartContextMenu';
+import { ALERT_INDICATOR_KINDS } from '@shared/types';
+import type { AlertIndicatorKind, AlertTarget, IndicatorConfig } from '@shared/types';
+import { CLOSE_TARGET_KINDS } from '../alerts/condition';
+import { useAlerts } from '../alerts/AlertsProvider';
+import { formatLevel, formatValue, roundLevel } from '../alerts/describe';
+import { LINE_KEYS } from '../indicators/types';
+import { indicatorTitle } from '../panes/config';
 import { useBarHistory, useCapabilities } from '../data';
 import { IndicatorLegendRow, IndicatorMenu, useComputedIndicators, useIndicators } from '../panes';
 import { LatchHandles } from '../panes/confluence/LatchHandle';
@@ -20,6 +30,8 @@ export interface ChartPanelProps {
   chartType: ChartType;
   /** Phase 5 seam: flags on the price series, for example earnings. */
   markers?: readonly ChartMarker[];
+  /** The chart menu's Financials item; omitted when the server serves no fundamentals. */
+  onOpenFinancials?: () => void;
 }
 
 /**
@@ -42,7 +54,7 @@ export function ChartPanel(props: ChartPanelProps) {
   return <LoadedChartPanel {...props} />;
 }
 
-function LoadedChartPanel({ symbol, timeframe: savedTimeframe, chartType, markers }: ChartPanelProps) {
+function LoadedChartPanel({ symbol, timeframe: savedTimeframe, chartType, markers, onOpenFinancials }: ChartPanelProps) {
   // A saved timeframe the provider cannot serve is drawn as the nearest supported one.
   // The layout itself is untouched until the user picks (see TimeframeSelector).
   const { t } = useI18n();
@@ -64,6 +76,70 @@ function LoadedChartPanel({ symbol, timeframe: savedTimeframe, chartType, marker
       return keys.length === Object.keys(prev).length && keys.every((k) => prev[k] === next[k]) ? prev : next;
     });
   }, []);
+  const { alerts, openDialog } = useAlerts();
+  const [menu, setMenu] = useState<ChartMenuTarget | null>(null);
+  const closeMenu = useCallback(() => setMenu(null), []);
+  // Active price alerts of this symbol draw a line (plan section 4.7).
+  const alertLevels = useMemo(
+    () => alerts.filter((a) => a.symbol === symbol && a.status === 'active' && a.condition.type === 'price').map((a) => (a.condition as { level: number }).level),
+    [alerts, symbol],
+  );
+
+  /** An indicator alert draft on the first line of `config`. */
+  function openIndicatorDialog(config: IndicatorConfig, kind: AlertIndicatorKind, target: AlertTarget) {
+    openDialog({
+      symbol,
+      condition: {
+        type: 'indicator',
+        timeframe,
+        indicator: { kind, params: structuredClone(config.params) },
+        line: LINE_KEYS[kind][0] as string,
+        direction: 'cross',
+        target,
+      },
+    });
+  }
+
+  /**
+   * The add-alert items for the point under the menu. On the price pane: the price, then each
+   * visible SMA or EMA (they share the price scale, so the target is the close). On an
+   * indicator pane: that indicator at the value under the pointer.
+   */
+  function alertItems(target: ChartMenuTarget): ChartMenuItem[] {
+    if (target.pane === 'price') {
+      const items: ChartMenuItem[] = [];
+      const level = roundLevel(target.price);
+      if (level > 0) {
+        items.push({
+          id: 'alert',
+          label: t('menu.addAlert', { price: formatLevel(level) }),
+          onSelect: () => openDialog({ symbol, condition: { type: 'price', direction: 'cross', level } }),
+        });
+      }
+      for (const config of indicatorState.indicators) {
+        const kind = config.kind as AlertIndicatorKind;
+        if (!config.visible || !CLOSE_TARGET_KINDS.includes(kind)) continue;
+        items.push({
+          id: `alert-${config.id}`,
+          label: t('menu.addOverlayAlert', { indicator: indicatorTitle(config) }),
+          onSelect: () => openIndicatorDialog(config, kind, { type: 'close' }),
+        });
+      }
+      return items;
+    }
+    const config = indicatorState.indicators.find((c) => c.id === target.indicatorId);
+    if (!config || !(ALERT_INDICATOR_KINDS as readonly string[]).includes(config.kind)) return [];
+    const kind = config.kind as AlertIndicatorKind;
+    const value = Number(formatValue(target.value));
+    return [
+      {
+        id: 'alert',
+        label: t('menu.addIndicatorAlert', { indicator: indicatorTitle(config), value: formatValue(value) }),
+        onSelect: () => openIndicatorDialog(config, kind, { type: 'value', value }),
+      },
+    ];
+  }
+
   const overlays = computed.filter((c) => INDICATOR_PLACEMENT[c.config.kind] === 'overlay');
   const separate = computed.filter((c) => INDICATOR_PLACEMENT[c.config.kind] === 'separate');
 
@@ -86,7 +162,19 @@ function LoadedChartPanel({ symbol, timeframe: savedTimeframe, chartType, marker
         onPaneLayout={onPaneLayout}
         onChart={setPriceChart}
         {...(markers ? { markers } : {})}
+        onContextMenu={setMenu}
+        alertLevels={alertLevels}
       />
+
+      {menu && (
+        <ChartContextMenu
+          x={menu.x}
+          y={menu.y}
+          alertItems={alertItems(menu)}
+          {...(onOpenFinancials ? { onFinancials: onOpenFinancials } : {})}
+          onClose={closeMenu}
+        />
+      )}
 
       {history.status === 'ready' && history.bars.length > 0 && (
         <LatchHandles

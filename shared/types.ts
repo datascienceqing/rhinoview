@@ -613,3 +613,177 @@ export interface EarningsResponse {
   symbol: string;
   events: EarningsEvent[];
 }
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// ALERTS — price and indicator alerts (docs/ALERTS_PLAN.md)
+// ═══════════════════════════════════════════════════════════════════════════════
+
+/** Most alerts the store keeps. There is no limit on the number of symbols (D3). */
+export const MAX_ALERTS = 1000;
+/** Most events the log keeps; the oldest go first (D12). */
+export const MAX_ALERT_EVENTS = 1000;
+export const MAX_ALERT_MESSAGE_LENGTH = 200;
+/** No symbol is checked more often than this (D2). */
+export const ALERT_MIN_CHECK_SECONDS = 30;
+/** The checker tells the user this many times at most that its call budget ran out. */
+export const ALERT_BUDGET_WARNINGS = 3;
+
+/** `cross` is either direction. */
+export type AlertDirection = 'cross' | 'up' | 'down';
+/** `once` fires one time; `every` fires on each new crossing until it expires (D5). */
+export type AlertFrequency = 'once' | 'every';
+
+/** Expiry choices: 1–3 weeks (w), months (M) or years (y) (D9). */
+export const ALERT_EXPIRY_CHOICES = ['1w', '2w', '3w', '1M', '2M', '3M', '1y', '2y', '3y'] as const;
+export type AlertExpiry = (typeof ALERT_EXPIRY_CHOICES)[number];
+export const DEFAULT_ALERT_EXPIRY: AlertExpiry = '1M';
+
+/** Indicators that can have alerts (D4). */
+export const ALERT_INDICATOR_KINDS = ['sma', 'ema', 'rsi', 'macd'] as const;
+export type AlertIndicatorKind = (typeof ALERT_INDICATOR_KINDS)[number];
+
+/** What an indicator line is compared with. */
+export type AlertTarget =
+  | { type: 'value'; value: number }
+  /** The close of the same bar. */
+  | { type: 'close' }
+  /** Another line of the same indicator, e.g. MACD against its signal line. */
+  | { type: 'line'; line: string };
+
+export type AlertCondition =
+  | {
+      type: 'price';
+      direction: AlertDirection;
+      level: number;
+    }
+  | {
+      type: 'indicator';
+      /** The bars the indicator is computed on. Checked at each bar close, on closed bars only. */
+      timeframe: Timeframe;
+      /** A COPY of the indicator: later edits of the layout do not change the alert. */
+      indicator: { kind: AlertIndicatorKind; params: IndicatorParams };
+      /** A line key of the indicator (LINE_KEYS), e.g. 'value', 'macd', 'signal'. */
+      line: string;
+      direction: AlertDirection;
+      target: AlertTarget;
+    };
+
+/**
+ * `active`: checked. `paused`: kept, not checked. `triggered`: a `once` alert that fired.
+ * `expired`: its expiry time passed. Only `active` and `paused` can be set by the user;
+ * setting `active` on a triggered or expired alert enables it again.
+ */
+export type AlertStatus = 'active' | 'paused' | 'triggered' | 'expired';
+
+/** Owned by the server's checker. It never changes the alert's `revision`. */
+export interface AlertCheckState {
+  /** The side of the last observation against the target; null before the first check. */
+  lastSide: 'above' | 'below' | null;
+  lastCheckedAt: UnixSeconds | null;
+  /**
+   * Price alerts: the day high and low of the quote at the last check. A higher day high
+   * (or a lower day low) shows a move between two checks (plan section 4.2).
+   */
+  lastDayHigh: number | null;
+  lastDayLow: number | null;
+  /** Indicator alerts: the last CLOSED bar that was checked. */
+  lastBarTime: UnixSeconds | null;
+  firedCount: number;
+  lastFiredAt: UnixSeconds | null;
+}
+
+export interface Alert {
+  id: EntityId;
+  /** Canonical symbol. */
+  symbol: string;
+  condition: AlertCondition;
+  frequency: AlertFrequency;
+  /** The choice the user made; `expiresAt` was computed from it when it was set. */
+  expiry: AlertExpiry;
+  expiresAt: UnixSeconds;
+  /** 0–MAX_ALERT_MESSAGE_LENGTH characters. Empty means the app writes the default text. */
+  message: string;
+  status: AlertStatus;
+  /** User edits only. A stale revision gets CONFLICT. */
+  revision: number;
+  createdAt: UnixSeconds;
+  updatedAt: UnixSeconds;
+  state: AlertCheckState;
+}
+
+/** `POST /api/alerts`. Omitted fields take the defaults: `once`, `1M`, ''. */
+export interface CreateAlertBody {
+  symbol: string;
+  condition: AlertCondition;
+  frequency?: AlertFrequency;
+  expiry?: AlertExpiry;
+  message?: string;
+}
+
+/** `PUT /api/alerts/:id`. A new `expiry` counts from now. */
+export interface UpdateAlertBody {
+  revision: number;
+  condition?: AlertCondition;
+  frequency?: AlertFrequency;
+  expiry?: AlertExpiry;
+  message?: string;
+  status?: 'active' | 'paused';
+}
+
+/** `GET /api/alerts`. */
+export interface AlertsResponse {
+  alerts: Alert[];
+  /** The expected time between two checks of one symbol, for "Checked every 7 min". */
+  checkIntervalSeconds: number;
+}
+
+/** One time an alert fired. It keeps a copy of the condition, so it reads well after the alert is deleted. */
+export interface AlertEvent {
+  id: EntityId;
+  alertId: EntityId;
+  symbol: string;
+  condition: AlertCondition;
+  message: string;
+  firedAt: UnixSeconds;
+  /** The direction of the crossing that fired. */
+  crossed: 'up' | 'down';
+  /** The price (price alert) or the indicator value (indicator alert) that crossed. */
+  value: number;
+  /** The level or the target value at that moment. */
+  target: number;
+  /** The quote behind it was delayed. */
+  delayed: boolean;
+  /**
+   * Indicator alerts only: the open time of the closed bar that crossed. After a long gap
+   * one check can fire on older bars; `firedAt` is still the time of the check.
+   */
+  barTime?: UnixSeconds;
+  /** The user saw it: dismissed the popup, clicked it, or marked all as checked. */
+  checked: boolean;
+}
+
+/** `GET /api/alerts/events?since=`. Newest first. */
+export interface AlertEventsResponse {
+  events: AlertEvent[];
+  /** The number of unchecked events in the whole log, for the bell. */
+  unchecked: number;
+}
+
+/** `PUT /api/alerts/events/checked`. */
+export type SetCheckedBody = { ids: EntityId[] } | { all: true };
+
+/** `GET /api/alerts/stream` (text/event-stream). The SSE event name is the `type`. */
+export type AlertStreamMessage =
+  | { type: 'fired'; event: AlertEvent; alert: Alert }
+  /**
+   * The checked state or the log changed. `checkedIds` names the events marked as checked
+   * ('all' for all); `deletedId` names a deleted event. Without either, load the events again.
+   */
+  | { type: 'checked'; unchecked: number; checkedIds?: EntityId[] | 'all'; deletedId?: EntityId }
+  /** Alerts were created, edited, deleted, or changed status: load the list again. */
+  | { type: 'alerts' }
+  /**
+   * The checker used all of its upstream calls for this minute while checks were due, so
+   * some alerts are checked late. Sent at most ALERT_BUDGET_WARNINGS times per server run.
+   */
+  | { type: 'budget'; budgetPerMinute: number; waitingSymbols: number };

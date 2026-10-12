@@ -35,6 +35,11 @@ const schema = z
     /** Where the workspace (named layouts and watchlists) is saved. Gitignored. */
     WORKSPACE_FILE: optional(z.string().min(1).default('data/workspace.json')),
 
+    /** Where the alerts and the alert event log are saved. Gitignored. */
+    ALERTS_FILE: optional(z.string().min(1).default('data/alerts.json')),
+    /** Upstream calls a minute for the alert checker (not used with the synthetic provider). */
+    ALERT_CALL_BUDGET: z.coerce.number().int().min(1).max(1_000).default(150),
+
     /**
      * Synthetic-provider fault injection, so the client's error and loading states
      * are reachable in development rather than theoretical. All default to off.
