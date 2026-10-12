@@ -69,18 +69,40 @@ body {
 
 /* ───────────── toolbar ───────────── */
 
+/* Two groups. The main group (logo, layouts, search, quote) takes the free space, and the
+   search box shrinks first. When the window is too narrow for the search box at its
+   minimum width, the controls group moves to a second row as one block. Nothing overlaps
+   and nothing is cut. */
 .toolbar {
   display: flex;
   align-items: center;
-  gap: 10px;
+  gap: 8px 10px;
   padding: 8px 12px;
   background: var(--bg-elevated);
   border-bottom: 1px solid var(--border);
   flex-wrap: wrap;
 }
 
-.toolbar-spacer {
-  flex: 1;
+.toolbar-group {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.toolbar-group > * {
+  flex-shrink: 0;
+}
+
+.toolbar-main {
+  flex: 1 1 0;
+  min-width: min-content;
+}
+
+.toolbar-controls {
+  flex: 0 1 auto;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  margin-left: auto;
 }
 
 button {
@@ -157,8 +179,14 @@ button:focus-visible {
   position: relative;
 }
 
+.toolbar .symbol-search {
+  flex: 0 1 220px;
+  min-width: 120px;
+}
+
 .toolbar .symbol-search input {
-  width: 220px;
+  width: 100%;
+  text-overflow: ellipsis; /* the placeholder, when the box is narrow */
 }
 
 .search-panel {
@@ -220,27 +248,38 @@ button:focus-visible {
 
 /* ───────────── header readout ───────────── */
 
+/* Line 1: symbol, price, change and badge, at full size. Line 2: the company name. The
+   name adds no width to the readout (contain: inline-size), so a long name gets "…" at
+   the width of line 1 and never pushes the quote. */
 .readout {
   display: flex;
+  flex-wrap: wrap;
   align-items: baseline;
-  gap: 10px;
+  gap: 0 10px;
+  min-width: max-content;
 }
 
 .readout-id {
-  display: flex;
-  flex-direction: column;
-  min-width: 0;
+  display: contents;
 }
 
+.readout-symbol,
 .readout-price,
 .readout-change,
 .badge-synthetic {
   flex: none;
+  white-space: nowrap;
 }
 
 .readout-symbol {
   font-size: 16px;
   font-weight: 700;
+}
+
+.readout-name {
+  order: 1;
+  flex: 0 0 100%;
+  contain: inline-size;
 }
 
 .readout-name,
@@ -555,32 +594,10 @@ button:focus-visible {
   letter-spacing: 0.01em;
 }
 
-/* Narrower windows keep the mark and drop the name, so the toolbar stays on one row. */
+/* Narrower windows keep the mark and drop the name, so the toolbar keeps more space. */
 @media (max-width: 1599px) {
   .app-logo-name {
     display: none;
-  }
-}
-
-/* From 1366 px the toolbar is one row: the controls keep their size, and only the quote
-   readout shrinks (the company name gets "…" first). Narrower windows may wrap, so that
-   nothing is cut. Measured with real data: 1,365 px of items, gaps and padding at
-   1366 px without a company name. */
-@media (min-width: 1366px) {
-  .toolbar {
-    flex-wrap: nowrap;
-  }
-  .toolbar > * {
-    flex-shrink: 0;
-  }
-  .toolbar > .readout {
-    flex: 0 1 auto;
-    min-width: 0;
-    overflow: hidden;
-  }
-  .toolbar > .toolbar-spacer {
-    flex: 1 1 0;
-    min-width: 0;
   }
 }
 
