@@ -25,7 +25,7 @@ are not clear:
   chart type, and the indicators. RhinoView saves each change automatically.
 - **Watchlist.** Click a row to show the symbol. Drag a row, or press Alt+Up or Alt+Down, to
   reorder it.
-- **SYNTHETIC badge.** The prices are generated. They are not market prices.
+- **SYNTHETIC badge.** If it shows, the prices are generated. They are not market prices.
 
 ## 2. The right-click menu
 
