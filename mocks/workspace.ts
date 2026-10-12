@@ -35,7 +35,7 @@ import {
 import { checkIndicatorParams } from '../src/indicators/params';
 import { fail, ok } from './envelope';
 
-const CHART_TYPES = ['candlestick', 'line', 'area'] as const;
+const CHART_TYPES = ['candlestick', 'line', 'bar'] as const;
 const SYMBOL_RE = /^[A-Za-z0-9.^=-]{1,16}$/;
 
 let seq = 0;

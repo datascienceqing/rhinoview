@@ -1,7 +1,7 @@
 import type { ChartType } from '@shared/types';
 import { useI18n } from '../i18n';
 
-const OPTIONS: readonly ChartType[] = ['candlestick', 'line', 'area'];
+const OPTIONS: readonly ChartType[] = ['candlestick', 'line', 'bar'];
 
 export interface ChartTypeSelectorProps {
   value: ChartType;

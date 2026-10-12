@@ -326,7 +326,7 @@ export const fakeModule = {
   LineSeries: { tag: 'Line' },
   HistogramSeries: { tag: 'Histogram' },
   LineStyle: { Solid: 0, Dotted: 1, Dashed: 2, LargeDashed: 3, SparseDotted: 4 },
-  AreaSeries: { tag: 'Area' },
+  BarSeries: { tag: 'Bar' },
   ColorType: { Solid: 'solid' },
   CrosshairMode: { Normal: 0 },
   createSeriesMarkers: (series: FakeSeries, markers: unknown[] = []) => {

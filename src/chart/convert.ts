@@ -11,7 +11,7 @@ export function toCandles(bars: readonly Bar[]): CandlestickData<UTCTimestamp>[]
   return bars.map((b) => ({ time: ts(b), open: b.open, high: b.high, low: b.low, close: b.close }));
 }
 
-/** Line and area series plot the close. */
+/** A line series plots the close. */
 export function toCloseLine(bars: readonly Bar[]): LineData<UTCTimestamp>[] {
   return bars.map((b) => ({ time: ts(b), value: b.close }));
 }

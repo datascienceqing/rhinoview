@@ -22,7 +22,7 @@ export const en = {
   'chartType.group': 'Chart type',
   'chartType.candlestick': 'Candles',
   'chartType.line': 'Line',
-  'chartType.area': 'Area',
+  'chartType.bar': 'Bars',
   'timeframe.group': 'Timeframe',
   'timeframe.1m': '1m',
   'timeframe.5m': '5m',

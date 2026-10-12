@@ -325,9 +325,9 @@ describe('price series and panes', () => {
     const { price, chart, sync } = setup();
     sync([indicator('rsi')]);
     price.setChartType('line');
-    price.setChartType('area');
+    price.setChartType('bar');
     expect(chart.paneList).toHaveLength(2);
-    expect(tags(chart.paneContents[0] ?? [])).toEqual(['Area']);
+    expect(tags(chart.paneContents[0] ?? [])).toEqual(['Bar']);
     expect(tags(chart.paneContents[1] ?? [])).toEqual(['Line']);
   });
 });
@@ -631,9 +631,9 @@ describe('liquidity', () => {
     sync([indicator('liquidity')]);
     const old = priceSeries(chart);
     const prim = old?.primitives[0];
-    price.setChartType('area');
+    price.setChartType('bar');
     expect(old?.primitives).toHaveLength(0);
-    const fresh = chart.liveSeries.find((s) => (s.definition as { tag: string }).tag === 'Area');
+    const fresh = chart.liveSeries.find((s) => (s.definition as { tag: string }).tag === 'Bar');
     expect(fresh?.primitives).toEqual([prim]);
     price.setChartType('candlestick');
     expect(fresh?.primitives).toHaveLength(0);

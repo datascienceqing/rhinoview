@@ -100,7 +100,7 @@ describe('workspace routes', () => {
   it('maps a stale revision to 409 CONFLICT', async () => {
     const l = data<ChartLayout>(await call('POST', '/layouts', { name: 'Two' }));
     await call('PUT', `/layouts/${l.id}`, { revision: 1, chartType: 'line' });
-    const r = await call('PUT', `/layouts/${l.id}`, { revision: 1, chartType: 'area' });
+    const r = await call('PUT', `/layouts/${l.id}`, { revision: 1, chartType: 'bar' });
     expect([r.status, errCode(r)]).toEqual([409, 'CONFLICT']);
   });
 
