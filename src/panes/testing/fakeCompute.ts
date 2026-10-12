@@ -195,5 +195,8 @@ export const fakeComputeIndicator: ComputeIndicator = (bars, kind: IndicatorKind
     case 'liquidity':
       // Drawn as zones and sweeps; no lines.
       return { kind, placement, params, lines: [], warmup: 0 };
+    case 'confluence':
+      // Drawn as clusters and events; no lines.
+      return { kind, placement, params, lines: [], warmup: 0 };
   }
 };

@@ -1,5 +1,18 @@
-import type { IndicatorKind, IndicatorParams, LiquidityParams, MacdParams, MovingAverageParams, RsiParams, VpvrParams } from '@shared/types';
+import type {
+  ConfluenceParams,
+  IndicatorKind,
+  IndicatorParams,
+  LiquidityParams,
+  MacdParams,
+  MovingAverageParams,
+  RsiParams,
+  VpvrParams,
+} from '@shared/types';
 import {
+  CONFLUENCE_BOUNDS,
+  CONFLUENCE_LATCH,
+  CONFLUENCE_MODES,
+  CONFLUENCE_SOURCES,
   InvalidIndicatorParamsError,
   LINE_KEYS,
   LIQUIDITY_BOUNDS,
@@ -9,7 +22,7 @@ import {
   PERIOD_MIN,
   VPVR_BOUNDS,
 } from './types';
-import type { LiquidityNumericKey } from './types';
+import type { ConfluenceNumericKey, LiquidityNumericKey } from './types';
 
 const SOURCES: readonly string[] = ['open', 'high', 'low', 'close'];
 
@@ -21,6 +34,28 @@ function periodError(name: string, value: unknown, min = PERIOD_MIN, max = PERIO
     return `${name} must be between ${min} and ${max}, got ${value}`;
   }
   return null;
+}
+
+function decimalError(name: string, value: unknown, min: number, max: number): string | null {
+  if (typeof value !== 'number' || !Number.isFinite(value) || value < min || value > max) {
+    return `${name} must be a number between ${min} and ${max}`;
+  }
+  return null;
+}
+
+/** Year 2100 in Unix seconds: far past any bar, and still a safe integer. */
+const LATCH_TIME_MAX = 4_102_444_800;
+
+function confluenceError(p: Partial<ConfluenceParams>): string | null {
+  if (!CONFLUENCE_MODES.some((m) => m === p.mode)) return `mode must be one of ${CONFLUENCE_MODES.join(', ')}`;
+  for (const key of Object.keys(CONFLUENCE_BOUNDS) as ConfluenceNumericKey[]) {
+    const { min, max, integer } = CONFLUENCE_BOUNDS[key];
+    const err = integer ? periodError(key, p[key], min, max) : decimalError(key, p[key], min, max);
+    if (err) return err;
+  }
+  if (!CONFLUENCE_SOURCES.some((s) => s === p.sources)) return `sources must be one of ${CONFLUENCE_SOURCES.join(', ')}`;
+  if (!CONFLUENCE_LATCH.some((l) => l === p.latch)) return `latch must be one of ${CONFLUENCE_LATCH.join(', ')}`;
+  return periodError('latchTime', p.latchTime, 0, LATCH_TIME_MAX);
 }
 
 /**
@@ -53,6 +88,7 @@ export function checkIndicatorParams(kind: IndicatorKind, params: IndicatorParam
     if (!LIQUIDITY_SWEEP_MODES.some((m) => m === p.sweepMode)) return `sweepMode must be one of ${LIQUIDITY_SWEEP_MODES.join(', ')}`;
     return null;
   }
+  if (kind === 'confluence') return confluenceError(params as Partial<ConfluenceParams>);
   if (kind === 'macd') {
     const p = params as Partial<MacdParams>;
     const err =

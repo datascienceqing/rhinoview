@@ -168,3 +168,118 @@
   pointer-events: none;
   font-variant-numeric: tabular-nums;
 }
+
+/* Indicator order: the grip drags a row, the arrows move it one place. */
+.indicator-hint {
+  margin: 8px 0 0;
+  color: var(--text-dim);
+  font-size: 11px;
+}
+
+.indicator-grip,
+.indicator-order {
+  background: none;
+  border: 0;
+  padding: 0 2px;
+  color: var(--text-dim);
+  cursor: pointer;
+  line-height: 1;
+}
+
+.indicator-grip {
+  cursor: grab;
+  font-size: 14px;
+}
+
+.indicator-order {
+  font-size: 10px;
+}
+
+.indicator-grip:hover,
+.indicator-order:hover:not(:disabled) {
+  color: var(--text);
+}
+
+.indicator-order:disabled {
+  opacity: 0.3;
+  cursor: default;
+}
+
+.indicator-item.drop {
+  box-shadow: inset 0 2px 0 var(--accent);
+}
+
+/* Confluence latch handle (docs/CONFLUENCE_PLAN.md §6.3). The layer covers the chart and
+   takes no pointer events; only the tabs do, so a drag elsewhere still pans the chart. */
+.latch-layer {
+  position: absolute;
+  inset: 0;
+  z-index: 3;
+  overflow: hidden;
+  pointer-events: none;
+}
+
+.latch-handle {
+  position: absolute;
+  transform: translateX(-50%);
+}
+
+.latch-turn {
+  color: var(--up);
+}
+
+.latch-breakdown {
+  color: var(--down);
+}
+
+.latch-pinned-left {
+  transform: none;
+}
+
+.latch-pinned-right {
+  transform: translateX(-100%);
+}
+
+.latch-tab {
+  display: block;
+  position: relative;
+  z-index: 1;
+  padding: 1px 6px;
+  border: 1px solid currentColor;
+  border-top: none;
+  border-radius: 0 0 4px 4px;
+  background: var(--bg-elevated);
+  color: inherit;
+  font-size: 11px;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+  cursor: ew-resize;
+  /* The browser must not scroll or zoom on a touch drag of the tab. */
+  touch-action: none;
+  user-select: none;
+  pointer-events: auto;
+}
+
+.latch-pinned-left .latch-tab,
+.latch-pinned-right .latch-tab {
+  cursor: pointer;
+}
+
+.latch-tab:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 1px;
+}
+
+.latch-line {
+  position: absolute;
+  top: 0;
+  left: 50%;
+  width: 0;
+  border-left: 1px dashed currentColor;
+  opacity: 0.8;
+  pointer-events: none;
+}
+
+.latch-dragging .latch-line {
+  opacity: 1;
+}

@@ -419,7 +419,7 @@ describe('metadata', () => {
     expect(computeIndicator(bars, 'macd', DEFAULT_PARAMS.macd).params).toEqual(DEFAULT_PARAMS.macd);
   });
   it('every default parameter set is valid', () => {
-    for (const kind of ['sma', 'ema', 'rsi', 'macd', 'volume', 'vpvr', 'liquidity'] as const) {
+    for (const kind of ['sma', 'ema', 'rsi', 'macd', 'volume', 'vpvr', 'liquidity', 'confluence'] as const) {
       expect(checkIndicatorParams(kind, DEFAULT_PARAMS[kind])).toBeNull();
     }
   });
@@ -590,3 +590,95 @@ describe('liquidity params', () => {
   });
 });
 
+
+describe('confluence params', () => {
+  const ok = DEFAULT_PARAMS.confluence;
+
+  it('has no lines: clusters and events are drawings', () => {
+    const s = computeIndicator(makeBars(walk(30)), 'confluence', ok);
+    expect(s).toEqual({ kind: 'confluence', placement: 'overlay', params: ok, lines: [], warmup: 0 });
+  });
+
+  it('defaults to the values of the two Pine scripts (plan section 5)', () => {
+    expect(ok).toEqual({
+      mode: 'turn',
+      swingLookback: 250,
+      tolerancePct: 0.75,
+      bandWidthMult: 0,
+      pivotLeft: 5,
+      pivotRight: 5,
+      pivotMaxAge: 250,
+      turnMinConfluence: 1,
+      turnMinDistancePct: 0,
+      breakdownMinConfluence: 3,
+      breakdownMinDistancePct: 0.5,
+      volumeLength: 10,
+      volumeMult: 1.5,
+      closeQuality: 0.5,
+      sources: 'both',
+      latch: 'off',
+      latchTime: 0,
+    });
+  });
+
+  it('accepts the bounds themselves, decimals, and every enum value', () => {
+    const low = {
+      swingLookback: 20, tolerancePct: 0.05, bandWidthMult: 0, pivotLeft: 1, pivotRight: 1, pivotMaxAge: 10,
+      turnMinConfluence: 1, turnMinDistancePct: 0, breakdownMinConfluence: 1, breakdownMinDistancePct: 0,
+      volumeLength: 1, volumeMult: 1, closeQuality: 0.1, latchTime: 0,
+    };
+    const high = {
+      swingLookback: 1000, tolerancePct: 5, bandWidthMult: 20, pivotLeft: 25, pivotRight: 25, pivotMaxAge: 5000,
+      turnMinConfluence: 20, turnMinDistancePct: 20, breakdownMinConfluence: 20, breakdownMinDistancePct: 20,
+      volumeLength: 500, volumeMult: 10, closeQuality: 1, latchTime: 4_102_444_800,
+    };
+    expect(checkIndicatorParams('confluence', { ...ok, ...low })).toBeNull();
+    expect(checkIndicatorParams('confluence', { ...ok, ...high })).toBeNull();
+    expect(checkIndicatorParams('confluence', { ...ok, tolerancePct: 0.33, volumeMult: 1.23, closeQuality: 0.42 })).toBeNull();
+    for (const mode of ['turn', 'breakdown'] as const) {
+      for (const sources of ['both', 'fibs', 'mas', 'none'] as const) {
+        for (const latch of ['off', 'on'] as const) {
+          expect(checkIndicatorParams('confluence', { ...ok, mode, sources, latch })).toBeNull();
+        }
+      }
+    }
+  });
+
+  it.each([
+    [{ mode: 'both' }, /mode/],
+    [{ mode: undefined }, /mode/],
+    [{ swingLookback: 19 }, /swingLookback/],
+    [{ swingLookback: 250.5 }, /swingLookback/],
+    [{ tolerancePct: 0.04 }, /tolerancePct/],
+    [{ tolerancePct: 5.01 }, /tolerancePct/],
+    [{ tolerancePct: Number.NaN }, /tolerancePct/],
+    [{ bandWidthMult: -0.5 }, /bandWidthMult/],
+    [{ pivotLeft: 0 }, /pivotLeft/],
+    [{ pivotRight: 26 }, /pivotRight/],
+    [{ pivotMaxAge: 9 }, /pivotMaxAge/],
+    [{ turnMinConfluence: 0 }, /turnMinConfluence/],
+    [{ turnMinConfluence: 1.5 }, /turnMinConfluence/],
+    [{ turnMinDistancePct: 20.1 }, /turnMinDistancePct/],
+    [{ breakdownMinConfluence: 21 }, /breakdownMinConfluence/],
+    [{ breakdownMinDistancePct: -1 }, /breakdownMinDistancePct/],
+    [{ volumeLength: 0 }, /volumeLength/],
+    [{ volumeMult: 0.9 }, /volumeMult/],
+    [{ volumeMult: Infinity }, /volumeMult/],
+    [{ closeQuality: 0.05 }, /closeQuality/],
+    [{ closeQuality: '0.5' }, /closeQuality/],
+    [{ sources: 'pivots' }, /sources/],
+    [{ latch: true }, /latch/],
+    [{ latchTime: -1 }, /latchTime/],
+    [{ latchTime: 1.5 }, /latchTime/],
+    [{ latchTime: 1_700_000_000_000 }, /latchTime/],
+    [{ latchTime: undefined }, /latchTime/],
+  ])('rejects %j', (patch, message) => {
+    const params = { ...ok, ...patch } as never;
+    expect(checkIndicatorParams('confluence', params)).toMatch(message);
+    expect(() => computeIndicator(makeBars(walk(5)), 'confluence', params)).toThrow(InvalidIndicatorParamsError);
+  });
+
+  it('rejects params of another kind', () => {
+    expect(checkIndicatorParams('confluence', DEFAULT_PARAMS.liquidity as never)).toMatch(/mode/);
+  });
+});

@@ -51,6 +51,16 @@ export class FakePane {
   setStretchFactor = (factor: number): void => {
     this.stretchFactor = factor;
   };
+  /** Like the library: take this pane out and put it back at `index`. */
+  moveTo = (index: number): void => {
+    const list = this.chart.paneList;
+    const from = list.indexOf(this);
+    if (from < 0) return;
+    list.splice(from, 1);
+    list.splice(Math.max(0, Math.min(index, list.length)), 0, this);
+  };
+  /** A fixed height for tests. */
+  getHeight = (): number => 400;
   getHTMLElement = (): HTMLElement => this.element;
   private readonly scales = new Map<string, FakePriceScale>();
   priceScale = (id: string): FakePriceScale => {
@@ -87,6 +97,8 @@ export interface FakeSeries {
   priceToCoordinate: (price: number) => number;
   /** The inverse: price = (1000 - y) / 2. */
   coordinateToPrice: (y: number) => number;
+  /** Like the library's default price format: two decimals. */
+  priceFormatter: () => { format: (price: number) => string };
   removed: boolean;
   /** Set by createSeriesMarkers: the markers currently drawn on this series. */
   markersApi?: { markers: unknown[]; setMarkers: ReturnType<typeof vi.fn>; detach: ReturnType<typeof vi.fn> };
@@ -102,6 +114,7 @@ export class FakeChart {
   series: FakeSeries[] = [];
   crosshairHandlers = new Set<CrosshairHandler>();
   rangeHandlers = new Set<RangeHandler>();
+  sizeHandlers = new Set<() => void>();
   visibleRange: { from: number; to: number } | null = null;
   options: unknown;
   applyOptions = vi.fn();
@@ -174,6 +187,7 @@ export class FakeChart {
       }),
       priceToCoordinate: (price: number) => 1000 - 2 * price,
       coordinateToPrice: (y: number) => (1000 - y) / 2,
+      priceFormatter: () => ({ format: (price: number) => price.toFixed(2) }),
       removed: false,
     };
     this.series.push(s);
@@ -247,6 +261,23 @@ export class FakeChart {
     logicalToCoordinate: (logical: number) => {
       this.assertLive();
       return 100 + 8 * logical;
+    },
+    coordinateToLogical: (x: number) => {
+      this.assertLive();
+      return (x - 100) / 8;
+    },
+    /** The plot width for tests, without the price scale. */
+    width: () => {
+      this.assertLive();
+      return 700;
+    },
+    subscribeSizeChange: (h: () => void) => {
+      this.assertLive();
+      this.sizeHandlers.add(h);
+    },
+    unsubscribeSizeChange: (h: () => void) => {
+      this.assertLive();
+      this.sizeHandlers.delete(h);
     },
   });
 

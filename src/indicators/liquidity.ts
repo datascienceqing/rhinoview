@@ -18,6 +18,7 @@
  */
 import type { Bar, LiquidityParams } from '@shared/types';
 import { assertValidParams } from './params';
+import { isPivotHigh, isPivotLow } from './pivots';
 
 export type LiquiditySide = 'high' | 'low';
 export type LiquidityDirection = 'bullish' | 'bearish';
@@ -79,24 +80,6 @@ interface RetestWait {
   zone: LiquidityZone;
   /** Last bar where a retest can happen: `pivotIndex + maxAge`. */
   until: number;
-}
-
-function isPivotHigh(bars: readonly Bar[], i: number, L: number): boolean {
-  const h = (bars[i] as Bar).high;
-  for (let k = 1; k <= L; k++) {
-    if (!(h > (bars[i - k] as Bar).high)) return false; // strict on the left
-    if (!(h >= (bars[i + k] as Bar).high)) return false; // not strict on the right
-  }
-  return true;
-}
-
-function isPivotLow(bars: readonly Bar[], i: number, L: number): boolean {
-  const l = (bars[i] as Bar).low;
-  for (let k = 1; k <= L; k++) {
-    if (!(l < (bars[i - k] as Bar).low)) return false;
-    if (!(l <= (bars[i + k] as Bar).low)) return false;
-  }
-  return true;
 }
 
 function makeZone(bars: readonly Bar[], side: LiquiditySide, i: number, L: number, mode: LiquidityParams['zoneMode']): LiquidityZone {
@@ -229,7 +212,7 @@ export function computeLiquidity(bars: readonly Bar[], params: LiquidityParams):
     const i = j - L;
     if (i >= L) {
       for (const side of ['high', 'low'] as const) {
-        const isPivot = side === 'high' ? isPivotHigh(bars, i, L) : isPivotLow(bars, i, L);
+        const isPivot = side === 'high' ? isPivotHigh(bars, i, L, L) : isPivotLow(bars, i, L, L);
         if (!isPivot) continue;
         const z = makeZone(bars, side, i, L, zoneMode);
         const last = Math.min(j, i + maxAge);

@@ -1,11 +1,13 @@
 import { HistogramSeries, LineSeries, LineStyle } from 'lightweight-charts';
 import type { IChartApi, IPaneApi, IPriceLine, ISeriesApi, ISeriesPrimitive, Time } from 'lightweight-charts';
-import type { Bar, IndicatorConfig, IndicatorKind, IndicatorSeries, LiquidityParams, VpvrParams } from '@shared/types';
+import type { Bar, ConfluenceParams, IndicatorConfig, IndicatorKind, IndicatorSeries, LiquidityParams, VpvrParams } from '@shared/types';
 import { INDICATOR_PLACEMENT } from '@shared/types';
 import { withAlpha } from '../chart/theme';
 import type { ChartTheme } from '../chart/theme';
 import { LINE_KEYS } from '../indicators/types';
 import { MACD_SIGNAL_COLOR } from './config';
+import { ConfluencePrimitive } from './confluence/ConfluencePrimitive';
+import type { ConfluenceStyle } from './confluence/ConfluencePrimitive';
 import { toHistogramData, toLineData, toVolumeData } from './convert';
 import type { ComputedIndicator } from './computeCache';
 import { LiquidityPrimitive } from './liquidity/LiquidityPrimitive';
@@ -16,8 +18,8 @@ import type { VpvrStyle } from './vpvr/VpvrPrimitive';
 /** What the layer needs from the chart that owns it. `api` is null once that chart is disposed. */
 export interface ChartHost {
   readonly api: IChartApi | null;
-  readonly colors: Pick<ChartTheme, 'up' | 'down' | 'text'>;
-  /** Drawings on the price series (volume profile, liquidity). The host keeps them across chart type changes. */
+  readonly colors: Pick<ChartTheme, 'up' | 'down' | 'text' | 'background'>;
+  /** Drawings on the price series (volume profile, liquidity, confluence). The host keeps them across chart type changes. */
   attachPricePrimitive?(primitive: ISeriesPrimitive<Time>): void;
   detachPricePrimitive?(primitive: ISeriesPrimitive<Time>): void;
 }
@@ -45,8 +47,8 @@ interface Entry {
   lines: Map<string, LineHandle>;
   /** Pane of a `separate` indicator. Held by reference, never by index: indices shift when a pane below is removed. */
   pane: IPaneApi<Time> | null;
-  /** The drawing of a VPVR or a Liquidity indicator, which have no series. */
-  primitive: VpvrPrimitive | LiquidityPrimitive | null;
+  /** The drawing of a VPVR, a Liquidity or a Confluence indicator, which have no series. */
+  primitive: VpvrPrimitive | LiquidityPrimitive | ConfluencePrimitive | null;
   /** The bars last given to `primitive`. */
   bars: readonly Bar[] | undefined;
   /** RSI's 30/70 guides, kept so a theme change can recolour them. */
@@ -117,8 +119,25 @@ export class IndicatorPanes {
       }
       this.update(entry, item);
     }
+    this.orderPanes(items);
 
     this.measureSoon();
+  }
+
+  /**
+   * Put the separate panes in the order of `items`, below the price pane. A new pane opens
+   * at the bottom, and a pane that already exists stays where it is, so a reorder of the
+   * list must move the panes itself. Moving each one to its place from the top gives the
+   * full order.
+   */
+  private orderPanes(items: readonly ComputedIndicator[]): void {
+    let index = 1;
+    for (const item of items) {
+      const pane = this.entries.get(item.config.id)?.pane;
+      if (!pane) continue;
+      if (pane.paneIndex() !== index) pane.moveTo(index);
+      index += 1;
+    }
   }
 
   /**
@@ -186,6 +205,10 @@ export class IndicatorPanes {
     }
     if (config.kind === 'liquidity') {
       entry.primitive = new LiquidityPrimitive(config.params as LiquidityParams, this.liquidityStyle(config));
+      this.host.attachPricePrimitive?.(entry.primitive);
+    }
+    if (config.kind === 'confluence') {
+      entry.primitive = new ConfluencePrimitive(config.params as ConfluenceParams, this.confluenceStyle(config));
       this.host.attachPricePrimitive?.(entry.primitive);
     }
     if (config.kind === 'rsi') {
@@ -270,6 +293,13 @@ export class IndicatorPanes {
     return { upColor: up, downColor: down, levelColor: config.color, textColor: text, visible: config.visible };
   }
 
+  /** D6: the up colour in mode "turn", the down colour in mode "breakdown"; the indicator colour for the sources. */
+  private confluenceStyle(config: IndicatorConfig): ConfluenceStyle {
+    const { up, down, text, background } = this.host.colors;
+    const turn = (config.params as ConfluenceParams).mode === 'turn';
+    return { modeColor: turn ? up : down, sourceColor: config.color, textColor: text, labelBackground: background, visible: config.visible };
+  }
+
   private update(entry: Entry, item: ComputedIndicator): void {
     const { config, series, bars } = item;
 
@@ -279,6 +309,8 @@ export class IndicatorPanes {
         const drawn = series ? (bars ?? []) : [];
         if (entry.primitive instanceof LiquidityPrimitive) {
           entry.primitive.update(drawn, config.params as LiquidityParams, this.liquidityStyle(config));
+        } else if (entry.primitive instanceof ConfluencePrimitive) {
+          entry.primitive.update(drawn, config.params as ConfluenceParams, this.confluenceStyle(config));
         } else {
           entry.primitive.update(drawn, this.vpvrStyle(config));
         }

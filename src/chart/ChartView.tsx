@@ -34,6 +34,8 @@ export interface ChartViewProps {
   onContextMenu?: (target: ChartMenuTarget) => void;
   /** Levels of the active price alerts of this symbol: dashed lines (plan section 4.7). */
   alertLevels?: readonly number[];
+  /** The chart after it is created, and null when it is disposed: overlays (the latch handle) read its geometry. */
+  onChart?: (chart: PriceChart | null) => void;
 }
 
 /**
@@ -55,6 +57,7 @@ export function ChartView({
   markers = NO_MARKERS,
   onContextMenu,
   alertLevels = NO_LEVELS,
+  onChart,
 }: ChartViewProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const chartRef = useRef<PriceChart | null>(null);
@@ -62,9 +65,9 @@ export function ChartView({
   const [autoScaled, setAutoScaled] = useState(true);
   const panesRef = useRef<IndicatorPanes | null>(null);
   // Callbacks are read through refs so changing them never recreates the chart.
-  const handlers = useRef({ onCrosshairTime, onNearStart, onPaneLayout, onContextMenu });
+  const handlers = useRef({ onCrosshairTime, onNearStart, onPaneLayout, onContextMenu, onChart });
   useEffect(() => {
-    handlers.current = { onCrosshairTime, onNearStart, onPaneLayout, onContextMenu };
+    handlers.current = { onCrosshairTime, onNearStart, onPaneLayout, onContextMenu, onChart };
   });
 
   useEffect(() => {
@@ -96,10 +99,12 @@ export function ChartView({
       open({ ...base, pane: 'indicator', indicatorId, value: point.value });
     };
     container.addEventListener('contextmenu', onMenu);
+    handlers.current.onChart?.(chart);
     return () => {
       container.removeEventListener('contextmenu', onMenu);
       chartRef.current = null;
       panesRef.current = null;
+      handlers.current.onChart?.(null);
       // Panes first: it only drops its references, so it never touches a removed chart.
       panes.dispose();
       chart.dispose();
