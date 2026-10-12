@@ -4,7 +4,7 @@ import { QuotesCache } from '../cache/quotesCache';
 import type { MarketEngine } from '../market/types';
 import { MarketService } from '../provider/service';
 import type { WorkspaceFs } from '../workspace/store';
-import { AlertScheduler } from './scheduler';
+import { AlertScheduler, BARS_RETRY_SECONDS } from './scheduler';
 import type { AlertDataSource } from './scheduler';
 import { serviceAlertSource } from './source';
 import { openAlertsStore } from './store';
@@ -141,7 +141,7 @@ describe('AlertScheduler: budget', () => {
     const store = await newStore(() => t);
     for (let i = 0; i < 1000; i++) await store.create(priceAlert(`S${i}`, 200));
     const { source, calls } = fakeSource(() => t);
-    const scheduler = new AlertScheduler({ store, source, now: () => t, budgetPerMinute: 150 });
+    const scheduler = new AlertScheduler({ store, source, now: () => t, budgetPerMinute: 150, warn: () => undefined });
     expect(scheduler.checkIntervalSeconds()).toBe(400);
 
     for (let s = 0; s < 15 * 60; s++) {
@@ -203,6 +203,63 @@ describe('AlertScheduler: budget', () => {
     expect(store.list().find((x) => x.id === a.id)?.status).toBe('expired');
   });
 
+  it('when the budget is used up, expiries and cached quotes are still checked', async () => {
+    let t = T0;
+    const store = await newStore(() => t);
+    const expiring = await store.create(priceAlert('MSFT', 100, { expiry: '1w' }));
+    await store.create(priceAlert('NVDA', 100));
+    await store.create(priceAlert('AAPL', 100));
+    const { source, calls } = fakeSource(() => t);
+    source.cachedQuote = (symbol) => (symbol === 'NVDA' ? snap('NVDA', 99) : undefined);
+    const scheduler = new AlertScheduler({ store, source, now: () => t, budgetPerMinute: 1, warn: () => undefined });
+    t = expiring.expiresAt - 1;
+    await scheduler.tick();
+    expect(calls.map((c) => c.symbol)).toEqual(['AAPL']);
+    expect(store.list().find((x) => x.symbol === 'NVDA')?.state.lastSide).toBe('below');
+    t = expiring.expiresAt;
+    await scheduler.tick();
+    expect(store.list().find((x) => x.id === expiring.id)?.status).toBe('expired');
+  });
+
+  it('warns the user when the budget runs out: once per shortage, at most 3 times', async () => {
+    let t = T0;
+    const store = await newStore(() => t);
+    for (let i = 0; i < 20; i++) await store.create(priceAlert(`S${i}`, 200));
+    const { source } = fakeSource(() => t);
+    const notes: AlertStreamMessage[] = [];
+    const warnings: string[] = [];
+    const scheduler = new AlertScheduler({
+      store, source, now: () => t, budgetPerMinute: 10, warn: (m) => warnings.push(m), notify: (m) => notes.push(m),
+    });
+    // One long shortage, a tick each second: one warning.
+    for (let i = 0; i < 50; i++) {
+      await scheduler.tick();
+      t += 1;
+    }
+    expect(notes).toEqual([{ type: 'budget', budgetPerMinute: 10, waitingSymbols: 10 }]);
+    // A shortage after more than a minute with none is a new one, up to the third.
+    for (let i = 0; i < 5; i++) {
+      t += 90;
+      await scheduler.tick();
+    }
+    expect(notes).toHaveLength(3);
+    expect(warnings.filter((w) => w.includes('calls of this minute are used'))).toHaveLength(3);
+  });
+
+  it('no budget warning when the budget is enough', async () => {
+    let t = T0;
+    const store = await newStore(() => t);
+    for (let i = 0; i < 5; i++) await store.create(priceAlert(`S${i}`, 200));
+    const { source } = fakeSource(() => t);
+    const notes: AlertStreamMessage[] = [];
+    const scheduler = new AlertScheduler({ store, source, now: () => t, budgetPerMinute: 150, notify: (m) => notes.push(m) });
+    for (let i = 0; i < 120; i++) {
+      await scheduler.tick();
+      t += 1;
+    }
+    expect(notes).toEqual([]);
+  });
+
   it('a tick does not run twice at once', async () => {
     let t = T0;
     const store = await newStore(() => t);
@@ -237,6 +294,46 @@ describe('AlertScheduler: indicator alerts', () => {
     condition: { type: 'indicator', timeframe, indicator: { kind: 'sma', params: { period: 3, source: 'close' } }, line: 'value', direction: 'cross', target: { type: 'value', value: 100 } },
     frequency: 'every',
   });
+
+  it('intraday bars: with no new bar (market closed) the wait doubles up to BARS_RETRY_SECONDS', async () => {
+    let t = T0;
+    const store = await newStore(() => t);
+    await store.create(sma('AAPL', '1m'));
+    const { source, calls, setBars } = fakeSource(() => t);
+    // The last bar closed an hour ago, and no new bar comes.
+    setBars(Array.from({ length: 50 }, (_, i) => bar(T0 - 3600 - (50 - i) * 60, 90)));
+    const scheduler = new AlertScheduler({ store, source, now: () => t, budgetPerMinute: 150 });
+    for (let i = 0; i < 3 * 3600; i++) {
+      await scheduler.tick();
+      t += 1;
+    }
+    const times = calls.filter((c) => c.kind === 'bars').map((c) => c.t - T0);
+    expect(times).toEqual([0, 60, 180, 420, 900, 1860, 3780, 7380]);
+    expect(BARS_RETRY_SECONDS).toBe(3600);
+  }, 30_000);
+
+  it('intraday bars: a new bar sets the wait back to one bar span', async () => {
+    let t = T0;
+    const store = await newStore(() => t);
+    await store.create(sma('AAPL', '1m'));
+    const { source, calls, setBars } = fakeSource(() => t);
+    const base = Array.from({ length: 50 }, (_, i) => bar(T0 - 3600 - (50 - i) * 60, 90));
+    setBars(base);
+    const scheduler = new AlertScheduler({ store, source, now: () => t, budgetPerMinute: 150 });
+    for (let i = 0; i < 1000; i++) {
+      await scheduler.tick();
+      t += 1;
+    }
+    // Calls at 0, 60, 180, 420, 900; the next waits 960 s. A bar arrives before it.
+    setBars([...base, bar(t - 120, 91)]);
+    for (let i = 0; i < 1000; i++) {
+      await scheduler.tick();
+      t += 1;
+    }
+    const times = calls.filter((c) => c.kind === 'bars').map((c) => c.t - T0);
+    expect(times.slice(0, 6)).toEqual([0, 60, 180, 420, 900, 1860]);
+    expect(times[6]).toBe(1920);
+  }, 30_000);
 
   it('one bars call serves all alerts of a symbol and timeframe, and the next call waits for a bar close', async () => {
     const start = Math.floor(T0 / DAY) * DAY;

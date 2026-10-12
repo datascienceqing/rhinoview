@@ -2,7 +2,7 @@ import { fireEvent, render, screen } from '@testing-library/react';
 import { I18nProvider } from '../i18n';
 import { indicator, computeAll, makeBars } from '../panes/testing/testHelpers';
 import { ThemeProvider } from '../theme';
-import { ChartContextMenu } from './ChartContextMenu';
+import { ChartContextMenu, SCROLL_CLOSE_PX, SCROLL_GRACE_MS } from './ChartContextMenu';
 import { ChartView } from './ChartView';
 import type { ChartMenuTarget } from './ChartView';
 import { lastChart, resetFakeCharts } from './testing/fakeLightweightCharts';
@@ -101,7 +101,7 @@ describe('ChartContextMenu', () => {
     const props = {
       x: 50,
       y: 60,
-      addAlert: { id: 'alert', label: 'Add alert at 150.00…', onSelect: vi.fn() },
+      alertItems: [{ id: 'alert', label: 'Add alert at 150.00…', onSelect: vi.fn() }],
       onFinancials: vi.fn(),
       onClose: vi.fn(),
       ...over,
@@ -126,7 +126,7 @@ describe('ChartContextMenu', () => {
   it('a pick runs the item and closes the menu', () => {
     const p = renderMenu();
     fireEvent.click(screen.getByRole('menuitem', { name: 'Add alert at 150.00…' }));
-    expect(p.addAlert?.onSelect).toHaveBeenCalled();
+    expect(p.alertItems[0]?.onSelect).toHaveBeenCalled();
     expect(p.onClose).toHaveBeenCalled();
   });
 
@@ -149,12 +149,37 @@ describe('ChartContextMenu', () => {
     expect(items[2]).toHaveFocus();
     fireEvent.keyDown(screen.getByRole('menu'), { key: 'Escape' });
     fireEvent.pointerDown(document.body);
-    fireEvent.wheel(window);
-    expect(p.onClose).toHaveBeenCalledTimes(3);
+    expect(p.onClose).toHaveBeenCalledTimes(2);
+  });
+
+  it('a scroll closes it, but not the small wheel noise of a touch mouse during the right-click', () => {
+    let now = 1_000;
+    const clock = vi.spyOn(performance, 'now').mockImplementation(() => now);
+    const p = renderMenu();
+    // Right after it opens: even a large wheel event is the click, not a scroll.
+    fireEvent.wheel(window, { deltaY: 100 });
+    now += SCROLL_GRACE_MS;
+    // Later: small movements add up, and close it only at SCROLL_CLOSE_PX.
+    fireEvent.wheel(window, { deltaY: 3 });
+    fireEvent.wheel(window, { deltaX: -2 });
+    expect(p.onClose).not.toHaveBeenCalled();
+    fireEvent.wheel(window, { deltaY: SCROLL_CLOSE_PX });
+    expect(p.onClose).toHaveBeenCalledTimes(1);
+    clock.mockRestore();
+  });
+
+  it('a wheel in lines counts as pixels', () => {
+    let now = 1_000;
+    const clock = vi.spyOn(performance, 'now').mockImplementation(() => now);
+    const p = renderMenu();
+    now += SCROLL_GRACE_MS;
+    fireEvent.wheel(window, { deltaY: 2, deltaMode: 1 });
+    expect(p.onClose).toHaveBeenCalledTimes(1);
+    clock.mockRestore();
   });
 
   it('without an add-alert item it shows the other items', () => {
-    renderMenu({ addAlert: null });
+    renderMenu({ alertItems: [] });
     expect(screen.getAllByRole('menuitem')[0]).toHaveTextContent('Theme: light');
   });
 });

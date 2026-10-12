@@ -4,11 +4,23 @@
  */
 import type { Alert, AlertCondition, AlertDirection, AlertEvent, AlertStatus } from '@shared/types';
 import { t, translateIn } from '../i18n';
-import { formatPrice } from '../ui/format';
 import { indicatorTitle } from '../panes/config';
 
 /** ↕ crossing, ↑ crossing up, ↓ crossing down. */
 export const DIRECTION_ARROW: Record<AlertDirection, string> = { cross: '↕', up: '↑', down: '↓' };
+
+/**
+ * A price level for an alert. From 1 up it keeps cents; below 1 it keeps 4 significant
+ * digits, so a sub-cent symbol (0.004123) does not round to 0.
+ */
+export function roundLevel(price: number): number {
+  return Math.abs(price) >= 1 ? Math.round(price * 100) / 100 : Number(price.toPrecision(4));
+}
+
+/** A price as text for alerts: 2 decimals from 1 up, else the digits `roundLevel` keeps. */
+export function formatLevel(price: number): string {
+  return Math.abs(price) >= 1 ? price.toFixed(2) : String(roundLevel(price));
+}
 
 /** Indicator values are not prices: keep up to 4 significant decimals, as the legend does. */
 export function formatValue(value: number): string {
@@ -40,7 +52,7 @@ export function targetText(condition: Extract<AlertCondition, { type: 'indicator
 /** The message the app writes when the user leaves it empty: "AAPL crossing 190.00". */
 export function defaultMessage(symbol: string, condition: AlertCondition): string {
   const verb = t(`alerts.verb.${condition.direction}`);
-  if (condition.type === 'price') return t('alerts.message.price', { symbol, verb, level: formatPrice(condition.level) });
+  if (condition.type === 'price') return t('alerts.message.price', { symbol, verb, level: formatLevel(condition.level) });
   return t('alerts.message.indicator', { symbol, indicator: subjectOf(condition), verb, target: targetText(condition) });
 }
 
@@ -50,7 +62,7 @@ export const messageOf = (a: Pick<Alert, 'symbol' | 'condition' | 'message'>): s
 /** A short summary for a row: "↕ 190.00" or "RSI (14) ↑ 70". */
 export function summaryOf(condition: AlertCondition): string {
   const arrow = DIRECTION_ARROW[condition.direction];
-  if (condition.type === 'price') return `${arrow} ${formatPrice(condition.level)}`;
+  if (condition.type === 'price') return `${arrow} ${formatLevel(condition.level)}`;
   return `${subjectOf(condition)} ${arrow} ${targetText(condition)}`;
 }
 

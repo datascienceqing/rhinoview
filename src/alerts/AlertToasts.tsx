@@ -5,16 +5,15 @@
  */
 import type { AlertEvent } from '@shared/types';
 import { INTL_LOCALE, useI18n } from '../i18n';
-import { formatPrice } from '../ui/format';
 import { useAlerts } from './AlertsProvider';
-import { DIRECTION_ARROW, formatValue, messageOf } from './describe';
+import { DIRECTION_ARROW, formatLevel, formatValue, messageOf } from './describe';
 
 export const MAX_TOASTS = 3;
 
 export function AlertToasts() {
-  const { toasts, soundBlocked, sound } = useAlerts();
+  const { toasts, soundBlocked, sound, budgetWarning, dismissBudgetWarning } = useAlerts();
   const { t } = useI18n();
-  if (toasts.length === 0) return null;
+  if (toasts.length === 0 && !budgetWarning) return null;
   const shown = toasts.slice(0, MAX_TOASTS);
   const more = toasts.length - shown.length;
   return (
@@ -23,6 +22,16 @@ export function AlertToasts() {
       {[...shown].reverse().map((e) => (
         <Toast key={e.id} event={e} />
       ))}
+      {budgetWarning && (
+        <div className="alert-toast alert-toast-budget" role="status">
+          <div className="alert-toast-message">{t('alerts.budget.warning', budgetWarning)}</div>
+          <div className="alert-toast-actions">
+            <button type="button" className="link-button" onClick={dismissBudgetWarning}>
+              {t('common.dismiss')}
+            </button>
+          </div>
+        </div>
+      )}
       {soundBlocked && sound.on && <div className="alert-toast-note">{t('alerts.soundBlocked')}</div>}
     </div>
   );
@@ -31,7 +40,7 @@ export function AlertToasts() {
 function Toast({ event }: { event: AlertEvent }) {
   const { t, locale } = useI18n();
   const { dismissToast, showOnChart } = useAlerts();
-  const value = event.condition.type === 'price' ? formatPrice(event.value) : formatValue(event.value);
+  const value = event.condition.type === 'price' ? formatLevel(event.value) : formatValue(event.value);
   const time = new Intl.DateTimeFormat(INTL_LOCALE[locale], { timeStyle: 'short' }).format(event.firedAt * 1000);
   return (
     <div className={`alert-toast crossed-${event.crossed}`} role="alert" aria-label={t('alerts.toast.label', { symbol: event.symbol })}>

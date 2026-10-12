@@ -274,6 +274,11 @@
   font-size: 12px;
 }
 
+.alerts-settings-note {
+  flex-basis: 100%;
+  color: var(--text-dim);
+}
+
 /* ── popups: bottom left ── */
 .alert-toasts {
   position: fixed;
@@ -292,6 +297,10 @@
   border-left: 3px solid var(--accent);
   border-radius: 6px;
   box-shadow: 0 6px 20px var(--shadow);
+}
+/* The checker's call budget ran out: a note, not an event. */
+.alert-toast-budget {
+  border-left-color: var(--warn);
 }
 .alert-toast-head {
   display: flex;

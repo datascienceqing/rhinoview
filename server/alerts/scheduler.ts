@@ -8,23 +8,33 @@
  *  - `budgetPerMinute` caps the upstream calls in any 60 s window. Null means no cap
  *    (the synthetic provider). A quote served from the shared cache costs no call.
  *
+ * When the budget runs out while checks are due, the checker tells the user (a `budget`
+ * stream message), at most ALERT_BUDGET_WARNINGS times per server run.
+ *
  * One checker per server, so two open tabs never fire one alert twice.
  * The clock is injected; tests drive `tick()` directly.
  */
-import type { Alert, Bar, Snapshot, Timeframe, UnixSeconds } from '@shared/types';
-import { ALERT_MIN_CHECK_SECONDS } from '@shared/types';
-import { evaluateIndicatorAlert, evaluatePriceAlert, TIMEFRAME_SPAN_SECONDS } from './evaluate';
+import type { Alert, AlertStreamMessage, Bar, Snapshot, Timeframe, UnixSeconds } from '@shared/types';
+import { ALERT_BUDGET_WARNINGS, ALERT_MIN_CHECK_SECONDS } from '@shared/types';
+import { closedBars, evaluateIndicatorAlert, evaluatePriceAlert, TIMEFRAME_SPAN_SECONDS } from './evaluate';
 import type { AlertsStore, AppliedCheck } from './store';
 
 /** Default share of the provider budget for alerts (D2). The watchlist keeps the rest. */
 export const ALERT_CALL_BUDGET = 150;
-/** After a bars call with no new closed bar (a weekend, a holiday), wait at least this long. */
+/**
+ * After bars calls with no new closed bar (a night, a weekend, a holiday), the wait doubles
+ * from one bar span (or this limit, when it is shorter) up to this limit. A new bar sets it back.
+ */
 export const BARS_RETRY_SECONDS = 3_600;
+/** A budget shortage that follows a full minute with no shortage counts as a new one. */
+const BUDGET_EPISODE_GAP_SECONDS = 60;
 
 /** Where the checker reads market data. */
 export interface AlertDataSource {
   /** A quote. `cached` is true when no upstream call was made. */
   quote(symbol: string): Promise<{ snapshot: Snapshot; cached: boolean }>;
+  /** A fresh quote that is already in the cache, or undefined. Never calls upstream. */
+  cachedQuote?(symbol: string): Snapshot | undefined;
   /** Bars, ascending. Each call counts against the budget. */
   bars(symbol: string, timeframe: Timeframe, from: UnixSeconds, to: UnixSeconds): Promise<Bar[]>;
   /** The bars are delayed (the provider tier). */
@@ -38,6 +48,8 @@ export interface AlertSchedulerDeps {
   /** Upstream calls in any 60 s window. Null: no cap. */
   budgetPerMinute: number | null;
   warn?: (message: string) => void;
+  /** Sends a stream message to the open tabs (the budget warning). */
+  notify?: (message: AlertStreamMessage) => void;
 }
 
 /** Bars to load for an indicator: its longest period plus a margin for EMA warmup. */
@@ -61,6 +73,11 @@ export class AlertScheduler {
   private lastQuoteAt = new Map<string, UnixSeconds>();
   /** Key `symbol|timeframe`. */
   private lastBarsAt = new Map<string, UnixSeconds>();
+  /** Key `symbol|timeframe`: bars calls in a row that found no new closed bar. */
+  private barsMisses = new Map<string, number>();
+  /** The last tick that left due checks for lack of budget; null before the first. */
+  private lastShortAt: UnixSeconds | null = null;
+  private budgetWarnings = 0;
   /** When each symbol was last visited, for the round robin. */
   private lastVisit = new Map<string, UnixSeconds>();
   private running = false;
@@ -119,13 +136,30 @@ export class AlertScheduler {
   }
 
   private barsDue(symbol: string, timeframe: Timeframe, alerts: Alert[], now: UnixSeconds): boolean {
-    const last = this.lastBarsAt.get(`${symbol}|${timeframe}`) ?? -Infinity;
+    const key = `${symbol}|${timeframe}`;
+    const last = this.lastBarsAt.get(key) ?? -Infinity;
     if (now - last < ALERT_MIN_CHECK_SECONDS) return false;
     if (alerts.some((a) => a.state.lastBarTime === null)) return true;
     const span = TIMEFRAME_SPAN_SECONDS[timeframe];
     const oldest = Math.min(...alerts.map((a) => a.state.lastBarTime as number));
-    // The bar after `oldest` closes at `oldest + 2 * span` at the earliest.
-    return now >= oldest + 2 * span && now - last >= Math.min(span, BARS_RETRY_SECONDS);
+    // The bar after `oldest` closes at `oldest + 2 * span` at the earliest. When the market
+    // is closed no bar comes, so each empty call doubles the wait (up to BARS_RETRY_SECONDS).
+    const misses = this.barsMisses.get(key) ?? 0;
+    const wait = Math.min(Math.min(span, BARS_RETRY_SECONDS) * 2 ** misses, BARS_RETRY_SECONDS);
+    return now >= oldest + 2 * span && now - last >= wait;
+  }
+
+  /** Tells the user when the budget ran out with checks due: once per shortage, at most ALERT_BUDGET_WARNINGS times. */
+  private budgetShort(waitingSymbols: number, now: UnixSeconds): void {
+    const budget = this.deps.budgetPerMinute;
+    const isNew = this.lastShortAt === null || now - this.lastShortAt > BUDGET_EPISODE_GAP_SECONDS;
+    this.lastShortAt = now;
+    if (!isNew || budget === null || this.budgetWarnings >= ALERT_BUDGET_WARNINGS) return;
+    this.budgetWarnings += 1;
+    (this.deps.warn ?? ((m: string) => console.warn(m)))(
+      `Alert check: all ${budget} calls of this minute are used; ${waitingSymbols} symbols wait (warning ${this.budgetWarnings} of ${ALERT_BUDGET_WARNINGS}).`,
+    );
+    this.deps.notify?.({ type: 'budget', budgetPerMinute: budget, waitingSymbols });
   }
 
   /** Check the due symbols while the budget allows. Never runs twice at once. */
@@ -142,12 +176,16 @@ export class AlertScheduler {
       }
       for (const key of [...this.lastVisit.keys()]) if (!bySymbol.has(key)) this.lastVisit.delete(key);
       const queue = [...bySymbol.keys()].sort((x, y) => (this.lastVisit.get(x) ?? -Infinity) - (this.lastVisit.get(y) ?? -Infinity));
-      // All checks of one tick go to the store in one write.
+      // All checks of one tick go to the store in one write. A symbol is visited also when
+      // the budget is used up: expiries and cached quotes cost no call.
       const checks: AppliedCheck[] = [];
+      let waitingSymbols = 0;
       for (const symbol of queue) {
-        if (!this.canCall(now)) break;
-        checks.push(...(await this.checkSymbol(symbol, bySymbol.get(symbol) as Alert[], now)));
+        const visit = await this.checkSymbol(symbol, bySymbol.get(symbol) as Alert[], now);
+        checks.push(...visit.checks);
+        if (visit.waiting) waitingSymbols += 1;
       }
+      if (waitingSymbols > 0) this.budgetShort(waitingSymbols, now);
       if (checks.length > 0) {
         try {
           await this.deps.store.applyChecks(checks);
@@ -160,9 +198,11 @@ export class AlertScheduler {
     }
   }
 
-  private async checkSymbol(symbol: string, alerts: Alert[], now: UnixSeconds): Promise<AppliedCheck[]> {
+  /** `waiting`: a check of this symbol was due, but the budget had no call left for it. */
+  private async checkSymbol(symbol: string, alerts: Alert[], now: UnixSeconds): Promise<{ checks: AppliedCheck[]; waiting: boolean }> {
     const checks: AppliedCheck[] = [];
     let visited = false;
+    let waiting = false;
 
     // Expired alerts need no data.
     const live: Alert[] = [];
@@ -174,19 +214,28 @@ export class AlertScheduler {
     }
 
     const price = live.filter((a) => a.condition.type === 'price');
-    if (price.length > 0 && this.priceDue(symbol, now) && this.canCall(now)) {
-      visited = true;
-      try {
-        const { snapshot, cached } = await this.deps.source.quote(symbol);
-        if (!cached) this.spend(now);
+    if (price.length > 0 && this.priceDue(symbol, now)) {
+      const checkPrice = (snapshot: Snapshot) => {
         this.lastQuoteAt.set(symbol, now);
         const obs = { price: snapshot.price, dayHigh: snapshot.dayHigh, dayLow: snapshot.dayLow };
         for (const a of price) checks.push({ alertId: a.id, revision: a.revision, result: evaluatePriceAlert(a, obs, now), delayed: snapshot.delayed });
-      } catch (err) {
-        this.spend(now);
-        this.lastQuoteAt.set(symbol, now);
-        this.warnOnce(`quote:${symbol}`, `Alert check: no quote for ${symbol}: ${(err as Error).message}`);
-      }
+      };
+      const hit = this.deps.source.cachedQuote?.(symbol);
+      if (hit) {
+        visited = true;
+        checkPrice(hit);
+      } else if (this.canCall(now)) {
+        visited = true;
+        try {
+          const { snapshot, cached } = await this.deps.source.quote(symbol);
+          if (!cached) this.spend(now);
+          checkPrice(snapshot);
+        } catch (err) {
+          this.spend(now);
+          this.lastQuoteAt.set(symbol, now);
+          this.warnOnce(`quote:${symbol}`, `Alert check: no quote for ${symbol}: ${(err as Error).message}`);
+        }
+      } else waiting = true;
     }
 
     const byTimeframe = new Map<Timeframe, Alert[]>();
@@ -197,13 +246,22 @@ export class AlertScheduler {
       byTimeframe.set(a.condition.timeframe, list);
     }
     for (const [timeframe, group] of byTimeframe) {
-      if (!this.barsDue(symbol, timeframe, group, now) || !this.canCall(now)) continue;
+      if (!this.barsDue(symbol, timeframe, group, now)) continue;
+      if (!this.canCall(now)) {
+        waiting = true;
+        continue;
+      }
       visited = true;
       this.spend(now);
-      this.lastBarsAt.set(`${symbol}|${timeframe}`, now);
+      const key = `${symbol}|${timeframe}`;
+      this.lastBarsAt.set(key, now);
       try {
         const n = Math.max(...group.map(barsNeeded));
         const bars = await this.deps.source.bars(symbol, timeframe, now - lookbackSeconds(timeframe, n), now);
+        const newest = closedBars(bars, timeframe, now).at(-1)?.time;
+        const known = group.map((a) => a.state.lastBarTime);
+        const gotNewBar = newest !== undefined && known.some((t) => t === null || newest > t);
+        this.barsMisses.set(key, gotNewBar ? 0 : (this.barsMisses.get(key) ?? 0) + 1);
         for (const a of group) {
           checks.push({ alertId: a.id, revision: a.revision, result: evaluateIndicatorAlert(a, bars, now), delayed: this.deps.source.delayed });
         }
@@ -213,7 +271,7 @@ export class AlertScheduler {
     }
 
     if (visited) this.lastVisit.set(symbol, now);
-    return checks;
+    return { checks, waiting };
   }
 
   private warnOnce(key: string, message: string): void {

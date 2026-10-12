@@ -55,6 +55,8 @@ export interface AlertsStore {
   applyChecks(checks: readonly AppliedCheck[]): Promise<AlertEvent[]>;
   /** Stream messages. Returns the function that unsubscribes. */
   subscribe(listener: (message: AlertStreamMessage) => void): () => void;
+  /** Send a message that changes no state (the checker's budget warning) to the listeners. */
+  publish(message: AlertStreamMessage): void;
 }
 
 export interface AlertsStoreOptions {
@@ -119,7 +121,7 @@ function parseFile(text: string): { state: AlertsState; dropped: number } | null
   const alerts: Alert[] = [];
   for (const raw of parsed.data.alerts) {
     const a = alertSchema.safeParse(raw);
-    if (a.success && ALERT_SYMBOL_RE.test(a.data.symbol) && checkAlertCondition(a.data.condition) === null) alerts.push(a.data);
+    if (a.success && ALERT_SYMBOL_RE.test(a.data.symbol) && checkAlertCondition(a.data.condition, { stored: true }) === null) alerts.push(a.data);
     else dropped++;
   }
   const events: AlertEvent[] = [];
@@ -179,6 +181,20 @@ export async function openAlertsStore(filePath: string, opts: AlertsStoreOptions
   /** When a check first changed state that is not on disk yet; null when the file is current. */
   let dirtySince: number | null = null;
 
+  /**
+   * A listener that throws (a stream socket that closed) must not fail a change that is
+   * already saved, or keep the message from the other listeners.
+   */
+  function broadcast(message: AlertStreamMessage): void {
+    for (const l of listeners) {
+      try {
+        l(structuredClone(message));
+      } catch (err) {
+        warn(`Alerts stream: a listener failed: ${(err as Error).message}`);
+      }
+    }
+  }
+
   let tail: Promise<unknown> = Promise.resolve();
   function serial<T>(task: () => Promise<T>): Promise<T> {
     const run = tail.then(task, task);
@@ -201,7 +217,7 @@ export async function openAlertsStore(filePath: string, opts: AlertsStoreOptions
         dirtySince = clock();
       }
       state = draft;
-      for (const m of messages) for (const l of listeners) l(structuredClone(m));
+      for (const m of messages) broadcast(m);
       return structuredClone(result);
     });
   }
@@ -288,7 +304,7 @@ export async function openAlertsStore(filePath: string, opts: AlertsStoreOptions
         const ids = 'ids' in body ? new Set(body.ids) : null;
         for (const e of s.events) if (ids === null || ids.has(e.id)) e.checked = true;
         const n = unchecked(s);
-        return { result: { unchecked: n }, messages: [{ type: 'checked', unchecked: n }] };
+        return { result: { unchecked: n }, messages: [{ type: 'checked', unchecked: n, checkedIds: ids === null ? 'all' : [...ids] }] };
       });
     },
 
@@ -297,7 +313,7 @@ export async function openAlertsStore(filePath: string, opts: AlertsStoreOptions
         if (!s.events.some((e) => e.id === id)) throw new ApiFailure('NOT_FOUND', `No event with id ${id}.`);
         s.events = s.events.filter((e) => e.id !== id);
         const n = unchecked(s);
-        return { result: { unchecked: n }, messages: [{ type: 'checked', unchecked: n }] };
+        return { result: { unchecked: n }, messages: [{ type: 'checked', unchecked: n, deletedId: id }] };
       });
     },
 
@@ -333,6 +349,7 @@ export async function openAlertsStore(filePath: string, opts: AlertsStoreOptions
               value: f.value,
               target: f.target,
               delayed: c.delayed,
+              ...(a.condition.type === 'indicator' ? { barTime: f.time } : {}),
               checked: false,
             };
             s.events.unshift(event);
@@ -353,5 +370,7 @@ export async function openAlertsStore(filePath: string, opts: AlertsStoreOptions
       listeners.add(listener);
       return () => listeners.delete(listener);
     },
+
+    publish: broadcast,
   };
 }

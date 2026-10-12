@@ -90,6 +90,7 @@ export function buildServer(opts: BuildServerOptions): FastifyInstance {
       now: opts.now ?? (() => Math.floor(Date.now() / 1000)),
       budgetPerMinute: opts.alertChecks.budgetPerMinute,
       warn: (m) => app.log.warn(m),
+      notify: (m) => opts.alerts?.publish(m),
     });
     checker.start(opts.alertChecks.tickMs);
     app.addHook('onClose', async () => checker.stop());

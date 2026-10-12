@@ -86,6 +86,19 @@ describe('alerts store: file', () => {
     expect(warnings[0]).toMatch(/dropped 2/);
   });
 
+  it('keeps a saved MACD alert on the close, made before that target was refused', async () => {
+    const s1 = await openAlertsStore(file, opts());
+    const good = await s1.create(priceBody());
+    const json = JSON.parse(await readFile(file, 'utf8'));
+    const condition = { type: 'indicator', timeframe: '1D', indicator: { kind: 'macd', params: { fastPeriod: 12, slowPeriod: 26, signalPeriod: 9 } }, line: 'macd', direction: 'cross', target: { type: 'close' } };
+    json.alerts.push({ ...good, id: 'old', condition });
+    await writeFile(file, JSON.stringify(json), 'utf8');
+    const s2 = await openAlertsStore(file, opts());
+    expect(s2.list().map((a) => a.id)).toEqual([good.id, 'old']);
+    // A new one is refused.
+    expect(await code(s2.create({ symbol: 'AAPL', condition: condition as never }))).toBe('BAD_REQUEST');
+  });
+
   it('a failed write changes neither the file nor the memory', async () => {
     let failing = false;
     const fs: WorkspaceFs = {
@@ -273,9 +286,9 @@ describe('alerts store: checks and events', () => {
     expect(await s.deleteEvent(ids[1] as string)).toEqual({ unchecked: 1 });
     expect(await s.setChecked({ all: true })).toEqual({ unchecked: 0 });
     expect(messages).toEqual([
-      { type: 'checked', unchecked: 2 },
-      { type: 'checked', unchecked: 1 },
-      { type: 'checked', unchecked: 0 },
+      { type: 'checked', unchecked: 2, checkedIds: [ids[0]] },
+      { type: 'checked', unchecked: 1, deletedId: ids[1] },
+      { type: 'checked', unchecked: 0, checkedIds: 'all' },
     ]);
     expect(await code(s.deleteEvent('nope'))).toBe('NOT_FOUND');
   });
@@ -285,6 +298,33 @@ describe('alerts store: checks and events', () => {
     await s.applyChecks([{ alertId: a.id, revision: 1, result: fire(state()), delayed: false }]);
     await s.remove(a.id);
     expect(s.events().events[0]).toMatchObject({ alertId: a.id, condition: { level: 190 } });
+  });
+
+  it('a listener that throws does not fail the saved change or stop the other listeners', async () => {
+    const got: AlertStreamMessage[] = [];
+    s.subscribe(() => {
+      throw new Error('socket closed');
+    });
+    s.subscribe((m) => got.push(m));
+    const a = await s.create(priceBody());
+    expect(s.list().map((x) => x.id)).toEqual([a.id]);
+    expect(got).toEqual([{ type: 'alerts' }]);
+  });
+
+  it('an indicator event keeps the bar time of the crossing; a price event has none', async () => {
+    const ind = await s.create({
+      symbol: 'AAPL',
+      condition: { type: 'indicator', timeframe: '1D', indicator: { kind: 'rsi', params: { period: 14 } }, line: 'value', direction: 'cross', target: { type: 'value', value: 70 } },
+    });
+    const p = await s.create(priceBody());
+    const indFire = { state: state(), status: 'triggered' as const, fires: [{ crossed: 'up' as const, value: 71, target: 70, time: T0 - 86_400 }] };
+    await s.applyChecks([
+      { alertId: ind.id, revision: 1, result: indFire, delayed: false },
+      { alertId: p.id, revision: 1, result: fire(state()), delayed: false },
+    ]);
+    const events = s.events().events;
+    expect(events.find((e) => e.alertId === ind.id)?.barTime).toBe(T0 - 86_400);
+    expect(events.find((e) => e.alertId === p.id)).not.toHaveProperty('barTime');
   });
 
   it('unsubscribe stops the messages', async () => {

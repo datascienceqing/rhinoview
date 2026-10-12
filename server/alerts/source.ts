@@ -12,6 +12,9 @@ export function serviceAlertSource(service: MarketService, quotes: QuotesCache):
       quotes.set(symbol, snapshot);
       return { snapshot, cached: false };
     },
+    cachedQuote(symbol) {
+      return quotes.get(symbol);
+    },
     async bars(symbol, timeframe, from, to) {
       return (await service.bars({ symbol, timeframe, from, to, adjusted: true })).bars;
     },

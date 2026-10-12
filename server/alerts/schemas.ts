@@ -114,6 +114,7 @@ export const alertEventSchema = z
     value: finite,
     target: finite,
     delayed: z.boolean(),
+    barTime: seconds.optional(),
     checked: z.boolean(),
   })
   .strict();

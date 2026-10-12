@@ -49,6 +49,8 @@ export interface AlertsState {
   dialog: AlertDraft | null;
   sound: SoundSettings;
   soundBlocked: boolean;
+  /** The checker ran out of upstream calls and checks some alerts late; null when no warning shows. */
+  budgetWarning: { budgetPerMinute: number; waitingSymbols: number } | null;
 
   openWindow(tab?: AlertsTab): void;
   minimizeWindow(): void;
@@ -68,6 +70,7 @@ export interface AlertsState {
   markChecked(ids: EntityId[]): Promise<void>;
   markAllChecked(): Promise<void>;
   setSound(settings: SoundSettings): void;
+  dismissBudgetWarning(): void;
 }
 
 /** How long a popup stays before it shrinks into the bell (D7). */
@@ -91,6 +94,7 @@ const EMPTY: AlertsState = {
   dialog: null,
   sound: { on: false, volume: 0 },
   soundBlocked: false,
+  budgetWarning: null,
   openWindow: noop,
   minimizeWindow: noop,
   setTab: noop,
@@ -106,6 +110,7 @@ const EMPTY: AlertsState = {
   markChecked: rejected,
   markAllChecked: rejected,
   setSound: noop,
+  dismissBudgetWarning: noop,
 };
 
 const AlertsContext = createContext<AlertsState>(EMPTY);
@@ -158,6 +163,7 @@ export function AlertsProvider({ children, eventSource = defaultEventSource, not
   const [dialog, setDialog] = useState<AlertDraft | null>(null);
   const [sound, setSoundState] = useState<SoundSettings>(readSoundSettings);
   const [soundBlocked, setSoundBlocked] = useState(isSoundBlocked);
+  const [budgetWarning, setBudgetWarning] = useState<AlertsState['budgetWarning']>(null);
   const soundRef = useRef(sound);
   soundRef.current = sound;
   const notifyRef = useRef(notify);
@@ -165,6 +171,11 @@ export function AlertsProvider({ children, eventSource = defaultEventSource, not
   const toastTimers = useRef(new Map<EntityId, ReturnType<typeof setTimeout>>());
   /** Event ids already known, so a message that arrives twice counts once. */
   const seen = useRef(new Set<EntityId>());
+  /**
+   * One list per event load in flight. A `fired` message that arrives while a load runs goes
+   * into each list, so the load's answer (which can be older) does not drop it.
+   */
+  const inflight = useRef(new Set<AlertEvent[]>());
 
   const loadAlerts = useCallback(async () => {
     const r = await api.fetchAlerts();
@@ -173,10 +184,18 @@ export function AlertsProvider({ children, eventSource = defaultEventSource, not
   }, []);
 
   const loadEvents = useCallback(async () => {
-    const r = await api.fetchAlertEvents();
-    for (const e of r.events) seen.current.add(e.id);
-    setEvents(r.events);
-    setUnchecked(r.unchecked);
+    const arrived: AlertEvent[] = [];
+    inflight.current.add(arrived);
+    try {
+      const r = await api.fetchAlertEvents();
+      for (const e of r.events) seen.current.add(e.id);
+      const known = new Set(r.events.map((e) => e.id));
+      const missing = arrived.filter((e) => !known.has(e.id));
+      setEvents(mergeEvents(r.events, missing));
+      setUnchecked(r.unchecked + missing.filter((e) => !e.checked).length);
+    } finally {
+      inflight.current.delete(arrived);
+    }
   }, []);
 
   const loadAll = useCallback(async () => {
@@ -200,6 +219,7 @@ export function AlertsProvider({ children, eventSource = defaultEventSource, not
       setAlerts((list) => (list.some((a) => a.id === alert.id) ? list.map((a) => (a.id === alert.id ? alert : a)) : [alert, ...list]));
       if (seen.current.has(event.id)) return;
       seen.current.add(event.id);
+      for (const list of inflight.current) list.push(event);
       setEvents((list) => mergeEvents(list, [event]));
       setUnchecked((n) => n + 1);
       setToasts((list) => [event, ...list.filter((e) => e.id !== event.id)]);
@@ -244,14 +264,31 @@ export function AlertsProvider({ children, eventSource = defaultEventSource, not
       const m = parse(e);
       if (m?.type !== 'checked') return;
       setUnchecked(m.unchecked);
-      void loadEvents().catch(noop);
+      // The message names the change: apply it here, with no load of the whole log.
+      if (m.deletedId !== undefined) {
+        const id = m.deletedId;
+        setEvents((list) => list.filter((x) => x.id !== id));
+      } else if (m.checkedIds === 'all') {
+        setEvents((list) => list.map((x) => (x.checked ? x : { ...x, checked: true })));
+      } else if (m.checkedIds !== undefined) {
+        const ids = new Set(m.checkedIds);
+        setEvents((list) => list.map((x) => (ids.has(x.id) && !x.checked ? { ...x, checked: true } : x)));
+      } else {
+        void loadEvents().catch(noop);
+      }
     };
     const onAlerts = () => void loadAlerts().catch(noop);
+    const onBudget = (e: Event) => {
+      const m = parse(e);
+      if (m?.type === 'budget') setBudgetWarning({ budgetPerMinute: m.budgetPerMinute, waitingSymbols: m.waitingSymbols });
+    };
     source.addEventListener('open', onOpen);
     source.addEventListener('fired', onFiredMessage);
     source.addEventListener('checked', onChecked);
     source.addEventListener('alerts', onAlerts);
+    source.addEventListener('budget', onBudget);
     return () => {
+      source.removeEventListener('budget', onBudget);
       source.removeEventListener('open', onOpen);
       source.removeEventListener('fired', onFiredMessage);
       source.removeEventListener('checked', onChecked);
@@ -294,6 +331,7 @@ export function AlertsProvider({ children, eventSource = defaultEventSource, not
       dialog,
       sound,
       soundBlocked,
+      budgetWarning,
       openWindow(next = 'triggered') {
         setTab(next);
         setWindowKey((k) => k + 1);
@@ -342,8 +380,9 @@ export function AlertsProvider({ children, eventSource = defaultEventSource, not
         storeSoundSettings(next);
         setSoundState(next);
       },
+      dismissBudgetWarning: () => setBudgetWarning(null),
     }),
-    [status, alerts, events, unchecked, checkIntervalSeconds, toasts, windowOpen, windowKey, tab, dialog, sound, soundBlocked, minimizeToast, markChecked, setSymbol, setTimeframe],
+    [status, alerts, events, unchecked, checkIntervalSeconds, toasts, windowOpen, windowKey, tab, dialog, sound, soundBlocked, budgetWarning, minimizeToast, markChecked, setSymbol, setTimeframe],
   );
 
   return <AlertsContext.Provider value={value}>{children}</AlertsContext.Provider>;

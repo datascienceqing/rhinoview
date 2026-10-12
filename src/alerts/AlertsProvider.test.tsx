@@ -103,6 +103,52 @@ describe('AlertsProvider: stream', () => {
     expect(probe()).toContain('|0|');
   });
 
+  it('a checked message with ids marks those events here, with no load of the log', async () => {
+    await renderReady();
+    const { alert, event } = await fireInMock();
+    act(() => sources.last().emit({ type: 'fired', event, alert }));
+    // The mock still has the event unchecked: a load of the log would show it as new again.
+    act(() => sources.last().emit({ type: 'checked', unchecked: 0, checkedIds: [event.id] }));
+    act(() => screen.getByRole('button', { name: 'Alerts' }).click());
+    await new Promise((r) => setTimeout(r, 50));
+    const row = within(screen.getByRole('dialog', { name: 'Alerts' })).getByRole('listitem');
+    expect(row).toHaveClass('checked');
+    expect(probe()).toContain('|0|');
+  });
+
+  it('a checked message with a deleted id removes that event here', async () => {
+    await renderReady();
+    const { alert, event } = await fireInMock();
+    act(() => sources.last().emit({ type: 'fired', event, alert }));
+    act(() => sources.last().emit({ type: 'checked', unchecked: 0, deletedId: event.id }));
+    act(() => screen.getByRole('button', { name: 'Alerts' }).click());
+    expect(within(screen.getByRole('dialog', { name: 'Alerts' })).queryByRole('listitem')).not.toBeInTheDocument();
+  });
+
+  it('an event that fires while the log loads stays in the list and in the count', async () => {
+    await renderReady();
+    act(() => sources.last().open());
+    const { alert } = await fireInMock('NVDA', 100);
+    // Only the stream knows this event; the load that starts now does not have it.
+    const streamed: AlertEvent = { ...mockAlerts().events[0]!, id: 'only-on-stream', firedAt: 2_000_000_000 };
+    act(() => {
+      sources.last().reopen();
+      sources.last().emit({ type: 'fired', event: streamed, alert });
+    });
+    await waitFor(() => expect(probe()).toContain('|2|'));
+    await new Promise((r) => setTimeout(r, 50));
+    expect(probe()).toContain('|2|');
+  });
+
+  it('a budget message shows a warning that the user can dismiss', async () => {
+    await renderReady();
+    act(() => sources.last().emit({ type: 'budget', budgetPerMinute: 150, waitingSymbols: 12 }));
+    const note = screen.getByRole('status');
+    expect(note).toHaveTextContent('The alert checker used all 150 data calls of this minute. 12 symbols wait');
+    fireEvent.click(within(note).getByRole('button', { name: 'Dismiss' }));
+    expect(screen.queryByRole('status')).not.toBeInTheDocument();
+  });
+
   it('closes the stream on unmount', async () => {
     const { unmount } = render(<Harness />);
     await waitFor(() => expect(probe()).toMatch(/\|ready$/));

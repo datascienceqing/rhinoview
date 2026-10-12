@@ -7,12 +7,12 @@ import type { ChartMenuTarget } from '../chart';
 import { ChartContextMenu } from '../chart/ChartContextMenu';
 import type { ChartMenuItem } from '../chart/ChartContextMenu';
 import { ALERT_INDICATOR_KINDS } from '@shared/types';
-import type { AlertIndicatorKind } from '@shared/types';
+import type { AlertIndicatorKind, AlertTarget, IndicatorConfig } from '@shared/types';
+import { CLOSE_TARGET_KINDS } from '../alerts/condition';
 import { useAlerts } from '../alerts/AlertsProvider';
-import { formatValue } from '../alerts/describe';
+import { formatLevel, formatValue, roundLevel } from '../alerts/describe';
 import { LINE_KEYS } from '../indicators/types';
 import { indicatorTitle } from '../panes/config';
-import { formatPrice } from './format';
 import { useBarHistory, useCapabilities } from '../data';
 import { IndicatorLegendRow, IndicatorMenu, useComputedIndicators, useIndicators } from '../panes';
 import type { PaneLayout } from '../panes';
@@ -81,36 +81,59 @@ function LoadedChartPanel({ symbol, timeframe: savedTimeframe, chartType, marker
     [alerts, symbol],
   );
 
-  function addAlertItem(target: ChartMenuTarget): ChartMenuItem | null {
+  /** An indicator alert draft on the first line of `config`. */
+  function openIndicatorDialog(config: IndicatorConfig, kind: AlertIndicatorKind, target: AlertTarget) {
+    openDialog({
+      symbol,
+      condition: {
+        type: 'indicator',
+        timeframe,
+        indicator: { kind, params: structuredClone(config.params) },
+        line: LINE_KEYS[kind][0] as string,
+        direction: 'cross',
+        target,
+      },
+    });
+  }
+
+  /**
+   * The add-alert items for the point under the menu. On the price pane: the price, then each
+   * visible SMA or EMA (they share the price scale, so the target is the close). On an
+   * indicator pane: that indicator at the value under the pointer.
+   */
+  function alertItems(target: ChartMenuTarget): ChartMenuItem[] {
     if (target.pane === 'price') {
-      const level = Math.round(target.price * 100) / 100;
-      if (!(level > 0)) return null;
-      return {
-        id: 'alert',
-        label: t('menu.addAlert', { price: formatPrice(level) }),
-        onSelect: () => openDialog({ symbol, condition: { type: 'price', direction: 'cross', level } }),
-      };
+      const items: ChartMenuItem[] = [];
+      const level = roundLevel(target.price);
+      if (level > 0) {
+        items.push({
+          id: 'alert',
+          label: t('menu.addAlert', { price: formatLevel(level) }),
+          onSelect: () => openDialog({ symbol, condition: { type: 'price', direction: 'cross', level } }),
+        });
+      }
+      for (const config of indicatorState.indicators) {
+        const kind = config.kind as AlertIndicatorKind;
+        if (!config.visible || !CLOSE_TARGET_KINDS.includes(kind)) continue;
+        items.push({
+          id: `alert-${config.id}`,
+          label: t('menu.addOverlayAlert', { indicator: indicatorTitle(config) }),
+          onSelect: () => openIndicatorDialog(config, kind, { type: 'close' }),
+        });
+      }
+      return items;
     }
     const config = indicatorState.indicators.find((c) => c.id === target.indicatorId);
-    if (!config || !(ALERT_INDICATOR_KINDS as readonly string[]).includes(config.kind)) return null;
+    if (!config || !(ALERT_INDICATOR_KINDS as readonly string[]).includes(config.kind)) return [];
     const kind = config.kind as AlertIndicatorKind;
     const value = Number(formatValue(target.value));
-    return {
-      id: 'alert',
-      label: t('menu.addIndicatorAlert', { indicator: indicatorTitle(config), value: formatValue(value) }),
-      onSelect: () =>
-        openDialog({
-          symbol,
-          condition: {
-            type: 'indicator',
-            timeframe,
-            indicator: { kind, params: structuredClone(config.params) },
-            line: LINE_KEYS[kind][0] as string,
-            direction: 'cross',
-            target: { type: 'value', value },
-          },
-        }),
-    };
+    return [
+      {
+        id: 'alert',
+        label: t('menu.addIndicatorAlert', { indicator: indicatorTitle(config), value: formatValue(value) }),
+        onSelect: () => openIndicatorDialog(config, kind, { type: 'value', value }),
+      },
+    ];
   }
 
   const overlays = computed.filter((c) => INDICATOR_PLACEMENT[c.config.kind] === 'overlay');
@@ -142,7 +165,7 @@ function LoadedChartPanel({ symbol, timeframe: savedTimeframe, chartType, marker
         <ChartContextMenu
           x={menu.x}
           y={menu.y}
-          addAlert={addAlertItem(menu)}
+          alertItems={alertItems(menu)}
           {...(onOpenFinancials ? { onFinancials: onOpenFinancials } : {})}
           onClose={closeMenu}
         />

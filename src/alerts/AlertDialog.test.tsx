@@ -1,6 +1,6 @@
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { useEffect } from 'react';
-import type { AlertCondition } from '@shared/types';
+import type { Alert, AlertCondition } from '@shared/types';
 import { mockAlerts, resetMockAlerts } from '../../mocks/alerts';
 import { InMemoryWorkspaceProvider } from '../workspace';
 import { AlertDialog } from './AlertDialog';
@@ -72,6 +72,29 @@ describe('AlertDialog', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Create' }));
     await waitFor(() => expect(mockAlerts().alerts).toHaveLength(1));
     expect(mockAlerts().alerts[0]).toMatchObject({ condition: { direction: 'down', level: 395.5 }, frequency: 'every', expiry: '3y', message: 'sell?' });
+  });
+
+  it('an edit of the message only keeps the expiry time and the side', async () => {
+    const stored: Alert = {
+      id: 'a1', symbol: 'AAPL', condition: { type: 'price', direction: 'cross', level: 190 }, frequency: 'once', expiry: '1M',
+      expiresAt: 1_800_000_000, message: 'old', status: 'active', revision: 3, createdAt: 1_790_000_000, updatedAt: 1_790_000_000,
+      state: { lastSide: 'below', lastCheckedAt: 1, lastDayHigh: 189, lastDayLow: 180, lastBarTime: null, firedCount: 0, lastFiredAt: null },
+    };
+    resetMockAlerts({ alerts: [stored] });
+    renderDialog({ id: 'a1', revision: 3, symbol: 'AAPL', condition: stored.condition, frequency: 'once', expiry: '1M', message: 'old' });
+    await screen.findByRole('dialog', { name: /Edit alert/ });
+    expect(screen.getByLabelText('Price')).toHaveValue(190);
+    fireEvent.change(screen.getByLabelText('Message'), { target: { value: 'new' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Save' }));
+    await waitFor(() => expect(mockAlerts().alerts[0]?.message).toBe('new'));
+    expect(mockAlerts().alerts[0]).toMatchObject({ expiresAt: 1_800_000_000, state: { lastSide: 'below', lastDayHigh: 189 }, revision: 4 });
+  });
+
+  it('a sub-cent level keeps its digits', async () => {
+    renderDialog({ symbol: 'PENNY', condition: { type: 'price', direction: 'cross', level: 0.004123 } });
+    await screen.findByRole('dialog');
+    expect(screen.getByLabelText('Price')).toHaveValue(0.004123);
+    expect(screen.getByLabelText('Message')).toHaveAttribute('placeholder', 'PENNY crossing 0.004123');
   });
 
   it('an empty or zero price disables Create', async () => {

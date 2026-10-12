@@ -116,6 +116,18 @@ describe('evaluatePriceAlert: day high and day low', () => {
     expect(run(price(100, 'down'), [obs(98, 99, 97), obs(98.5, 100.4, 97)]).fired).toEqual(['down']);
   });
 
+  it('every + crossing reports the spike and the move back from one check', () => {
+    const every = { ...price(100), frequency: 'every' as const };
+    expect(run(every, [obs(98, 99, 97), obs(98.5, 100.4, 97)]).fired).toEqual(['up', 'down']);
+    expect(run(every, [obs(102, 103, 101), obs(101.5, 103, 99.6)]).fired).toEqual(['down', 'up']);
+  });
+
+  it('once + crossing fires only the first crossing of the spike', () => {
+    const r = run(price(100), [obs(98, 99, 97), obs(98.5, 100.4, 97)]);
+    expect(r.fired).toEqual(['up']);
+    expect(r.alert.status).toBe('triggered');
+  });
+
   it('a day low that fell through the level fires', () => {
     expect(run(price(100), [obs(102, 103, 101), obs(101.5, 103, 99.6)]).fired).toEqual(['down']);
     expect(run(price(100, 'up'), [obs(102, 103, 101), obs(101.5, 103, 99.6)]).fired).toEqual(['up']);

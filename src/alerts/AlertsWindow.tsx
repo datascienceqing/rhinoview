@@ -6,10 +6,9 @@
 import { useEffect, useRef, useState } from 'react';
 import type { Alert, AlertCondition, AlertEvent } from '@shared/types';
 import { INTL_LOCALE, useI18n } from '../i18n';
-import { formatPrice } from '../ui/format';
 import { useAlerts } from './AlertsProvider';
 import type { AlertsTab } from './AlertsProvider';
-import { DIRECTION_ARROW, formatValue, intervalText, matchesSearch, messageOf, sortAlerts, sortEvents, summaryOf } from './describe';
+import { DIRECTION_ARROW, formatLevel, formatValue, intervalText, matchesSearch, messageOf, sortAlerts, sortEvents, summaryOf } from './describe';
 import { useFloatingWindow } from './useFloatingWindow';
 
 const KEY_STEP = 20;
@@ -148,9 +147,14 @@ function EventRows({ events, empty }: { events: AlertEvent[]; empty: boolean }) 
             <span className="alert-row-symbol">{e.symbol}</span>
             <span className="alert-row-text">{messageOf(e)}</span>
             <span className={`alert-row-value ${e.crossed === 'up' ? 'up' : 'down'}`}>
-              {e.crossed === 'up' ? DIRECTION_ARROW.up : DIRECTION_ARROW.down} {e.condition.type === 'price' ? formatPrice(e.value) : formatValue(e.value)}
+              {e.crossed === 'up' ? DIRECTION_ARROW.up : DIRECTION_ARROW.down} {e.condition.type === 'price' ? formatLevel(e.value) : formatValue(e.value)}
             </span>
-            <time className="alert-row-time">{time.format(e.firedAt * 1000)}</time>
+            <time
+              className="alert-row-time"
+              {...(e.barTime !== undefined ? { title: t('alerts.barTime', { date: time.format(e.barTime * 1000) }) } : {})}
+            >
+              {time.format(e.firedAt * 1000)}
+            </time>
           </button>
           <button type="button" className="icon-button" aria-label={`${t('alerts.delete')} ${e.symbol}`} title={t('alerts.delete')} onClick={() => void removeEvent(e.id).catch(() => undefined)}>
             ×
@@ -211,10 +215,24 @@ function AlertRows({ alerts, empty }: { alerts: Alert[]; empty: boolean }) {
   );
 }
 
+function readPermission(): NotificationPermission | 'unsupported' {
+  return typeof Notification === 'undefined' ? 'unsupported' : Notification.permission;
+}
+
 function SoundSettingsRow() {
   const { t } = useI18n();
   const { sound, setSound } = useAlerts();
-  const [permission, setPermission] = useState(() => (typeof Notification === 'undefined' ? 'unsupported' : Notification.permission));
+  const [permission, setPermission] = useState(readPermission);
+  // The user changes the permission in the browser settings, then comes back to the tab.
+  useEffect(() => {
+    const reread = () => setPermission(readPermission());
+    window.addEventListener('focus', reread);
+    document.addEventListener('visibilitychange', reread);
+    return () => {
+      window.removeEventListener('focus', reread);
+      document.removeEventListener('visibilitychange', reread);
+    };
+  }, []);
   return (
     <footer className="alerts-settings">
       <label>
@@ -239,6 +257,7 @@ function SoundSettingsRow() {
           {t('alerts.notifications')}: {t('alerts.notificationsAllow')}
         </button>
       )}
+      {permission === 'denied' && <span className="alerts-settings-note">{t('alerts.notificationsBlocked')}</span>}
     </footer>
   );
 }

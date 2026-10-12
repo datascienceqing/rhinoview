@@ -248,3 +248,37 @@ describe('Alerts window: rows and actions', () => {
     expect(probe()).toMatch(/\|0$/);
   });
 });
+
+describe('Alerts window: browser notifications', () => {
+  let permission: NotificationPermission;
+  beforeEach(() => {
+    vi.stubGlobal('Notification', {
+      get permission() {
+        return permission;
+      },
+      requestPermission: async () => permission,
+    });
+  });
+  afterEach(() => vi.unstubAllGlobals());
+
+  it('before a choice, it offers the Allow button', async () => {
+    permission = 'default';
+    await seed();
+    await renderApp();
+    openFromBell();
+    expect(within(windowEl()).getByRole('button', { name: 'Browser notifications: Allow' })).toBeInTheDocument();
+    expect(within(windowEl()).queryByText(/notifications are blocked/)).not.toBeInTheDocument();
+  });
+
+  it('when blocked, it tells how to allow them, and the note goes when the user allows them in the browser', async () => {
+    permission = 'denied';
+    await seed();
+    await renderApp();
+    openFromBell();
+    expect(within(windowEl()).getByText(/Browser notifications are blocked/)).toBeInTheDocument();
+    expect(within(windowEl()).queryByRole('button', { name: 'Browser notifications: Allow' })).not.toBeInTheDocument();
+    permission = 'granted';
+    act(() => void window.dispatchEvent(new Event('focus')));
+    expect(within(windowEl()).queryByText(/Browser notifications are blocked/)).not.toBeInTheDocument();
+  });
+});

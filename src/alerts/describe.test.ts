@@ -1,6 +1,6 @@
 import type { Alert, AlertCondition, AlertEvent } from '@shared/types';
 import { applyLocale } from '../i18n/locale';
-import { defaultMessage, intervalText, matchesSearch, messageOf, sortAlerts, sortEvents, summaryOf } from './describe';
+import { defaultMessage, formatLevel, intervalText, matchesSearch, messageOf, sortAlerts, sortEvents, summaryOf, roundLevel } from './describe';
 
 const price: AlertCondition = { type: 'price', direction: 'cross', level: 190 };
 const rsi: AlertCondition = { type: 'indicator', timeframe: '1D', indicator: { kind: 'rsi', params: { period: 14 } }, line: 'value', direction: 'up', target: { type: 'value', value: 70 } };
@@ -64,5 +64,19 @@ describe('order', () => {
   it('sorts events: unchecked first, then newest first', () => {
     const ev = (id: string, firedAt: number, checked: boolean) => ({ id, firedAt, checked }) as AlertEvent;
     expect(sortEvents([ev('a', 1, false), ev('b', 3, true), ev('c', 2, false)]).map((e) => e.id)).toEqual(['c', 'a', 'b']);
+  });
+});
+
+describe('alert levels', () => {
+  it('keeps cents from 1 up and 4 significant digits below 1', () => {
+    expect(roundLevel(187.254)).toBe(187.25);
+    expect(roundLevel(1.23456)).toBe(1.23);
+    expect(roundLevel(0.0041234)).toBe(0.004123);
+    expect(roundLevel(0.12345)).toBe(0.1235);
+  });
+
+  it('a sub-cent level does not show as 0.00', () => {
+    expect(formatLevel(190)).toBe('190.00');
+    expect(formatLevel(0.004123)).toBe('0.004123');
   });
 });

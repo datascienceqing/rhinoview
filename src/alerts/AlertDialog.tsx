@@ -7,7 +7,7 @@
  */
 import { useEffect, useId, useRef, useState } from 'react';
 import type { FormEvent } from 'react';
-import type { AlertCondition, AlertDirection, AlertExpiry, AlertFrequency, AlertTarget } from '@shared/types';
+import type { AlertCondition, AlertDirection, AlertExpiry, AlertFrequency, AlertTarget, UpdateAlertBody } from '@shared/types';
 import { ALERT_EXPIRY_CHOICES, DEFAULT_ALERT_EXPIRY, MAX_ALERT_MESSAGE_LENGTH, MAX_ALERTS } from '@shared/types';
 import { DataError } from '../data/errors';
 import { INTL_LOCALE, useI18n } from '../i18n';
@@ -16,11 +16,14 @@ import { indicatorTitle } from '../panes/config';
 import { describeError } from '../ui/errorCopy';
 import { useAlerts } from './AlertsProvider';
 import type { AlertDraft } from './AlertsProvider';
-import { checkAlertCondition, checkAlertMessage } from './condition';
+import { CLOSE_TARGET_KINDS, checkAlertCondition, checkAlertMessage } from './condition';
 import { defaultMessage } from './describe';
 import { computeExpiresAt } from './expiry';
 
 const DIRECTIONS: readonly AlertDirection[] = ['cross', 'up', 'down'];
+
+/** The level as the field shows it: "190.00", but every digit of a sub-cent level ("0.1234"). */
+const levelText = (level: number) => (Number(level.toFixed(2)) === level ? level.toFixed(2) : String(level));
 
 /** The number in a field: an empty or partial entry is NaN, which the check rejects. */
 const toNumber = (s: string) => (s.trim() === '' ? Number.NaN : Number(s));
@@ -40,7 +43,7 @@ function AlertDialogForm({ draft, onClose }: { draft: AlertDraft; onClose: () =>
   const editing = draft.id !== undefined;
 
   const [direction, setDirection] = useState<AlertDirection>(draft.condition.direction);
-  const [level, setLevel] = useState(draft.condition.type === 'price' ? draft.condition.level.toFixed(2) : '');
+  const [level, setLevel] = useState(draft.condition.type === 'price' ? levelText(draft.condition.level) : '');
   const indicator = draft.condition.type === 'indicator' ? draft.condition : null;
   const lines = indicator ? LINE_KEYS[indicator.indicator.kind] : [];
   const [line, setLine] = useState(indicator?.line ?? '');
@@ -56,6 +59,9 @@ function AlertDialogForm({ draft, onClose }: { draft: AlertDraft; onClose: () =>
   useEffect(() => first.current?.focus(), []);
 
   const otherLines = lines.filter((l) => l !== line);
+  // The close is a target only for indicators on the price scale. An old alert that has it
+  // keeps the option, so the dialog shows its real target.
+  const closeAllowed = indicator !== null && (CLOSE_TARGET_KINDS.includes(indicator.indicator.kind) || indicator.target.type === 'close');
 
   let condition: AlertCondition;
   if (!indicator) {
@@ -68,7 +74,10 @@ function AlertDialogForm({ draft, onClose }: { draft: AlertDraft; onClose: () =>
     condition = { ...indicator, line, direction, target };
   }
 
-  const problem = checkAlertCondition(condition) ?? checkAlertMessage(message);
+  // An unchanged condition of a saved alert passes the rules of its time (see `stored`).
+  const unchanged = editing && JSON.stringify(condition) === JSON.stringify(draft.condition);
+  const conditionProblem = checkAlertCondition(condition, { stored: unchanged });
+  const problem = conditionProblem ?? checkAlertMessage(message);
   const full = !editing && alerts.length >= MAX_ALERTS;
   const expiresAt = computeExpiresAt(Math.floor(Date.now() / 1000), expiry);
   const expiresText = new Intl.DateTimeFormat(INTL_LOCALE[locale], { dateStyle: 'medium' }).format(expiresAt * 1000);
@@ -80,7 +89,14 @@ function AlertDialogForm({ draft, onClose }: { draft: AlertDraft; onClose: () =>
     setError(null);
     try {
       if (editing) {
-        await update(draft.id as string, { revision: draft.revision as number, condition, frequency, expiry, message });
+        // Only the fields that changed: a new `condition` resets the side, and a new `expiry`
+        // counts from now, so a message edit must not send them.
+        const changes: UpdateAlertBody = { revision: draft.revision as number };
+        if (JSON.stringify(condition) !== JSON.stringify(draft.condition)) changes.condition = condition;
+        if (frequency !== (draft.frequency ?? 'once')) changes.frequency = frequency;
+        if (expiry !== (draft.expiry ?? DEFAULT_ALERT_EXPIRY)) changes.expiry = expiry;
+        if (message !== (draft.message ?? '')) changes.message = message;
+        if (Object.keys(changes).length > 1) await update(draft.id as string, changes);
       } else {
         await create({ symbol: draft.symbol, condition, frequency, expiry, message });
       }
@@ -153,7 +169,7 @@ function AlertDialogForm({ draft, onClose }: { draft: AlertDraft; onClose: () =>
             <span>{t('alerts.field.target')}</span>
             <select value={targetType} onChange={(e) => setTargetType(e.target.value as AlertTarget['type'])}>
               <option value="value">{t('alerts.target.value')}</option>
-              <option value="close">{t('alerts.target.close')}</option>
+              {closeAllowed && <option value="close">{t('alerts.target.close')}</option>}
               {otherLines.length > 0 && <option value="line">{t('alerts.target.line', { name: lineLabel(otherLines.includes(targetLine) ? targetLine : (otherLines[0] as string)) })}</option>}
             </select>
           </label>
@@ -211,7 +227,7 @@ function AlertDialogForm({ draft, onClose }: { draft: AlertDraft; onClose: () =>
             type="text"
             maxLength={MAX_ALERT_MESSAGE_LENGTH}
             value={message}
-            placeholder={checkAlertCondition(condition) === null ? defaultMessage(draft.symbol, condition) : ''}
+            placeholder={conditionProblem === null ? defaultMessage(draft.symbol, condition) : ''}
             onChange={(e) => setMessage(e.target.value)}
           />
         </label>

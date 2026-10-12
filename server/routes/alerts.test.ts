@@ -137,7 +137,7 @@ describe('alerts stream', () => {
     const message = JSON.parse(frame.split('\ndata: ')[1] as string);
     expect(message).toMatchObject({ type: 'fired', event, alert: { id: a.id, status: 'triggered' } });
     await call('PUT', '/alerts/events/checked', { all: true });
-    await until(() => s.text().includes('event: checked\ndata: {"type":"checked","unchecked":0}'));
+    await until(() => s.text().includes('event: checked\ndata: {"type":"checked","unchecked":0,"checkedIds":"all"}'));
     s.close();
   });
 
@@ -162,6 +162,20 @@ describe('alerts stream', () => {
     expect([count(s1.text()), count(s2.text())]).toEqual([1, 1]);
     s1.close();
     s2.close();
+  });
+
+  it('sends a budget message that the checker publishes', async () => {
+    const s = await openStream();
+    store.publish({ type: 'budget', budgetPerMinute: 150, waitingSymbols: 7 });
+    await until(() => s.text().includes('event: budget\ndata: {"type":"budget","budgetPerMinute":150,"waitingSymbols":7}'));
+    s.close();
+  });
+
+  it('ends the open streams when the server closes, so close does not wait for the tabs', async () => {
+    const s = await openStream();
+    const ended = new Promise<void>((resolve) => s.res.once('end', () => resolve()));
+    await app.close();
+    await ended;
   });
 });
 

@@ -75,7 +75,8 @@ Out of scope (a later phase can add them):
 - Items, in this order:
   1. **Add alert at {price}…** The price is the price at the pointer, in the pane under the
      pointer (section 4.2). In an indicator pane the item is **Add alert on {indicator} at
-     {value}…** (section 4.3).
+     {value}…** (section 4.3). On the price pane, each visible SMA and EMA also has an item
+     **Add alert on {indicator}…**, with the close as the target.
   2. **Theme: dark / light** (one item that switches).
   3. **Language: 中文 / EN** (one item that switches).
   4. **Financials** (only when the server serves fundamentals).
@@ -117,7 +118,7 @@ An indicator alert is on one line of one indicator, on one symbol and one timefr
 | Line | A line key of the indicator, for example `value`, `macd`, `signal` | The first line |
 | Timeframe | The chart timeframe | The chart timeframe |
 | Condition | Crossing, Crossing up, Crossing down | Crossing |
-| Target | A value; the close price; another line of the same indicator | The value at the right-click point |
+| Target | A value; the close price (SMA and EMA only); another line of the same indicator | The value at the right-click point; the close for SMA and EMA from the price pane |
 | Trigger, Expiry, Message | As for price alerts | As for price alerts |
 
 Rules:
@@ -399,3 +400,30 @@ These are the differences between the plan above and the code. Each one has a te
 9. **Browser check.** The synthetic market was closed on the day of the check. A test wrapper
    (not committed) moved the synthetic price, to make an alert fire through the real server.
 
+10. **Review fixes (2026-10-11).** A code review found nine problems. The fixes are:
+    - The edit dialog sends only the fields that changed. A message edit keeps the expiry
+      time and the side.
+    - Intraday indicator alerts: after a bars call with no new bar, the wait doubles up to
+      1 h. Before the fix, a 1m alert made one call each minute all night and all weekend.
+    - Alert levels below 1 keep 4 significant digits (`roundLevel`, `formatLevel`). Before the
+      fix, a sub-cent level rounded to 0.00.
+    - The server ends the open streams before it closes. Before the fix, `app.close()` waited
+      for each open tab.
+    - An `every` alert with direction `cross` reports both crossings of a spike in one check.
+    - When the budget is used up, the checker still does expiries and uses cached quotes.
+    - **Budget warning.** When the budget runs out while checks are due, the server sends a
+      `budget` stream message and writes a log warning. The client shows a note that the user
+      can dismiss. The server sends it once per shortage, at most 3 times per server run.
+    - A stream listener that fails does not fail a saved change.
+    - The `checked` message names the change (`checkedIds` or `deletedId`), so the tabs do
+      not load the whole log again. An event that fires during a load stays in the list.
+    - Indicator events keep `barTime`, the open time of the bar that crossed.
+11. **SMA and EMA alerts in the menu.** SMA and EMA are on the price pane, so the menu had no
+    way to make an alert for them. Now the price pane menu has one item for each visible SMA
+    and EMA. The close is a target only for SMA and EMA: RSI (0 to 100) and MACD (near 0)
+    are not on the price scale, so a close target never crosses.
+12. **Context menu and touch mice.** A Magic Mouse sends small scroll events during a
+    right-click, and the menu closed. Now a scroll closes the menu only after 400 ms, and only
+    after 24 px of movement.
+13. **Blocked notifications.** When the browser blocks notifications, the Alerts window tells
+    the user to change the site's notification setting in the browser.

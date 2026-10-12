@@ -119,7 +119,8 @@ export function evaluatePriceAlert(alert: Alert, obs: PriceObservation, now: Uni
     crossings.push(at('down', low), at('up', obs.price));
   }
 
-  const fires = crossings.filter((c) => matches(condition.direction, c.crossed)).slice(0, 1);
+  // `finish` keeps the first fire for `once`; `every` reports the spike and the move back.
+  const fires = crossings.filter((c) => matches(condition.direction, c.crossed));
   return finish(alert, state, fires, now);
 }
 

@@ -30,10 +30,17 @@ describe('checkAlertCondition: price', () => {
 });
 
 describe('checkAlertCondition: indicator', () => {
-  it('accepts MACD against its signal line, a value, and the close', () => {
+  it('accepts MACD against its signal line and a value', () => {
     expect(checkAlertCondition(macd('macd', { type: 'line', line: 'signal' }))).toBeNull();
     expect(checkAlertCondition(macd('histogram', { type: 'value', value: 0 }))).toBeNull();
-    expect(checkAlertCondition(macd('macd', { type: 'close' }))).toBeNull();
+  });
+
+  it('the close is a target only for SMA and EMA, which are on the price scale', () => {
+    expect(checkAlertCondition(macd('macd', { type: 'close' }))).toMatch(/only for SMA and EMA/);
+    const rsi = { type: 'indicator', timeframe: '1D', line: 'value', direction: 'cross', indicator: { kind: 'rsi', params: { period: 14 } }, target: { type: 'close' } } as const;
+    expect(checkAlertCondition(rsi)).toMatch(/only for SMA and EMA/);
+    // An alert saved before this rule still loads.
+    expect(checkAlertCondition(macd('macd', { type: 'close' }), { stored: true })).toBeNull();
   });
 
   it('accepts SMA, EMA and RSI with valid params', () => {

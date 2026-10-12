@@ -197,7 +197,7 @@ export function createAlertsHandlers() {
         const ids = 'ids' in b ? new Set(b.ids) : null;
         for (const e of events) if (ids === null || ids.has(e.id)) e.checked = true;
         const unchecked = uncheckedCount();
-        broadcast({ type: 'checked', unchecked });
+        broadcast({ type: 'checked', unchecked, checkedIds: ids === null ? 'all' : [...ids] });
         return { unchecked };
       }),
     ),
@@ -208,7 +208,7 @@ export function createAlertsHandlers() {
         if (!events.some((e) => e.id === id)) throw new Reject('NOT_FOUND', `No event with id ${id}.`);
         events = events.filter((e) => e.id !== id);
         const unchecked = uncheckedCount();
-        broadcast({ type: 'checked', unchecked });
+        broadcast({ type: 'checked', unchecked, deletedId: id });
         return { unchecked };
       }),
     ),

@@ -424,7 +424,9 @@ never change the workspace revision. The server checks the alerts; the client on
   - Price: `level` is a positive finite number.
   - Indicator: `kind` is in `ALERT_INDICATOR_KINDS` (sma, ema, rsi, macd); `params` pass
     `checkIndicatorParams`; `line` is in `LINE_KEYS[kind]`; a `line` target is another line
-    of the same indicator; a `value` target is finite.
+    of the same indicator; a `value` target is finite. A `close` target is only for SMA and
+    EMA (`CLOSE_TARGET_KINDS`), because RSI and MACD are not on the price scale. An alert in
+    the file that was saved before this rule still loads.
   - `message` is 0–`MAX_ALERT_MESSAGE_LENGTH` (200) characters.
 - Symbols use the workspace format and are stored upper case. There is no limit on the
   number of symbols. At most `MAX_ALERTS` (1000) alerts → else `BAD_REQUEST`.
@@ -443,11 +445,22 @@ never change the workspace revision. The server checks the alerts; the client on
 - Unknown id → `NOT_FOUND` (404).
 - Events keep a copy of the condition and the message, so they stay readable after the
   alert is deleted. The log keeps the newest `MAX_ALERT_EVENTS` (1000) events.
+- `firedAt` is the time of the check. An indicator event also has `barTime`: the open time
+  of the closed bar that crossed. A price event has no `barTime`.
+- The edit dialog sends only the fields that changed, so an edit of the message does not
+  reset the side or the expiry time.
 - **Stream.** Each message is an SSE event whose name is the `type` of an
   `AlertStreamMessage`, and whose `data` is that message as JSON:
   - `fired`: an alert fired. Carries the event and the alert after the change.
-  - `checked`: the checked state or the event log changed. Carries the new `unchecked` count.
+  - `checked`: the checked state or the event log changed. Carries the new `unchecked` count,
+    and `checkedIds` (the ids marked as checked, or `'all'`) or `deletedId` (a deleted event).
+    The client applies the change and does not load the log again. A `checked` message with
+    neither field means: load the events again.
   - `alerts`: alerts were created, edited, deleted, or changed status. Load the list again.
+  - `budget`: the checker used all its calls for this minute while checks were due. Carries
+    `budgetPerMinute` and `waitingSymbols`. The client shows a warning that the user can
+    dismiss. The server sends it once per shortage (a shortage after a full minute with
+    none is a new one), and at most `ALERT_BUDGET_WARNINGS` (3) times per server run.
 
   A client that reconnects loads the events it missed with `GET /api/alerts/events?since=`.
 - **The checker** (`server/alerts/scheduler.ts`) runs once per server, so two open tabs
@@ -455,6 +468,10 @@ never change the workspace revision. The server checks the alerts; the client on
   - Price alerts of one symbol share one quote, at most each `ALERT_MIN_CHECK_SECONDS` (30 s).
     The quote cache is shared with `/api/quotes`; a cached quote costs no call.
   - Indicator alerts of one symbol and timeframe share one bars call, after a bar close.
+    After a call with no new closed bar (the market is closed), the wait doubles from one
+    bar span (at most 1 h) up to 1 h. A new bar sets the wait back.
+  - When the budget is used up, the checker still visits each symbol: expiries and quotes
+    in the shared cache cost no call.
   - Upstream calls in any 60 s window stay at or below `ALERT_CALL_BUDGET` (default 150).
     The synthetic provider has no budget.
   - `checkIntervalSeconds` in `GET /api/alerts` is `max(30, symbols / budget × 60)`.

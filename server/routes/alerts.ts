@@ -57,6 +57,13 @@ export function registerAlertsRoutes(app: FastifyInstance, deps: AlertsRouteDeps
 
   const idOf = (req: { params: unknown }) => String((req.params as { id: string }).id);
 
+  // A hijacked stream is never idle, so `app.close()` would wait for each open tab. End
+  // the streams before the server stops.
+  const openStreams = new Set<() => void>();
+  app.addHook('preClose', async () => {
+    for (const end of [...openStreams]) end();
+  });
+
   app.get('/api/alerts', (_req, reply) =>
     respond(reply, 200, (s) => ({ alerts: s.list(), checkIntervalSeconds: deps.checkIntervalSeconds?.() ?? ALERT_MIN_CHECK_SECONDS })),
   );
@@ -91,10 +98,17 @@ export function registerAlertsRoutes(app: FastifyInstance, deps: AlertsRouteDeps
     res.write(': connected\n\n');
     const unsubscribe = store.subscribe((message) => res.write(sseFrame(message)));
     const heartbeat = setInterval(() => res.write(': ping\n\n'), deps.heartbeatMs ?? SSE_HEARTBEAT_MS);
+    heartbeat.unref?.();
     const close = () => {
       clearInterval(heartbeat);
       unsubscribe();
+      openStreams.delete(end);
     };
+    const end = () => {
+      close();
+      res.end();
+    };
+    openStreams.add(end);
     req.raw.on('close', close);
     res.on('error', close);
     return undefined;

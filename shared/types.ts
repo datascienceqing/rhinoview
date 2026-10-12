@@ -585,6 +585,8 @@ export const MAX_ALERT_EVENTS = 1000;
 export const MAX_ALERT_MESSAGE_LENGTH = 200;
 /** No symbol is checked more often than this (D2). */
 export const ALERT_MIN_CHECK_SECONDS = 30;
+/** The checker tells the user this many times at most that its call budget ran out. */
+export const ALERT_BUDGET_WARNINGS = 3;
 
 /** `cross` is either direction. */
 export type AlertDirection = 'cross' | 'up' | 'down';
@@ -711,6 +713,11 @@ export interface AlertEvent {
   target: number;
   /** The quote behind it was delayed. */
   delayed: boolean;
+  /**
+   * Indicator alerts only: the open time of the closed bar that crossed. After a long gap
+   * one check can fire on older bars; `firedAt` is still the time of the check.
+   */
+  barTime?: UnixSeconds;
   /** The user saw it: dismissed the popup, clicked it, or marked all as checked. */
   checked: boolean;
 }
@@ -728,6 +735,15 @@ export type SetCheckedBody = { ids: EntityId[] } | { all: true };
 /** `GET /api/alerts/stream` (text/event-stream). The SSE event name is the `type`. */
 export type AlertStreamMessage =
   | { type: 'fired'; event: AlertEvent; alert: Alert }
-  | { type: 'checked'; unchecked: number }
+  /**
+   * The checked state or the log changed. `checkedIds` names the events marked as checked
+   * ('all' for all); `deletedId` names a deleted event. Without either, load the events again.
+   */
+  | { type: 'checked'; unchecked: number; checkedIds?: EntityId[] | 'all'; deletedId?: EntityId }
   /** Alerts were created, edited, deleted, or changed status: load the list again. */
-  | { type: 'alerts' };
+  | { type: 'alerts' }
+  /**
+   * The checker used all of its upstream calls for this minute while checks were due, so
+   * some alerts are checked late. Sent at most ALERT_BUDGET_WARNINGS times per server run.
+   */
+  | { type: 'budget'; budgetPerMinute: number; waitingSymbols: number };
