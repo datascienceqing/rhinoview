@@ -6,7 +6,7 @@
 
 <p align="center"><a href="README.md">English</a> · <b>简体中文</b></p>
 
-![RhinoView 中文界面（浅色主题）：AAPL 日线。标注说明四个要点：1. 1,000 条警报；2. 更直观的界面（右键菜单）；3. 经过测试的指标；4. 更快的财报更新（取决于数据源）。上涨为红色，下跌为绿色](docs/images/app-zh.png)
+![RhinoView 中文界面（浅色主题）：AAPL 日线。标注说明四个要点：1. 1,000 条警报；2. 自然顺手（右键菜单）；3. 实战验证的指标；4. 更快的财报更新（取决于数据源）。上涨为红色，下跌为绿色](docs/images/app-zh.png)
 
 **新用户？请阅读[用户指南](docs/USER_GUIDE.zh-CN.md)。**
 

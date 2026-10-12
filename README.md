@@ -17,7 +17,7 @@
 
 <p align="center"><b>English</b> · <a href="README.zh-CN.md">简体中文</a></p>
 
-![RhinoView with AAPL on the daily chart, in the dark theme. Callouts show four points: 1, 1,000 alerts; 2, a more intuitive UI with the right-click menu; 3, tested indicators; 4, faster earnings updates, which depend on the data source](docs/images/app-en.png)
+![RhinoView with AAPL on the daily chart, in the dark theme. Callouts show four points: 1, 1,000 alerts; 2, natural to use, with the right-click menu; 3, trade-proven indicators; 4, faster earnings updates, which depend on the data source](docs/images/app-en.png)
 
 **New user? Read the [user guide](docs/USER_GUIDE.md).**
 
