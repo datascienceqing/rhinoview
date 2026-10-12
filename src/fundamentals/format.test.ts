@@ -3,13 +3,24 @@ import {
   DASH,
   fiscalLabel,
   formatFraction,
+  formatFractionTick,
   formatLarge,
+  formatLargeTick,
   formatSignedPercent,
   marginCell,
   multipleCell,
 } from './format';
 
 describe('format', () => {
+  it('writes axis ticks with no trailing zeros', () => {
+    expect(formatLargeTick(400e9)).toBe('400B');
+    expect(formatLargeTick(2.5e9)).toBe('2.5B');
+    expect(formatLargeTick(-500e6)).toBe('-500M');
+    expect(formatLargeTick(0)).toBe('0');
+    expect(formatFractionTick(0.1)).toBe('10%');
+    expect(formatFractionTick(0.025)).toBe('2.5%');
+  });
+
   it('shows null as a dash, never as zero', () => {
     expect(formatFraction(null)).toBe(DASH);
     expect(formatLarge(null)).toBe(DASH);

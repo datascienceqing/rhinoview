@@ -52,6 +52,7 @@
 .fund-legend { display: inline-flex; gap: 8px; font-weight: 400; }
 .fund-chart svg { width: 100%; height: auto; display: block; }
 .fund-axis { stroke: var(--border); }
+.fund-grid { stroke: var(--border); stroke-dasharray: 2 3; opacity: 0.6; }
 .fund-axis-label { fill: var(--text-dim); font-size: 9px; }
 
 /* Page header. */
