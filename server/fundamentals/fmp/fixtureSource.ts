@@ -9,6 +9,7 @@
  *   const overview = await provider.getOverview('MSFT');
  *   const income = await provider.getStatements('MSFT', 'income', 'quarter');
  *   const earnings = await provider.getEarnings('MSFT');
+ *   const news = await provider.getNews('AAPL');            // every page answers the one fixture
  *
  * Symbols with fixtures: AAPL, MSFT, JPM, TSM, RIVN. Any other symbol answers `[]`, which
  * the provider reads as an unknown symbol, exactly like FMP does. A fixture 402 throws
@@ -33,13 +34,15 @@ const STATEMENT_FILE: Record<string, string> = {
 export function fixtureName(path: string, params: Record<string, string | number>): string {
   const stmt = STATEMENT_FILE[path];
   if (stmt) return `${stmt}-${String(params.period)}`;
+  if (path === '/news/stock') return 'news';
   return path.replace(/^\//, '');
 }
 
 export function createFixtureSource(root: string = FIXTURE_ROOT): FmpJsonSource {
   return {
     getJson(path, params) {
-      const symbol = String(params.symbol);
+      // `/news/stock` takes `symbols`; every other endpoint takes `symbol`.
+      const symbol = String(params.symbol ?? params.symbols);
       const file = join(root, symbol, `${fixtureName(path, params)}.json`);
       // No fixture for the symbol: what FMP answers for a symbol it does not know.
       if (!existsSync(file)) return Promise.resolve([]);

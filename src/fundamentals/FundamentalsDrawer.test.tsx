@@ -2,9 +2,9 @@ import { act, render, renderHook, screen, waitFor, within } from '@testing-libra
 import userEvent from '@testing-library/user-event';
 import { http } from 'msw';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import type { EarningsResponse, FundamentalsOverview } from '@shared/types';
+import type { EarningsResponse, FundamentalsOverview, NewsArticle, NewsResponse } from '@shared/types';
 import { fail, ok } from '../../mocks/envelope';
-import { overviewFor } from '../../mocks/fundamentalsData';
+import { newsFor, overviewFor } from '../../mocks/fundamentalsData';
 import { server } from '../../mocks/server';
 import { resetCapabilitiesCache } from '../data';
 import { renderWithDataSource } from '../ui/testUtils';
@@ -450,6 +450,82 @@ describe('Earnings tab: Show more', () => {
     view.rerender(<EarningsTab symbol="AAPL" />);
     await waitFor(() => expect(screen.getByTestId('earnings-2026-10-29')).toBeInTheDocument());
     expect(rows()).toBe(40);
+  });
+});
+
+describe('News tab', () => {
+  const openNews = async (symbol: string) => {
+    drawer(symbol);
+    await userEvent.click(screen.getByRole('tab', { name: 'News' }));
+  };
+  const article = (i: number, url: string | null = `https://example.com/${i}`): NewsArticle => ({
+    publishedAt: 1_790_000_000 - i * 3600,
+    title: `Story ${i}`,
+    summary: null,
+    publisher: 'Example Wire',
+    site: 'example.com',
+    url,
+  });
+  const serveNews = (patch: Partial<NewsResponse>) =>
+    server.use(http.get('*/api/fundamentals/news', () => ok({ ...newsFor('AAPL'), ...patch })));
+
+  it('lists the articles newest first under New York date headings, and states the window', async () => {
+    await openNews('AAPL');
+    const list = await screen.findByTestId('news-list');
+    expect(list).toHaveTextContent('8 articles from 2026-08-02 to 2026-10-02. Times are New York time (ET).');
+    const days = within(list).getAllByRole('heading', { level: 3 });
+    expect(days[0]).toHaveTextContent('Fri, Oct 2, 2026');
+    expect(days).toHaveLength(7);
+    const items = within(list).getAllByTestId('news-item');
+    expect(items[0]).toHaveTextContent('Apple supplier orders rise ahead of the holiday quarter');
+    // 15:42:10 in New York, shown in New York time whatever the zone of the test machine.
+    expect(items[0]).toHaveTextContent('3:42 PM');
+    expect(items[0]).toHaveTextContent('Example Wire');
+  });
+
+  it('opens a link in a new tab with no opener and no referrer', async () => {
+    await openNews('AAPL');
+    const link = await screen.findByRole('link', { name: 'Apple supplier orders rise ahead of the holiday quarter' });
+    expect(link).toHaveAttribute('href', 'https://www.example.com/news/aapl/0');
+    expect(link).toHaveAttribute('target', '_blank');
+    expect(link).toHaveAttribute('rel', 'noopener noreferrer');
+  });
+
+  it('shows a title with no link as plain text', async () => {
+    serveNews({ articles: [article(1, null)] });
+    await openNews('AAPL');
+    expect(await screen.findByText('Story 1')).toBeInTheDocument();
+    expect(screen.queryByRole('link', { name: 'Story 1' })).toBeNull();
+  });
+
+  it('says so when the symbol has no news in the window (RIVN)', async () => {
+    await openNews('RIVN');
+    expect(await screen.findByText('No news from 2026-08-02 to 2026-10-02.')).toBeInTheDocument();
+  });
+
+  it('shows 50 articles, then 50 more per Show more, until all are shown', async () => {
+    serveNews({ articles: Array.from({ length: 120 }, (_, i) => article(i)) });
+    await openNews('AAPL');
+    await screen.findByTestId('news-list');
+    expect(screen.getAllByTestId('news-item')).toHaveLength(50);
+    expect(screen.getByText('Showing 50 of 120.')).toBeInTheDocument();
+    await userEvent.click(screen.getByRole('button', { name: 'Show more' }));
+    expect(screen.getAllByTestId('news-item')).toHaveLength(100);
+    await userEvent.click(screen.getByRole('button', { name: 'Show more' }));
+    expect(screen.getAllByTestId('news-item')).toHaveLength(120);
+    expect(screen.queryByRole('button', { name: 'Show more' })).toBeNull();
+  });
+
+  it('says when only the newest articles are shown', async () => {
+    serveNews({ articles: [article(1)], truncated: true });
+    await openNews('AAPL');
+    expect(await screen.findByTestId('news-list')).toHaveTextContent('Only the newest 2000 articles are shown.');
+  });
+
+  it('shows an error with retry for a server failure', async () => {
+    server.use(http.get('*/api/fundamentals/news', () => fail({ code: 'UPSTREAM_ERROR', message: 'x' })));
+    await openNews('AAPL');
+    expect(await screen.findByRole('button', { name: 'Retry' })).toBeInTheDocument();
   });
 });
 

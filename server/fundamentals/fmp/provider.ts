@@ -15,31 +15,39 @@
  *
  * Gated data is never derived (invariant 8): only the endpoints below are called. There
  * is no `/ratios` and no `/key-metrics`; TTM values come from the TTM endpoints.
+ *
+ * News (invariant 11): `/news/stock` answers at most NEWS_PAGE_SIZE rows a page, so the
+ * provider reads pages until one is short, up to the page cap. An unknown symbol answers
+ * `[]` there too, so the unknown-symbol decision stays with `/profile`.
  */
 import type {
   EarningsResponse,
   FundamentalsOverview,
+  NewsResponse,
   StatementKind,
   StatementPeriod,
   StatementsResponse,
 } from '@shared/types';
+import { MAX_NEWS_ARTICLES } from '@shared/types';
 import { UnknownSymbolError } from '../../market/types';
 import { FmpPaymentRequiredError, FmpUpstreamError } from '../../market/fmp/client';
 import type { FundamentalsProvider } from '../types';
 import { MAX_STATEMENT_ROWS } from '../lineItems';
-import { grossMarginIsInterestSpread, mapEarnings, mapOverview, mapStatements } from './mapper';
+import { finishNews, newsWindow } from '../news';
+import { grossMarginIsInterestSpread, mapEarnings, mapNews, mapOverview, mapStatements } from './mapper';
 import type { FmpOverviewParts } from './mapper';
 import {
   earningsResponse,
   gradesResponse,
   keyMetricsTtmResponse,
+  newsResponse,
   priceTargetResponse,
   profileResponse,
   ratiosTtmResponse,
   scoresResponse,
   statementResponse,
 } from './schemas';
-import type { FmpProfileRow, FmpStatementRow } from './schemas';
+import type { FmpNewsRow, FmpProfileRow, FmpStatementRow } from './schemas';
 import type { ZodType, ZodTypeDef } from 'zod';
 
 /** What the provider needs from an HTTP client. `FmpClient` satisfies it; the fixture source does too. */
@@ -58,6 +66,11 @@ const STATEMENT_PATH: Record<StatementKind, string> = {
   balance: '/balance-sheet-statement',
   cashflow: '/cash-flow-statement',
 };
+
+/** FMP's largest `/news/stock` page (measured: `limit=1000` answers 250 rows). */
+export const NEWS_PAGE_SIZE = 250;
+/** Enough pages for MAX_NEWS_ARTICLES. AAPL needed 6 for two months (measured 2026-10-12). */
+export const NEWS_MAX_PAGES = Math.ceil(MAX_NEWS_ARTICLES / NEWS_PAGE_SIZE);
 
 /** A fixed message: nothing from the upstream body or from zod's issue text is forwarded. */
 function parseRows<T>(schema: ZodType<T[], ZodTypeDef, unknown>, path: string, body: unknown): T[] {
@@ -120,6 +133,31 @@ export class FmpFundamentalsProvider implements FundamentalsProvider {
     const sym = profile.symbol.toUpperCase();
     const body = await this.source.getJson('/earnings', { symbol: sym });
     return mapEarnings(sym, parseRows(earningsResponse, '/earnings', body));
+  }
+
+  async getNews(symbol: string): Promise<NewsResponse> {
+    const profile = await this.fetchProfile(symbol);
+    const sym = profile.symbol.toUpperCase();
+    const nowMs = this.now();
+    const window = newsWindow(nowMs);
+    const rows: FmpNewsRow[] = [];
+    let more = false;
+    // Pages one after another, not together: a short page ends the window, and AAPL's
+    // six pages must not cost six parallel calls against the per-minute limit.
+    for (let page = 0; page < NEWS_MAX_PAGES; page++) {
+      const body = await this.source.getJson('/news/stock', {
+        symbols: sym,
+        from: window.from,
+        to: window.to,
+        limit: NEWS_PAGE_SIZE,
+        page,
+      });
+      const batch = parseRows(newsResponse, '/news/stock', body);
+      rows.push(...batch);
+      if (batch.length < NEWS_PAGE_SIZE) break;
+      if (page === NEWS_MAX_PAGES - 1) more = true;
+    }
+    return finishNews(sym, window, nowMs, mapNews(rows), more);
   }
 
   /** The unknown-symbol decision: an empty `profile` array, or a symbol-scope 402. */

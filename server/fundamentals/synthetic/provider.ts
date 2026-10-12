@@ -19,20 +19,27 @@
  *     a bigger company, and P/E, P/S and yields are computed against that same price.
  *   - ETFs have no financial statements: overview sections are `unavailable`, statements
  *     and earnings are empty. A symbol outside the universe is unknown.
+ *   - News is seeded per symbol and New York day, so an article keeps its time and title
+ *     as the window moves. Only which days fall in the window follows the clock. Every
+ *     article says it is synthetic, and none has a link: there is no page to open.
  */
 import type {
   EarningsEvent,
   EarningsResponse,
   FundamentalsOverview,
+  NewsArticle,
+  NewsResponse,
   StatementKind,
   StatementPeriod,
   StatementRow,
   StatementsResponse,
 } from '@shared/types';
+import { dayToCivil, nyDayOf, nyWallToUnix, weekdayOf } from '../../market/calendar';
 import { UNIVERSE } from '../../market/universe';
 import type { SymbolModel } from '../../market/universe';
 import { UnknownSymbolError } from '../../market/types';
 import { LINE_ITEMS, MAX_STATEMENT_ROWS, lineItemsFor } from '../lineItems';
+import { finishNews, newsWindow } from '../news';
 import type { FundamentalsProvider } from '../types';
 import { SECTORS } from './sectors';
 
@@ -328,6 +335,42 @@ function annualRows(co: Company, statement: StatementKind): StatementRow[] {
   return rows;
 }
 
+// ───────────────────────────── news ─────────────────────────────
+
+const NEWS_HEADLINES: readonly ((name: string) => string)[] = [
+  (n) => `${n} shares move with the broader market`,
+  (n) => `What analysts watch in ${n}'s next report`,
+  (n) => `${n} options activity rises before the close`,
+  (n) => `${n} in focus as sector peers report`,
+  (n) => `Three questions for ${n} management this quarter`,
+  (n) => `${n} trading volume above its monthly average`,
+];
+const NEWS_PUBLISHERS = ['Synthetic Wire', 'Sample Markets Daily', 'Placeholder Business News'] as const;
+
+/** The seeded articles of one New York day. Weekdays have more news than weekends. */
+function newsOfDay(model: SymbolModel, day: number): NewsArticle[] {
+  const r = rng(hash32(`${model.symbol}|news|${day}`));
+  const weekend = weekdayOf(day) >= 5;
+  const perDay = model.type === 'CS' ? (weekend ? 1 : 3) : 1;
+  const count = Math.floor(r() * (perDay + 1));
+  const { year, month, day: dom } = dayToCivil(day);
+  const out: NewsArticle[] = [];
+  for (let i = 0; i < count; i++) {
+    // 06:00 to 20:00 New York, to the minute.
+    const second = (6 * 60 + Math.floor(r() * 14 * 60)) * 60;
+    const headline = NEWS_HEADLINES[Math.floor(r() * NEWS_HEADLINES.length)] ?? NEWS_HEADLINES[0]!;
+    out.push({
+      publishedAt: nyWallToUnix(day, second),
+      title: headline(model.name),
+      summary: `Synthetic article for ${model.symbol}, ${year}-${pad(month)}-${pad(dom)}. It is generated for offline development and is not real news.`,
+      publisher: NEWS_PUBLISHERS[Math.floor(r() * NEWS_PUBLISHERS.length)] ?? null,
+      site: null,
+      url: null,
+    });
+  }
+  return out;
+}
+
 // ───────────────────────────── the provider ─────────────────────────────
 
 export interface SyntheticFundamentalsOptions {
@@ -383,6 +426,18 @@ export class SyntheticFundamentalsProvider implements FundamentalsProvider {
         revenueEstimate: co.nextRevenue,
       };
       return { symbol: model.symbol, events: [upcoming, ...reported] };
+    });
+  }
+
+  getNews(symbol: string): Promise<NewsResponse> {
+    return this.run(symbol, (model) => {
+      const nowMs = this.now();
+      const window = newsWindow(nowMs);
+      const articles: NewsArticle[] = [];
+      const first = nyDayOf(window.fromSeconds);
+      for (let day = nyDayOf(Math.floor(nowMs / 1000)); day >= first; day--) articles.push(...newsOfDay(model, day));
+      // finishNews drops today's articles that are later than now.
+      return finishNews(model.symbol, window, nowMs, articles, false);
     });
   }
 

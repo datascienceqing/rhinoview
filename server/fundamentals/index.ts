@@ -22,6 +22,7 @@ export const UNAVAILABLE_FUNDAMENTALS: FundamentalsProvider = {
   getOverview: (symbol) => Promise.reject(new UnknownSymbolError(symbol)),
   getStatements: (symbol) => Promise.reject(new UnknownSymbolError(symbol)),
   getEarnings: (symbol) => Promise.reject(new UnknownSymbolError(symbol)),
+  getNews: (symbol) => Promise.reject(new UnknownSymbolError(symbol)),
 };
 
 export interface CreateFundamentalsOptions {

@@ -259,6 +259,7 @@ export const en = {
   'fund.tab.statements': 'Statements',
   'fund.tab.trends': 'Trends',
   'fund.tab.earnings': 'Earnings',
+  'fund.tab.news': 'News',
   'fund.nm': 'NM',
   'fund.nmNegative': 'not meaningful: negative earnings',
   'fund.nmInterest': 'not meaningful: the cost of revenue is mostly interest expense, so this is a lending spread',
@@ -368,6 +369,13 @@ export const en = {
   'fund.col.revSurprise': 'Revenue surprise',
   'fund.moreFailed': 'Could not load more reports.',
   'fund.showMore': 'Show more',
+  'fund.loadingNews': 'Loading news…',
+  'fund.noNews': (p: { from: string; to: string }) => `No news from ${p.from} to ${p.to}.`,
+  'fund.newsRange': (p: { count: number; from: string; to: string }) =>
+    `${p.count} ${p.count === 1 ? 'article' : 'articles'} from ${p.from} to ${p.to}. Times are New York time (ET).`,
+  'fund.newsTruncated': (p: { max: number }) => `Only the newest ${p.max} articles are shown.`,
+  'fund.newsShown': (p: { shown: number; count: number }) => `Showing ${p.shown} of ${p.count}.`,
+  'fund.newsOpens': 'opens in a new tab',
   'fund.marker': 'E',
 
   // ── errors (by error code; never by the server's message) ──

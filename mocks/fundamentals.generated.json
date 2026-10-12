@@ -12633,5 +12633,132 @@
     }
    ]
   }
+ },
+ "news": {
+  "AAPL": {
+   "symbol": "AAPL",
+   "from": "2026-08-02",
+   "to": "2026-10-02",
+   "articles": [
+    {
+     "publishedAt": 1790970130,
+     "title": "Apple supplier orders rise ahead of the holiday quarter",
+     "summary": "Synthetic text. Orders from component suppliers rose in September, according to a sample survey.",
+     "publisher": "Example Wire",
+     "site": "example.com",
+     "url": "https://www.example.com/news/aapl/0"
+    },
+    {
+     "publishedAt": 1790946300,
+     "title": "Apple shares open higher with the technology sector",
+     "summary": "Synthetic text. The shares opened 0.8% higher in the first minutes of the session.",
+     "publisher": "Sample Markets Daily",
+     "site": "example.com",
+     "url": "https://www.example.com/news/aapl/1"
+    },
+    {
+     "publishedAt": 1790803233,
+     "title": "What to expect from Apple's fiscal fourth-quarter report",
+     "summary": "Synthetic text. Analysts in a sample poll expect services revenue to grow again.",
+     "publisher": "Example Wire",
+     "site": "example.com",
+     "url": "https://www.example.com/news/aapl/2"
+    },
+    {
+     "publishedAt": 1790262000,
+     "title": "Apple updates its developer program terms",
+     "summary": "Synthetic text. The update changes the fee schedule for small developers.",
+     "publisher": "Placeholder Business News",
+     "site": "example.com",
+     "url": "https://www.example.com/news/aapl/3"
+    },
+    {
+     "publishedAt": 1788974100,
+     "title": "Apple presents new hardware at its September event",
+     "summary": "Synthetic text. The event showed three new devices and a software update.",
+     "publisher": "Sample Markets Daily",
+     "site": "example.com",
+     "url": "https://www.example.com/news/aapl/4"
+    },
+    {
+     "publishedAt": 1787833800,
+     "title": "Apple to hold its product event on September 9",
+     "summary": "Synthetic text. The company sent invitations for an event at its campus.",
+     "publisher": "Example Wire",
+     "site": "example.com",
+     "url": "https://www.example.com/news/aapl/5"
+    },
+    {
+     "publishedAt": 1786751282,
+     "title": "Apple stock ends the week near its monthly high",
+     "summary": "Synthetic text. The shares closed the week 2.1% higher.",
+     "publisher": "Placeholder Business News",
+     "site": "example.com",
+     "url": "https://www.example.com/news/aapl/6"
+    },
+    {
+     "publishedAt": 1785755565,
+     "title": "Apple quarterly results: the main numbers",
+     "summary": "Synthetic text. Revenue and earnings per share were above the sample estimates.",
+     "publisher": "Example Wire",
+     "site": "example.com",
+     "url": "https://www.example.com/news/aapl/7"
+    }
+   ],
+   "truncated": false
+  },
+  "MSFT": {
+   "symbol": "MSFT",
+   "from": "2026-08-02",
+   "to": "2026-10-02",
+   "articles": [
+    {
+     "publishedAt": 1790885400,
+     "title": "Microsoft cloud unit adds data center capacity",
+     "summary": "Synthetic text. The company plans two new regions next year.",
+     "publisher": "Example Wire",
+     "site": "example.com",
+     "url": "https://www.example.com/news/msft/0"
+    },
+    {
+     "publishedAt": 1789483500,
+     "title": "Microsoft raises its quarterly dividend",
+     "summary": "Synthetic text. The new dividend is payable in December.",
+     "publisher": "Sample Markets Daily",
+     "site": "example.com",
+     "url": "https://www.example.com/news/msft/1"
+    },
+    {
+     "publishedAt": 1787248800,
+     "title": "Microsoft shares trail the index this month",
+     "summary": "Synthetic text. The shares are 1.5% lower in August.",
+     "publisher": "Placeholder Business News",
+     "site": "example.com",
+     "url": "https://www.example.com/news/msft/2"
+    }
+   ],
+   "truncated": false
+  },
+  "JPM": {
+   "symbol": "JPM",
+   "from": "2026-08-02",
+   "to": "2026-10-02",
+   "articles": [],
+   "truncated": false
+  },
+  "TSM": {
+   "symbol": "TSM",
+   "from": "2026-08-02",
+   "to": "2026-10-02",
+   "articles": [],
+   "truncated": false
+  },
+  "RIVN": {
+   "symbol": "RIVN",
+   "from": "2026-08-02",
+   "to": "2026-10-02",
+   "articles": [],
+   "truncated": false
+  }
  }
 }

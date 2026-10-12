@@ -49,7 +49,7 @@ export function fixtureFetch(overrides: Record<string, Override> = {}): Recordin
     const path = url.pathname.replace(/^.*\/stable/, '');
     const override = overrides[path];
     if (override) return Promise.resolve(override(url));
-    const symbol = url.searchParams.get('symbol') ?? '';
+    const symbol = url.searchParams.get('symbol') ?? url.searchParams.get('symbols') ?? '';
     const params = { period: url.searchParams.get('period') ?? '' };
     const file = join(FIXTURE_ROOT, symbol, `${fixtureName(path, params)}.json`);
     if (!existsSync(file)) return Promise.resolve(json([]));

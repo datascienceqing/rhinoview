@@ -1,0 +1,38 @@
+{
+  "status": 200,
+  "path": "/news/stock?symbols=MSFT&from=2026-08-02&to=2026-10-02&limit=250&page=0",
+  "fetchedAt": "2026-10-02T20:00:00.000Z",
+  "synthetic": true,
+  "body": [
+    {
+      "symbol": "MSFT",
+      "publishedDate": "2026-10-01 16:10:00",
+      "publisher": "Example Wire",
+      "title": "Microsoft cloud unit adds data center capacity",
+      "image": "https://images.example.com/news/msft-0.jpg",
+      "site": "example.com",
+      "text": "Synthetic text. The company plans two new regions next year.",
+      "url": "https://www.example.com/news/msft/0"
+    },
+    {
+      "symbol": "MSFT",
+      "publishedDate": "2026-09-15 10:45:00",
+      "publisher": "Sample Markets Daily",
+      "title": "Microsoft raises its quarterly dividend",
+      "image": "https://images.example.com/news/msft-1.jpg",
+      "site": "example.com",
+      "text": "Synthetic text. The new dividend is payable in December.",
+      "url": "https://www.example.com/news/msft/1"
+    },
+    {
+      "symbol": "MSFT",
+      "publishedDate": "2026-08-20 14:00:00",
+      "publisher": "Placeholder Business News",
+      "title": "Microsoft shares trail the index this month",
+      "image": "https://images.example.com/news/msft-2.jpg",
+      "site": "example.com",
+      "text": "Synthetic text. The shares are 1.5% lower in August.",
+      "url": "https://www.example.com/news/msft/2"
+    }
+  ]
+}

@@ -614,6 +614,39 @@ export interface EarningsResponse {
   events: EarningsEvent[];
 }
 
+/** Calendar months of news the news endpoint covers, ending today (New York date). */
+export const NEWS_WINDOW_MONTHS = 2;
+/** Most articles in one news response. A busier window drops its OLDEST articles. */
+export const MAX_NEWS_ARTICLES = 2000;
+
+/** One news article about a symbol. Every field the provider may omit is nullable. */
+export interface NewsArticle {
+  publishedAt: UnixSeconds;
+  title: string;
+  /** A short excerpt from the provider, not the full article. */
+  summary: string | null;
+  /** For example "Reuters". */
+  publisher: string | null;
+  /** The host name of the source, for example "reuters.com". */
+  site: string | null;
+  /** The article link. Only an http or https URL; null when the provider has none. */
+  url: string | null;
+}
+
+/**
+ * `GET /api/fundamentals/news?symbol=` — the articles published from `from` to `to`
+ * (New York dates, 'YYYY-MM-DD', both included), NEWEST first, no duplicates.
+ * An empty list means the provider has no news for the symbol in the window.
+ */
+export interface NewsResponse {
+  symbol: string;
+  from: string;
+  to: string;
+  articles: NewsArticle[];
+  /** True when the window can hold more than MAX_NEWS_ARTICLES articles; the oldest are left out. */
+  truncated: boolean;
+}
+
 // ═══════════════════════════════════════════════════════════════════════════════
 // ALERTS — price and indicator alerts (docs/ALERTS_PLAN.md)
 // ═══════════════════════════════════════════════════════════════════════════════

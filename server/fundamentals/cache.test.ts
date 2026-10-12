@@ -1,12 +1,13 @@
-/** Invariant 9: cache for hours (overview and statements 6 h, earnings 1 h), successes only. */
+/** Invariant 9: cache for hours (overview and statements 6 h, earnings 1 h), successes only. News: 15 min (invariant 11). */
 import { describe, expect, it, vi } from 'vitest';
-import type { EarningsResponse, FundamentalsOverview, StatementsResponse } from '@shared/types';
+import type { EarningsResponse, FundamentalsOverview, NewsResponse, StatementsResponse } from '@shared/types';
 import { RateLimitedError } from '../provider/errors';
 import { UnknownSymbolError } from '../market/types';
 import {
   CachedFundamentalsProvider,
   EARNINGS_TTL_MS,
   MAX_CACHE_ENTRIES,
+  NEWS_TTL_MS,
   OVERVIEW_TTL_MS,
   STATEMENTS_TTL_MS,
 } from './cache';
@@ -19,9 +20,16 @@ function setup() {
   const overview = vi.fn((symbol: string) => Promise.resolve({ profile: { symbol } } as unknown as FundamentalsOverview));
   const statements = vi.fn((symbol: string) => Promise.resolve({ symbol } as unknown as StatementsResponse));
   const earnings = vi.fn((symbol: string) => Promise.resolve({ symbol, events: [] } as EarningsResponse));
-  const inner: FundamentalsProvider = { available: true, getOverview: overview, getStatements: statements, getEarnings: earnings };
+  const news = vi.fn((symbol: string) => Promise.resolve({ symbol, articles: [] } as unknown as NewsResponse));
+  const inner: FundamentalsProvider = {
+    available: true,
+    getOverview: overview,
+    getStatements: statements,
+    getEarnings: earnings,
+    getNews: news,
+  };
   const cache = new CachedFundamentalsProvider(inner, () => t);
-  return { cache, overview, statements, earnings, advance: (ms: number) => void (t += ms) };
+  return { cache, overview, statements, earnings, news, advance: (ms: number) => void (t += ms) };
 }
 
 describe('TTLs', () => {
@@ -29,6 +37,18 @@ describe('TTLs', () => {
     expect(OVERVIEW_TTL_MS).toBe(6 * HOUR);
     expect(STATEMENTS_TTL_MS).toBe(6 * HOUR);
     expect(EARNINGS_TTL_MS).toBe(1 * HOUR);
+    expect(NEWS_TTL_MS).toBe(15 * 60_000);
+  });
+
+  it('serves news from cache until exactly 15 min, per symbol in any case', async () => {
+    const { cache, news, advance } = setup();
+    await cache.getNews('AAPL');
+    advance(NEWS_TTL_MS - 1);
+    await cache.getNews('aapl');
+    expect(news).toHaveBeenCalledTimes(1);
+    advance(1);
+    await cache.getNews('AAPL');
+    expect(news).toHaveBeenCalledTimes(2);
   });
 
   it('serves the overview from cache until exactly 6 h, then refetches', async () => {
@@ -114,7 +134,13 @@ describe('what is cached', () => {
   });
 
   it('reports the availability of the provider it wraps', () => {
-    const inner: FundamentalsProvider = { available: false, getOverview: vi.fn(), getStatements: vi.fn(), getEarnings: vi.fn() };
+    const inner: FundamentalsProvider = {
+      available: false,
+      getOverview: vi.fn(),
+      getStatements: vi.fn(),
+      getEarnings: vi.fn(),
+      getNews: vi.fn(),
+    };
     expect(new CachedFundamentalsProvider(inner).available).toBe(false);
   });
 });

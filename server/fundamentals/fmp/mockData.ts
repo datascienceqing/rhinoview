@@ -6,6 +6,7 @@
 import type {
   EarningsResponse,
   FundamentalsOverview,
+  NewsResponse,
   StatementKind,
   StatementPeriod,
   StatementsResponse,
@@ -23,14 +24,16 @@ export interface FundamentalsMockData {
   /** Keyed `${statement}-${period}`. */
   statements: Record<string, Record<string, StatementsResponse>>;
   earnings: Record<string, EarningsResponse>;
+  news: Record<string, NewsResponse>;
 }
 
 export async function buildFundamentalsMockData(): Promise<FundamentalsMockData> {
   const p = createFixtureFundamentals({ now: () => MOCK_AS_OF * 1000 });
-  const data: FundamentalsMockData = { overview: {}, statements: {}, earnings: {} };
+  const data: FundamentalsMockData = { overview: {}, statements: {}, earnings: {}, news: {} };
   for (const s of MOCK_SYMBOLS) {
     data.overview[s] = await p.getOverview(s);
     data.earnings[s] = await p.getEarnings(s);
+    data.news[s] = await p.getNews(s);
     const bySymbol: Record<string, StatementsResponse> = {};
     for (const st of STATEMENTS) for (const per of PERIODS) bySymbol[`${st}-${per}`] = await p.getStatements(s, st, per);
     data.statements[s] = bySymbol;

@@ -10,6 +10,7 @@
 import type {
   EarningsResponse,
   FundamentalsOverview,
+  NewsResponse,
   StatementKind,
   StatementPeriod,
   StatementsResponse,
@@ -20,6 +21,7 @@ interface Generated {
   overview: Record<string, FundamentalsOverview>;
   statements: Record<string, Record<string, StatementsResponse>>;
   earnings: Record<string, EarningsResponse>;
+  news: Record<string, NewsResponse>;
 }
 const data = generated as unknown as Generated;
 
@@ -39,4 +41,8 @@ export function statementsFor(symbol: string, statement: StatementKind, period: 
 
 export function earningsFor(symbol: string): EarningsResponse {
   return structuredClone(data.earnings[symbol] as EarningsResponse);
+}
+
+export function newsFor(symbol: string): NewsResponse {
+  return structuredClone(data.news[symbol] as NewsResponse);
 }
