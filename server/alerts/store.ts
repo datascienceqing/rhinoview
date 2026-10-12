@@ -22,7 +22,7 @@ import type {
   UnixSeconds,
   UpdateAlertBody,
 } from '@shared/types';
-import { DEFAULT_ALERT_EXPIRY, MAX_ALERT_EVENTS, MAX_ALERTS } from '@shared/types';
+import { DEFAULT_ALERT_EXPIRY, MAX_ALERT_EVENTS } from '@shared/types';
 import { ALERT_SYMBOL_RE, checkAlertCondition, checkAlertMessage } from '../../src/alerts/condition';
 import { computeExpiresAt } from '../../src/alerts/expiry';
 import { ApiFailure } from '../provider/errors';
@@ -131,7 +131,7 @@ function parseFile(text: string): { state: AlertsState; dropped: number } | null
     else dropped++;
   }
   events.sort((a, b) => b.firedAt - a.firedAt);
-  return { state: { alerts: alerts.slice(0, MAX_ALERTS), events: events.slice(0, MAX_ALERT_EVENTS) }, dropped };
+  return { state: { alerts, events: events.slice(0, MAX_ALERT_EVENTS) }, dropped };
 }
 
 export async function openAlertsStore(filePath: string, opts: AlertsStoreOptions = {}): Promise<AlertsStore> {
@@ -237,7 +237,6 @@ export async function openAlertsStore(filePath: string, opts: AlertsStoreOptions
       const symbol = canonicalSymbol(body.symbol);
       checkFields(body);
       return mutate((s) => {
-        if (s.alerts.length >= MAX_ALERTS) bad(`At most ${MAX_ALERTS} alerts.`);
         const t = clock();
         const expiry = body.expiry ?? DEFAULT_ALERT_EXPIRY;
         const alert: Alert = {

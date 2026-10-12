@@ -440,7 +440,7 @@ never change the workspace revision. The server checks the alerts; the client on
     the file that was saved before this rule still loads.
   - `message` is 0–`MAX_ALERT_MESSAGE_LENGTH` (200) characters.
 - Symbols use the workspace format and are stored upper case. There is no limit on the
-  number of symbols. At most `MAX_ALERTS` (1000) alerts → else `BAD_REQUEST`.
+  number of alerts or on the number of symbols.
 - Defaults on create: `frequency: 'once'`, `expiry: '1M'`, `message: ''`, `status: 'active'`.
 - `expiresAt` = `computeExpiresAt(now, expiry)` (`src/alerts/expiry.ts`): weeks add 7 days;
   months and years add calendar months in UTC, and the day clamps to the end of a short month.

@@ -121,12 +121,13 @@ chart, or minimize it.
 
 | Item | Limit |
 |---|---|
-| Alerts | 1000 in total |
+| Alerts | No limit |
 | Symbols with alerts | No limit |
 | Events in the **Triggered** log | The newest 1000. The server deletes older events. |
 | Alert message | 200 characters |
 
-When you have 1000 alerts, you cannot add an alert. Delete an alert first.
+You can add as many alerts as you need. When more symbols have alerts, the server checks each
+symbol less frequently. See [5.2](#52-how-often-the-server-checks-an-alert).
 
 ### 5.2 How often the server checks an alert
 
