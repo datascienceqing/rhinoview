@@ -618,8 +618,6 @@ export interface EarningsResponse {
 // ALERTS — price and indicator alerts (docs/ALERTS_PLAN.md)
 // ═══════════════════════════════════════════════════════════════════════════════
 
-/** Most alerts the store keeps. There is no limit on the number of symbols (D3). */
-export const MAX_ALERTS = 1000;
 /** Most events the log keeps; the oldest go first (D12). */
 export const MAX_ALERT_EVENTS = 1000;
 export const MAX_ALERT_MESSAGE_LENGTH = 200;

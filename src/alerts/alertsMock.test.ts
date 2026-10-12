@@ -1,5 +1,4 @@
 import type { Alert, AlertEventsResponse, AlertsResponse, ApiResult } from '@shared/types';
-import { MAX_ALERTS } from '@shared/types';
 import { mockAlerts, mockFireAlert, resetMockAlerts } from '../../mocks/alerts';
 
 const URL_BASE = 'http://localhost/api';
@@ -50,16 +49,15 @@ describe('alerts mock: create', () => {
     expect(mockAlerts().alerts).toHaveLength(0);
   });
 
-  it(`allows ${MAX_ALERTS} alerts on any number of symbols, and no more`, async () => {
-    const many: Alert[] = Array.from({ length: MAX_ALERTS }, (_, i) => ({
+  it('has no limit on the number of alerts or symbols', async () => {
+    const many: Alert[] = Array.from({ length: 1001 }, (_, i) => ({
       id: `a${i}`, symbol: `S${i}`, condition: { type: 'price', direction: 'cross', level: 1 }, frequency: 'once',
       expiry: '1M', expiresAt: 2_000_000_000, message: '', status: 'active', revision: 1, createdAt: 1, updatedAt: 1,
       state: { lastSide: null, lastCheckedAt: null, lastDayHigh: null, lastDayLow: null, lastBarTime: null, firedCount: 0, lastFiredAt: null },
     }));
-    resetMockAlerts({ alerts: many.slice(1) });
+    resetMockAlerts({ alerts: many });
     expect((await call('POST', '/alerts', priceBody())).status).toBe(201);
-    const r = await call('POST', '/alerts', priceBody());
-    expect(r.status).toBe(400);
+    expect(mockAlerts().alerts).toHaveLength(1002);
   });
 });
 

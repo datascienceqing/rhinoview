@@ -490,5 +490,4 @@ export const en = {
   'alerts.toast.more': (p: { count: number }) => `${p.count} more ${plural(p.count, 'alert', 'alerts')}`,
   'alerts.toast.label': (p: { symbol: string }) => `Alert: ${p.symbol}`,
   'alerts.loadFailed': 'Could not load the alerts.',
-  'alerts.limit': (p: { max: number }) => `You have ${p.max} alerts, the most there can be. Delete one to add another.`,
 };

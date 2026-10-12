@@ -483,5 +483,4 @@ export const zh: typeof en = {
   'alerts.toast.more': (p: { count: number }) => `还有 ${p.count} 条警报`,
   'alerts.toast.label': (p: { symbol: string }) => `警报：${p.symbol}`,
   'alerts.loadFailed': '无法加载警报。',
-  'alerts.limit': (p: { max: number }) => `你已有 ${p.max} 条警报，已达上限。请先删除一条再添加。`,
 };

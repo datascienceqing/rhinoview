@@ -3,7 +3,7 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import type { AlertCheckState, AlertStreamMessage, CreateAlertBody } from '@shared/types';
-import { MAX_ALERT_EVENTS, MAX_ALERTS } from '@shared/types';
+import { MAX_ALERT_EVENTS } from '@shared/types';
 import { computeExpiresAt } from '../../src/alerts/expiry';
 import { ApiFailure } from '../provider/errors';
 import { nodeWorkspaceFs } from '../workspace/store';
@@ -138,10 +138,13 @@ describe('alerts store: user edits', () => {
     expect(s.list()).toEqual([]);
   });
 
-  it(`holds ${MAX_ALERTS} alerts on ${MAX_ALERTS} symbols, and no more`, async () => {
-    for (let i = 0; i < MAX_ALERTS; i++) await s.create(priceBody(10, `S${i}`));
-    expect(new Set(s.list().map((a) => a.symbol)).size).toBe(MAX_ALERTS);
-    expect(await code(s.create(priceBody()))).toBe('BAD_REQUEST');
+  it('has no limit on the number of alerts or symbols', async () => {
+    for (let i = 0; i < 1001; i++) await s.create(priceBody(10, `S${i}`));
+    await s.create(priceBody());
+    expect(s.list()).toHaveLength(1002);
+    expect(new Set(s.list().map((a) => a.symbol)).size).toBe(1002);
+    const reopened = await openAlertsStore(file, opts());
+    expect(reopened.list()).toHaveLength(1002);
   }, 30_000);
 
   it('updates with the current revision; a stale one is CONFLICT; an unknown id is NOT_FOUND', async () => {

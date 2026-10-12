@@ -8,7 +8,7 @@
 import { useEffect, useId, useRef, useState } from 'react';
 import type { FormEvent } from 'react';
 import type { AlertCondition, AlertDirection, AlertExpiry, AlertFrequency, AlertTarget, UpdateAlertBody } from '@shared/types';
-import { ALERT_EXPIRY_CHOICES, DEFAULT_ALERT_EXPIRY, MAX_ALERT_MESSAGE_LENGTH, MAX_ALERTS } from '@shared/types';
+import { ALERT_EXPIRY_CHOICES, DEFAULT_ALERT_EXPIRY, MAX_ALERT_MESSAGE_LENGTH } from '@shared/types';
 import { DataError } from '../data/errors';
 import { INTL_LOCALE, useI18n } from '../i18n';
 import { LINE_KEYS } from '../indicators/types';
@@ -37,7 +37,7 @@ export function AlertDialog() {
 
 function AlertDialogForm({ draft, onClose }: { draft: AlertDraft; onClose: () => void }) {
   const { t, locale } = useI18n();
-  const { alerts, create, update } = useAlerts();
+  const { create, update } = useAlerts();
   const id = useId();
   const first = useRef<HTMLSelectElement>(null);
   const editing = draft.id !== undefined;
@@ -78,13 +78,12 @@ function AlertDialogForm({ draft, onClose }: { draft: AlertDraft; onClose: () =>
   const unchanged = editing && JSON.stringify(condition) === JSON.stringify(draft.condition);
   const conditionProblem = checkAlertCondition(condition, { stored: unchanged });
   const problem = conditionProblem ?? checkAlertMessage(message);
-  const full = !editing && alerts.length >= MAX_ALERTS;
   const expiresAt = computeExpiresAt(Math.floor(Date.now() / 1000), expiry);
   const expiresText = new Intl.DateTimeFormat(INTL_LOCALE[locale], { dateStyle: 'medium' }).format(expiresAt * 1000);
 
   async function submit(e: FormEvent) {
     e.preventDefault();
-    if (problem || saving || full) return;
+    if (problem || saving) return;
     setSaving(true);
     setError(null);
     try {
@@ -232,11 +231,6 @@ function AlertDialogForm({ draft, onClose }: { draft: AlertDraft; onClose: () =>
           />
         </label>
 
-        {full && (
-          <p className="alert-error" role="alert">
-            {t('alerts.limit', { max: MAX_ALERTS })}
-          </p>
-        )}
         {error && (
           <p className="alert-error" role="alert">
             {error}
@@ -247,7 +241,7 @@ function AlertDialogForm({ draft, onClose }: { draft: AlertDraft; onClose: () =>
           <button type="button" className="button-secondary" onClick={onClose}>
             {t('common.cancel')}
           </button>
-          <button type="submit" className="button" disabled={problem !== null || saving || full}>
+          <button type="submit" className="button" disabled={problem !== null || saving}>
             {editing ? t('alerts.save') : t('alerts.create')}
           </button>
         </div>

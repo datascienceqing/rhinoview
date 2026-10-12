@@ -17,7 +17,7 @@
 
 <p align="center"><b>English</b> · <a href="README.zh-CN.md">简体中文</a></p>
 
-![RhinoView with AAPL on the daily chart, in the dark theme. Callouts show four points: 1, 1,000 alerts; 2, natural to use, with the right-click menu; 3, trade-proven indicators; 4, faster earnings updates, which depend on the data source](docs/images/app-en.png)
+![RhinoView with AAPL on the daily chart, in the dark theme. Callouts show four points: 1, unlimited alerts; 2, natural to use, with the right-click menu; 3, trade-proven indicators; 4, faster earnings updates, which depend on the data source](docs/images/app-en.png)
 
 **New user? Read the [user guide](docs/USER_GUIDE.md).**
 
@@ -41,7 +41,7 @@ proxy holds the API key and normalizes the upstream data.
 - A dark theme and a light theme.
 - An English interface and a Simplified Chinese interface. See [Languages](#languages).
 - A chart menu: right-click the chart, or press Shift+F10. It adds an alert, and switches the theme and the language.
-- Price alerts and indicator alerts (SMA, EMA, RSI, MACD), up to 1000, on any number of symbols.
+- Price alerts and indicator alerts (SMA, EMA, RSI, MACD), with no limit on the number of alerts or symbols.
   The server checks them. A fired alert shows a popup with a chime, and the bell keeps a log.
 
 The proxy keeps layouts and watchlists in one JSON file on the server (`WORKSPACE_FILE`).

@@ -17,7 +17,7 @@ import type {
   SetCheckedBody,
   UpdateAlertBody,
 } from '@shared/types';
-import { ALERT_MIN_CHECK_SECONDS, DEFAULT_ALERT_EXPIRY, MAX_ALERT_EVENTS, MAX_ALERTS } from '@shared/types';
+import { ALERT_MIN_CHECK_SECONDS, DEFAULT_ALERT_EXPIRY, MAX_ALERT_EVENTS } from '@shared/types';
 import { createAlertBodySchema, setCheckedBodySchema, updateAlertBodySchema } from '../server/alerts/schemas';
 import { ALERT_SYMBOL_RE, checkAlertCondition, checkAlertMessage } from '../src/alerts/condition';
 import { computeExpiresAt } from '../src/alerts/expiry';
@@ -155,7 +155,6 @@ export function createAlertsHandlers() {
         const b: CreateAlertBody = await body(request, createAlertBodySchema);
         if (!ALERT_SYMBOL_RE.test(b.symbol)) throw new Reject('BAD_REQUEST', 'Invalid symbol.');
         checkFields(b);
-        if (alerts.length >= MAX_ALERTS) throw new Reject('BAD_REQUEST', `At most ${MAX_ALERTS} alerts.`);
         const t = now();
         const expiry = b.expiry ?? DEFAULT_ALERT_EXPIRY;
         const alert: Alert = {
