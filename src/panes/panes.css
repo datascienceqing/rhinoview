@@ -2,7 +2,8 @@
 
 .chart-overlay-tools {
   position: absolute;
-  top: 6px;
+  /* Below two rows of confluence latch tabs (2 × ROW_HEIGHT_PX in LatchHandle.tsx), so it never covers a tab. */
+  top: 46px;
   right: 76px; /* clear of the price scale */
   z-index: 5;
 }
