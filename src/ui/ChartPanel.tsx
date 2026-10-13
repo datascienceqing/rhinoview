@@ -7,11 +7,12 @@ import type { ChartMenuTarget } from '../chart';
 import { ChartContextMenu } from '../chart/ChartContextMenu';
 import type { ChartMenuItem } from '../chart/ChartContextMenu';
 import { ALERT_INDICATOR_KINDS } from '@shared/types';
-import type { AlertIndicatorKind, AlertTarget, IndicatorConfig } from '@shared/types';
+import type { AlertCondition, AlertIndicatorKind, AlertTarget, ConfluenceParams, IndicatorConfig } from '@shared/types';
 import { CLOSE_TARGET_KINDS } from '../alerts/condition';
 import { useAlerts } from '../alerts/AlertsProvider';
 import { formatLevel, formatValue, roundLevel } from '../alerts/describe';
 import { LINE_KEYS } from '../indicators/types';
+import { computeConfluence } from '../indicators/confluence';
 import { indicatorTitle } from '../panes/config';
 import { useBarHistory, useCapabilities } from '../data';
 import { IndicatorLegendRow, IndicatorMenu, useComputedIndicators, useIndicators } from '../panes';
@@ -79,11 +80,40 @@ function LoadedChartPanel({ symbol, timeframe: savedTimeframe, chartType, marker
   const { alerts, openDialog } = useAlerts();
   const [menu, setMenu] = useState<ChartMenuTarget | null>(null);
   const closeMenu = useCallback(() => setMenu(null), []);
-  // Active price alerts of this symbol draw a line (plan section 4.7).
+  // Active price alerts of this symbol draw a line (plan section 4.7); so do confluence alerts, at
+  // their frozen level, because the indicator's own level can move away from it.
   const alertLevels = useMemo(
-    () => alerts.filter((a) => a.symbol === symbol && a.status === 'active' && a.condition.type === 'price').map((a) => (a.condition as { level: number }).level),
+    () =>
+      alerts
+        .filter((a) => a.symbol === symbol && a.status === 'active')
+        .flatMap((a) => (a.condition.type === 'price' ? [a.condition.level] : a.condition.type === 'confluence' ? [a.condition.lock.top] : [])),
     [alerts, symbol],
   );
+  // The latched levels for the menu, computed only while it is open: the same math as the
+  // drawing, so the alert keeps exactly the level the chart shows.
+  const latchedLevels = useMemo(() => {
+    if (menu?.pane !== 'price') return [];
+    return indicatorState.indicators.flatMap((config) => {
+      if (config.kind !== 'confluence' || !config.visible) return [];
+      const params = config.params as ConfluenceParams;
+      if (params.latch !== 'on' || params.latchTime <= 0) return [];
+      try {
+        const r = computeConfluence(history.bars, params);
+        const lockBar = r.latch.lockIndex === null ? undefined : history.bars[r.latch.lockIndex];
+        const primary = r.last?.primary;
+        if (!r.latch.holds || !primary || !lockBar) return [];
+        const condition: AlertCondition = {
+          type: 'confluence',
+          timeframe,
+          params: structuredClone(params),
+          lock: { bottom: primary.bottom, top: primary.top, count: primary.count, time: lockBar.time },
+        };
+        return [{ config, condition }];
+      } catch {
+        return [];
+      }
+    });
+  }, [menu, indicatorState.indicators, history.bars, timeframe]);
 
   /** An indicator alert draft on the first line of `config`. */
   function openIndicatorDialog(config: IndicatorConfig, kind: AlertIndicatorKind, target: AlertTarget) {
@@ -123,6 +153,14 @@ function LoadedChartPanel({ symbol, timeframe: savedTimeframe, chartType, marker
           id: `alert-${config.id}`,
           label: t('menu.addOverlayAlert', { indicator: indicatorTitle(config) }),
           onSelect: () => openIndicatorDialog(config, kind, { type: 'close' }),
+        });
+      }
+      for (const { config, condition } of latchedLevels) {
+        if (condition.type !== 'confluence') continue;
+        items.push({
+          id: `alert-${config.id}`,
+          label: t('menu.addLatchAlert', { indicator: indicatorTitle(config), level: formatLevel(condition.lock.top) }),
+          onSelect: () => openDialog({ symbol, condition }),
         });
       }
       return items;

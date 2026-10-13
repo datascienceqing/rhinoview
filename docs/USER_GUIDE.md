@@ -39,6 +39,7 @@ chart has the focus. The items in the menu change with the pane and the pointer 
 | Price pane | **Add alert at {price}…**: a price alert at the price under the pointer. |
 | Price pane, with a visible SMA or EMA | **Add alert on {indicator}…**: one item for each visible SMA and EMA. The alert fires when the close crosses the line. |
 | RSI pane or MACD pane | **Add alert on {indicator} at {value}…**: the indicator value under the pointer. |
+| Price pane, with a visible Confluence indicator and its latch on | **Add alert on {indicator} at the latched {level}…**: an alert on the level that the latch locked (refer to [Confluence alerts](#34-confluence-alerts)). |
 
 Each menu also has these items:
 
@@ -70,7 +71,7 @@ drag ⠿, press Alt+Up or Alt+Down, or click ▲ or ▼. The panes below the cha
 | Volume | Price | Volume, with a moving average of the volume | No |
 | VRVP | Price | Volume profile of the visible bars, with the value area | No |
 | Liquidity | Price | Liquidity zones at pivot highs and lows, and their sweeps | No |
-| Confluence | Price | Clusters of levels, and a close through a cluster with high volume | No |
+| Confluence | Price | Clusters of levels, and a close through a cluster with high volume | Yes, with the latch on: a close through the latched level |
 
 The legend at the top left shows the value of each indicator at the bar under the pointer.
 
@@ -84,6 +85,24 @@ An indicator alert checks only a closed bar. It does not check the bar that is o
 
 The alert keeps the timeframe and the parameters of the indicator at the time that you
 make the alert. A later change to the indicator on the chart does not change the alert.
+
+### 3.4 Confluence alerts
+
+A Confluence alert needs the latch. Turn the latch on in the indicator settings, and move the
+latch handle to the date that you want. Then right-click the price pane and click **Add alert
+on CONF … at the latched {level}…**.
+
+- The alert keeps the level, the parameters, and the latch date at the time that you make it.
+  A move of the latch handle or a change to the indicator does not change the alert. The
+  chart shows the level of each active Confluence alert as a dashed line with a bell.
+- The alert fires on the same bars as the latched marks of the indicator. Mode "turn" fires
+  on a close above the level. Mode "breakdown" fires on a close below the level.
+- The volume check of the indicator applies. Mode "breakdown" also uses the close-quality check.
+- After the alert fires, the close must come back to the other side of the level before the
+  alert can fire again (**Every time**).
+- If the indicator already marked a break when you make the alert, the alert does not fire
+  for it. It fires on the next mark.
+- The server checks closed bars only, as for the other indicator alerts.
 
 ## 4. Alerts
 

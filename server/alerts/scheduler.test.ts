@@ -4,6 +4,7 @@ import { QuotesCache } from '../cache/quotesCache';
 import type { MarketEngine } from '../market/types';
 import { MarketService } from '../provider/service';
 import type { WorkspaceFs } from '../workspace/store';
+import { DEFAULT_PARAMS } from '../../src/indicators/types';
 import { AlertScheduler, BARS_RETRY_SECONDS } from './scheduler';
 import type { AlertDataSource } from './scheduler';
 import { serviceAlertSource } from './source';
@@ -44,7 +45,7 @@ const snap = (symbol: string, price: number): Snapshot => ({
 
 /** A fake source that records each call and its time. */
 function fakeSource(clock: () => number, priceOf: (s: string) => number = () => 100) {
-  const calls: { kind: 'quote' | 'bars'; symbol: string; t: number; timeframe?: Timeframe }[] = [];
+  const calls: { kind: 'quote' | 'bars'; symbol: string; t: number; timeframe?: Timeframe; from?: number }[] = [];
   let bars: Bar[] = [];
   const source: AlertDataSource = {
     delayed: false,
@@ -52,8 +53,8 @@ function fakeSource(clock: () => number, priceOf: (s: string) => number = () => 
       calls.push({ kind: 'quote', symbol, t: clock() });
       return { snapshot: snap(symbol, priceOf(symbol)), cached: false };
     },
-    async bars(symbol, timeframe) {
-      calls.push({ kind: 'bars', symbol, t: clock(), timeframe });
+    async bars(symbol, timeframe, from) {
+      calls.push({ kind: 'bars', symbol, t: clock(), timeframe, from });
       return bars;
     },
   };
@@ -364,5 +365,36 @@ describe('AlertScheduler: indicator alerts', () => {
     await scheduler.tick();
     expect(calls.filter((c) => c.kind === 'bars')).toHaveLength(2);
     expect(fired).toHaveLength(1);
+  });
+
+  it('confluence: the first bars call reaches back to the lock bar; later calls load only recent bars', async () => {
+    const start = Math.floor(T0 / DAY) * DAY;
+    let t = start + 3600;
+    const store = await newStore(() => t);
+    const lockTime = start - 1000 * DAY;
+    await store.create({
+      symbol: 'AAPL',
+      condition: {
+        type: 'confluence',
+        timeframe: '1D',
+        params: { ...DEFAULT_PARAMS.confluence, latch: 'on', latchTime: lockTime },
+        lock: { bottom: 98, top: 100, count: 3, time: lockTime },
+      },
+      frequency: 'every',
+    });
+    const { source, calls, setBars } = fakeSource(() => t);
+    const closes = Array.from({ length: 10 }, () => 90);
+    setBars(closes.map((c, i) => bar(start - (10 - i) * DAY, c)));
+    const scheduler = new AlertScheduler({ store, source, now: () => t, budgetPerMinute: 150 });
+    await scheduler.tick();
+    t = start + DAY + 5;
+    setBars([...closes.map((c, i) => bar(start - (10 - i) * DAY, c)), bar(start, 90)]);
+    await scheduler.tick();
+    const froms = calls.filter((c) => c.kind === 'bars').map((c) => c.from as number);
+    expect(froms).toHaveLength(2);
+    // The volume average needs 10 bars before the lock bar.
+    expect(froms[0]).toBeLessThan(lockTime - 10 * DAY);
+    expect(froms[1]).toBeGreaterThan(lockTime);
+    expect(store.list()[0]?.state.lastBarTime).toBe(start);
   });
 });

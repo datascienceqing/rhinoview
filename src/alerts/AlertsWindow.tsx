@@ -147,7 +147,7 @@ function EventRows({ events, empty }: { events: AlertEvent[]; empty: boolean }) 
             <span className="alert-row-symbol">{e.symbol}</span>
             <span className="alert-row-text">{messageOf(e)}</span>
             <span className={`alert-row-value ${e.crossed === 'up' ? 'up' : 'down'}`}>
-              {e.crossed === 'up' ? DIRECTION_ARROW.up : DIRECTION_ARROW.down} {e.condition.type === 'price' ? formatLevel(e.value) : formatValue(e.value)}
+              {e.crossed === 'up' ? DIRECTION_ARROW.up : DIRECTION_ARROW.down} {e.condition.type === 'indicator' ? formatValue(e.value) : formatLevel(e.value)}
             </span>
             <time
               className="alert-row-time"

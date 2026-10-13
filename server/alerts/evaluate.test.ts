@@ -1,6 +1,9 @@
 import { describe, expect, it } from 'vitest';
-import type { Alert, AlertCheckState, AlertCondition, Bar } from '@shared/types';
-import { closedBars, evaluateAlert, evaluateIndicatorAlert, evaluatePriceAlert, MAX_FIRES_PER_CHECK } from './evaluate';
+import type { Alert, AlertCheckState, AlertCondition, AlertDirection, Bar, ConfluenceParams } from '@shared/types';
+import { computeConfluence } from '../../src/indicators/confluence';
+import { randomBars } from '../../src/indicators/fixtures';
+import { DEFAULT_PARAMS } from '../../src/indicators/types';
+import { closedBars, evaluateAlert, evaluateConfluenceAlert, evaluateIndicatorAlert, evaluatePriceAlert, MAX_FIRES_PER_CHECK } from './evaluate';
 import type { PriceObservation } from './evaluate';
 
 const T0 = 1_790_000_000;
@@ -15,7 +18,7 @@ function alertOf(condition: AlertCondition, over: Partial<Alert> = {}): Alert {
   };
 }
 
-const price = (level: number, direction: AlertCondition['direction'] = 'cross') => alertOf({ type: 'price', direction, level });
+const price = (level: number, direction: AlertDirection = 'cross') => alertOf({ type: 'price', direction, level });
 const obs = (p: number | null, dayHigh: number | null = null, dayLow: number | null = null): PriceObservation => ({ price: p, dayHigh, dayLow });
 
 /** Runs observations one by one, as the scheduler does, and collects the fired directions. */
@@ -161,7 +164,7 @@ const barsOf = (closes: number[]) => closes.map((c, i) => bar(i, c));
 /** `now` such that every bar in `bars` is closed. */
 const after = (bars: Bar[]) => (bars[bars.length - 1] as Bar).time + DAY;
 
-const smaCross = (direction: AlertCondition['direction'] = 'cross', over: Partial<Alert> = {}) =>
+const smaCross = (direction: AlertDirection = 'cross', over: Partial<Alert> = {}) =>
   alertOf(
     { type: 'indicator', timeframe: '1D', indicator: { kind: 'sma', params: { period: 3, source: 'close' } }, line: 'value', direction, target: { type: 'value', value: 100 } },
     over,
@@ -297,11 +300,115 @@ describe('evaluateIndicatorAlert', () => {
   });
 });
 
+// ── Confluence alerts ──
+
+const vbar = (i: number, close: number, volume = 1000, range: [number, number] = [close, close]): Bar => ({
+  time: T0 + i * DAY, open: close, high: range[1], low: range[0], close, volume, vwap: null, transactions: null,
+});
+/** Volume average of 2 bars and a multiplier of 1.5: 4000 after 1000 passes, 1000 after 1000 does not. */
+const confParams = (over: Partial<ConfluenceParams> = {}): ConfluenceParams => ({
+  ...DEFAULT_PARAMS.confluence, latch: 'on', latchTime: T0, volumeLength: 2, volumeMult: 1.5, ...over,
+});
+type Lock = Extract<AlertCondition, { type: 'confluence' }>['lock'];
+const LOCK: Lock = { bottom: 98, top: 100, count: 3, time: T0 };
+const confluence = (over: Partial<ConfluenceParams> = {}, lock: Lock = LOCK, alert: Partial<Alert> = {}) =>
+  alertOf({ type: 'confluence', timeframe: '1D', params: confParams(over), lock }, alert);
+const HI = 4000;
+
+/** Checks the bars step by step from `firstCheckAt` bars, as the scheduler does at each bar close. */
+function runConfluence(alert: Alert, all: Bar[], firstCheckAt: number) {
+  let a = alert;
+  const fires: number[] = [];
+  for (let n = firstCheckAt; n <= all.length; n++) {
+    const bars = all.slice(0, n);
+    const r = evaluateConfluenceAlert(a, bars, after(bars));
+    fires.push(...r.fires.map((f) => f.time));
+    a = { ...a, state: r.state, status: r.status };
+  }
+  return { alert: a, fires };
+}
+const timeOf = (i: number) => T0 + i * DAY;
+
+describe('evaluateConfluenceAlert', () => {
+  it('turn: the first check does not fire; a later close above the top with volume fires up', () => {
+    const all = [vbar(0, 99), vbar(1, 99), vbar(2, 99), vbar(3, 101, HI)];
+    const first = evaluateConfluenceAlert(confluence(), all.slice(0, 3), after(all.slice(0, 3)));
+    expect(first.fires).toEqual([]);
+    expect(first.state.lastSide).toBe('below');
+    const r = evaluateConfluenceAlert({ ...confluence(), state: first.state }, all, after(all));
+    expect(r.fires).toEqual([{ crossed: 'up', value: 101, target: 100, time: timeOf(3) }]);
+    expect(r.status).toBe('triggered');
+  });
+
+  it('a close past the top on low volume does not fire; a later close with volume does, with no new crossing', () => {
+    const all = [vbar(0, 99), vbar(1, 99), vbar(2, 101), vbar(3, 101.5, HI)];
+    expect(runConfluence(confluence(), all, 2).fires).toEqual([timeOf(3)]);
+  });
+
+  it('every: fires again only after a close back below the top (the re-arm)', () => {
+    const all = [vbar(0, 99), vbar(1, 99), vbar(2, 101, HI), vbar(3, 102, HI), vbar(4, 99), vbar(5, 99), vbar(6, 101, HI)];
+    const r = runConfluence(confluence({}, LOCK, { frequency: 'every' }), all, 2);
+    expect(r.fires).toEqual([timeOf(2), timeOf(6)]);
+    expect(r.alert.status).toBe('active');
+  });
+
+  it('breakdown: fires down on a close below the top with volume and a close low in its range', () => {
+    const params = { mode: 'breakdown' as const };
+    // Bar 2 closes high in its range (98.9 of 95..99): no event. Bar 3 closes low in its range.
+    const all = [vbar(0, 101), vbar(1, 101), vbar(2, 98.9, HI, [95, 99]), vbar(3, 99, HI * 4, [98.5, 103])];
+    const r = runConfluence(confluence(params, LOCK, { frequency: 'every' }), all, 2);
+    expect(r.fires).toEqual([timeOf(3)]);
+    expect(r.alert.state.lastSide).toBe('below');
+  });
+
+  it('the first check replays from the lock bar: a break that the chart already marked does not fire again', () => {
+    // The break at bar 2 is before the alert. Bar 4 stays above with volume: no event, as on the chart.
+    const all = [vbar(0, 99), vbar(1, 99), vbar(2, 101, HI), vbar(3, 101), vbar(4, 102, HI), vbar(5, 99), vbar(6, 101, HI)];
+    const r = runConfluence(confluence({}, LOCK, { frequency: 'every' }), all, 4);
+    expect(r.fires).toEqual([timeOf(6)]);
+  });
+
+  it('ignores the bars before the lock bar, also when the lock bar was still forming at the first check', () => {
+    const lock = { ...LOCK, time: timeOf(3) };
+    const all = [vbar(0, 99), vbar(1, 101, HI), vbar(2, 99), vbar(3, 101, HI)];
+    expect(runConfluence(confluence({}, lock), all, 3).fires).toEqual([timeOf(3)]);
+  });
+
+  it('expiry wins over an event', () => {
+    const all = [vbar(0, 99), vbar(1, 99), vbar(2, 101, HI)];
+    const a = confluence({}, LOCK, { expiresAt: T0, state: { ...EMPTY, lastSide: 'below', lastBarTime: timeOf(1) } });
+    expect(evaluateConfluenceAlert(a, all, after(all))).toMatchObject({ status: 'expired', fires: [] });
+  });
+
+  // The alert must fire on the bars where the chart marks a latched event after the alert was made.
+  // Seeds and latch bars chosen so that the chart has several latched events after the alert.
+  it.each([
+    ['turn', 42, 300],
+    ['breakdown', 7, 350],
+  ] as const)('%s: fires on the same bars as the latched events of the chart', (mode, seed, latchBar) => {
+    const full = randomBars(700, seed, T0, DAY);
+    const params: ConfluenceParams = { ...DEFAULT_PARAMS.confluence, mode, latch: 'on', latchTime: timeOf(latchBar) };
+    const k = latchBar + 50; // the alert is made when bar k is the newest bar
+    const atK = computeConfluence(full.slice(0, k + 1), params);
+    const primary = atK.last?.primary;
+    const lockBar = full[atK.latch.lockIndex ?? -1];
+    if (!atK.latch.holds || !primary || !lockBar) throw new Error('the fixture must hold a lock at bar k');
+    const alert = alertOf(
+      { type: 'confluence', timeframe: '1D', params, lock: { bottom: primary.bottom, top: primary.top, count: primary.count, time: lockBar.time } },
+      { frequency: 'every' },
+    );
+    const chart = computeConfluence(full, params).events.filter((e) => e.latched && e.index > k).map((e) => e.time);
+    expect(chart.length).toBeGreaterThan(0);
+    expect(runConfluence(alert, full, k + 1).fires).toEqual(chart);
+  });
+});
+
 describe('evaluateAlert', () => {
   it('dispatches by condition type', () => {
     const p = { ...price(100), state: { ...EMPTY, lastSide: 'below' as const } };
     expect(evaluateAlert(p, { price: obs(101) }, T0).fires).toHaveLength(1);
     expect(evaluateAlert(p, {}, T0).fires).toEqual([]);
     expect(evaluateAlert(smaCross(), {}, T0).fires).toEqual([]);
+    expect(evaluateAlert(confluence(), {}, T0).fires).toEqual([]);
   });
 });

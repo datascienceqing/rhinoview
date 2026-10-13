@@ -427,3 +427,54 @@ These are the differences between the plan above and the code. Each one has a te
     after 24 px of movement.
 13. **Blocked notifications.** When the browser blocks notifications, the Alerts window tells
     the user to change the site's notification setting in the browser.
+
+## 11. Confluence alerts (2026-10-12)
+
+The user asked for alerts on the Confluence indicator, at the latch date, and the alert must
+not change when the indicator changes.
+
+**What fires.** The alert fires on the latched events of the chart (`docs/CONFLUENCE_PLAN.md`,
+section 4.9), on closed bars of the alert's timeframe:
+
+| Step, on each closed bar | Mode "turn" | Mode "breakdown" |
+|---|---|---|
+| 1. Re-arm | a close below `lock.top` | a close above `lock.top` |
+| 2. Fire | armed, a close above `lock.top`, and the volume check passes | armed, a close below `lock.top`, the volume check passes, and the close-quality check passes |
+
+After a fire the alert is not armed. `once` then becomes "triggered". `every` waits for the
+re-arm.
+
+**What the alert keeps.** A new condition type `confluence` (`shared/types.ts`):
+
+- `params`: a copy of the indicator params, with `latch` 'on' and the latch date.
+- `lock`: the primary cluster that the latch locked (`bottom`, `top`, `count`), and `time`,
+  the bar where the lock formed. The client takes it from `computeConfluence` when the user
+  makes the alert, so the alert keeps exactly the level that the chart shows.
+
+The level is frozen. The server does not compute the clusters again. Reasons:
+
+- The user asked for an alert that does not change with the indicator.
+- The lock depends on the loaded history (CONFLUENCE_PLAN risk "Latch and history"). The
+  server loads other bars than the chart. A computed level could then differ from the level
+  that the user saw.
+- The check needs only the closes, the volumes and the volume average. That is cheap.
+
+**Decisions.**
+
+1. The latch must be on, with a date. Without a latch, the trigger moves on each bar, and
+   there is no level to keep.
+2. `direction` comes from the mode: up for "turn", down for "breakdown". The dialog shows the
+   level and the latch date, and the user cannot change them. To change the level, the user
+   deletes the alert and makes a new one.
+3. The first check replays the bars from `lock.time` to set the armed state, as on the chart.
+   It does not fire, like the first check of the other alerts. So a break that the chart
+   already marked does not fire again. When the provider caps the range, the replay starts
+   at the first bar that it gets.
+4. `lastSide` keeps the armed state: the near side of `lock.top` means armed. No new state
+   field is necessary.
+5. Each active confluence alert of the shown symbol draws an alert line at `lock.top`.
+6. The menu item shows only for a visible Confluence indicator whose latch holds at the last bar.
+
+**Tests.** `server/alerts/evaluate.test.ts` checks the rules above, and compares the fires with
+the latched events of `computeConfluence` on random bars, in both modes.
+

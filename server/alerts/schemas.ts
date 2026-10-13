@@ -8,7 +8,7 @@
  */
 import { z } from 'zod';
 import { ALERT_EXPIRY_CHOICES, ALERT_INDICATOR_KINDS, TIMEFRAMES } from '@shared/types';
-import type { AlertCondition, IndicatorParams, SetCheckedBody, Timeframe } from '@shared/types';
+import type { AlertCondition, ConfluenceParams, IndicatorParams, SetCheckedBody, Timeframe } from '@shared/types';
 
 const timeframe = z.enum(TIMEFRAMES as readonly [string, ...string[]]) as unknown as z.ZodType<Timeframe>;
 const direction = z.enum(['cross', 'up', 'down']);
@@ -37,6 +37,16 @@ export const alertConditionSchema: z.ZodType<AlertCondition> = z.discriminatedUn
       line: z.string().min(1),
       direction,
       target,
+    })
+    .strict(),
+  z
+    .object({
+      type: z.literal('confluence'),
+      timeframe,
+      params: z.custom<ConfluenceParams>((v) => typeof v === 'object' && v !== null && !Array.isArray(v), {
+        message: 'params must be an object',
+      }),
+      lock: z.object({ bottom: finite, top: finite, count: z.number().int(), time: z.number().int() }).strict(),
     })
     .strict(),
 ]) as z.ZodType<AlertCondition>;

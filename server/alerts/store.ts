@@ -348,7 +348,7 @@ export async function openAlertsStore(filePath: string, opts: AlertsStoreOptions
               value: f.value,
               target: f.target,
               delayed: c.delayed,
-              ...(a.condition.type === 'indicator' ? { barTime: f.time } : {}),
+              ...(a.condition.type !== 'price' ? { barTime: f.time } : {}),
               checked: false,
             };
             s.events.unshift(event);

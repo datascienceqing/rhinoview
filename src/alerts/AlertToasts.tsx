@@ -40,7 +40,7 @@ export function AlertToasts() {
 function Toast({ event }: { event: AlertEvent }) {
   const { t, locale } = useI18n();
   const { dismissToast, showOnChart } = useAlerts();
-  const value = event.condition.type === 'price' ? formatLevel(event.value) : formatValue(event.value);
+  const value = event.condition.type === 'indicator' ? formatValue(event.value) : formatLevel(event.value);
   const time = new Intl.DateTimeFormat(INTL_LOCALE[locale], { timeStyle: 'short' }).format(event.firedAt * 1000);
   return (
     <div className={`alert-toast crossed-${event.crossed}`} role="alert" aria-label={t('alerts.toast.label', { symbol: event.symbol })}>

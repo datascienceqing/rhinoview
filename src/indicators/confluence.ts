@@ -75,6 +75,8 @@ export interface ConfluenceResult {
     index: number | null;
     /** Whether the latch holds at the last bar. */
     holds: boolean;
+    /** The bar where the lock that holds at the last bar formed, else null. Alerts start from it. */
+    lockIndex: number | null;
   };
 }
 
@@ -186,6 +188,7 @@ export function computeConfluence(bars: readonly Bar[], params: ConfluenceParams
   let fired = false;
   let broken: ConfluencePoint | null = null;
   let latchIndex: number | null = null;
+  let lockIndex: number | null = null;
   let holds = false;
   let livePrimary: ConfluenceCluster | null = null;
   let liveSecondary: ConfluenceCluster | null = null;
@@ -242,9 +245,11 @@ export function computeConfluence(bars: readonly Bar[], params: ConfluenceParams
     if (active && latchIndex === null) latchIndex = t;
     if (!active) {
       lock = null;
+      lockIndex = null;
       fired = false;
     } else if (lock === null && livePrimary !== null) {
       lock = { primary: livePrimary, secondary: liveSecondary };
+      lockIndex = t;
     }
     holds = active && lock !== null;
 
@@ -276,7 +281,7 @@ export function computeConfluence(bars: readonly Bar[], params: ConfluenceParams
     prevCount = livePrimary?.count ?? 0;
   }
 
-  if (n === 0) return { mode: p.mode, events, last: null, latch: { index: null, holds: false } };
+  if (n === 0) return { mode: p.mode, events, last: null, latch: { index: null, holds: false, lockIndex: null } };
 
   const t = n - 1;
   const sources: ConfluenceSource[] = [];
@@ -304,6 +309,6 @@ export function computeConfluence(bars: readonly Bar[], params: ConfluenceParams
       sources,
       broken,
     },
-    latch: { index: latchIndex, holds },
+    latch: { index: latchIndex, holds, lockIndex: holds ? lockIndex : null },
   };
 }

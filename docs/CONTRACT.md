@@ -447,6 +447,10 @@ never change the workspace revision. The server checks the alerts; the client on
     of the same indicator; a `value` target is finite. A `close` target is only for SMA and
     EMA (`CLOSE_TARGET_KINDS`), because RSI and MACD are not on the price scale. An alert in
     the file that was saved before this rule still loads.
+  - Confluence: `params` pass `checkIndicatorParams('confluence', …)`, with `latch` 'on' and
+    `latchTime` > 0. `lock` has positive finite `bottom` <= `top`, an integer `count` >= 1,
+    and an integer `time` >= `latchTime`. The direction comes from the mode: up for 'turn',
+    down for 'breakdown' (`directionOf`).
   - `message` is 0–`MAX_ALERT_MESSAGE_LENGTH` (200) characters.
 - Symbols use the workspace format and are stored upper case. There is no limit on the
   number of alerts or on the number of symbols.
@@ -487,7 +491,9 @@ never change the workspace revision. The server checks the alerts; the client on
   never fire one alert twice. It checks each symbol with active alerts in turn:
   - Price alerts of one symbol share one quote, at most each `ALERT_MIN_CHECK_SECONDS` (30 s).
     The quote cache is shared with `/api/quotes`; a cached quote costs no call.
-  - Indicator alerts of one symbol and timeframe share one bars call, after a bar close.
+  - Indicator and confluence alerts of one symbol and timeframe share one bars call, after a
+    bar close. The first check of a confluence alert loads the bars back to `lock.time`
+    (docs/ALERTS_PLAN.md, section 11).
     After a call with no new closed bar (the market is closed), the wait doubles from one
     bar span (at most 1 h) up to 1 h. A new bar sets the wait back.
   - When the budget is used up, the checker still visits each symbol: expiries and quotes

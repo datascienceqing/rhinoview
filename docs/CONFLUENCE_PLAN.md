@@ -58,7 +58,8 @@ In scope:
 Out of scope (decision D4):
 
 - Both modes in one indicator at the same time.
-- Alerts. RhinoView has no alert system.
+- Alerts. RhinoView had no alert system then. Alerts on the latched level came later:
+  `docs/ALERTS_PLAN.md`, section 11.
 - Stop, target, and R:R (Breakdown script only).
 - The info table and the "strong volume" row (Turn script only).
 - The `/api/indicator` test endpoint. The output is drawings, not lines.

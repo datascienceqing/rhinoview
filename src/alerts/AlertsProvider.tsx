@@ -348,7 +348,7 @@ export function AlertsProvider({ children, eventSource = defaultEventSource, not
       minimizeToast,
       showOnChart(item) {
         setSymbol(item.symbol);
-        if (item.condition.type === 'indicator') setTimeframe(item.condition.timeframe);
+        if (item.condition.type !== 'price') setTimeframe(item.condition.timeframe);
       },
       async create(body) {
         const a = await api.createAlert(body);
