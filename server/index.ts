@@ -93,7 +93,12 @@ export function buildServer(opts: BuildServerOptions): FastifyInstance {
       notify: (m) => opts.alerts?.publish(m),
     });
     checker.start(opts.alertChecks.tickMs);
-    app.addHook('onClose', async () => checker.stop());
+    const store = opts.alerts;
+    app.addHook('onClose', async () => {
+      checker.stop();
+      // A clean stop saves the state-only changes that still wait for their write.
+      await store.flush(true);
+    });
     scheduler = checker;
   }
   registerAlertsRoutes(app, {

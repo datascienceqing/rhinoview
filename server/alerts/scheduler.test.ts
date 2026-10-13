@@ -8,7 +8,7 @@ import { DEFAULT_PARAMS } from '../../src/indicators/types';
 import { AlertScheduler, BARS_RETRY_SECONDS } from './scheduler';
 import type { AlertDataSource } from './scheduler';
 import { serviceAlertSource } from './source';
-import { openAlertsStore } from './store';
+import { openAlertsStore, STATE_FLUSH_SECONDS } from './store';
 import type { AlertsStore } from './store';
 
 const T0 = 1_790_000_000;
@@ -30,9 +30,9 @@ function memFs(): WorkspaceFs {
   };
 }
 
-async function newStore(now: () => number): Promise<AlertsStore> {
+async function newStore(now: () => number, fs: WorkspaceFs = memFs()): Promise<AlertsStore> {
   let id = 0;
-  return openAlertsStore('/mem/alerts.json', { fs: memFs(), now, newId: () => `id${++id}`, warn: () => undefined });
+  return openAlertsStore('/mem/alerts.json', { fs, now, newId: () => `id${++id}`, warn: () => undefined });
 }
 
 const priceAlert = (symbol: string, level: number, over: Partial<CreateAlertBody> = {}): CreateAlertBody => ({
@@ -396,5 +396,31 @@ describe('AlertScheduler: indicator alerts', () => {
     expect(froms[0]).toBeLessThan(lockTime - 10 * DAY);
     expect(froms[1]).toBeGreaterThan(lockTime);
     expect(store.list()[0]?.state.lastBarTime).toBe(start);
+  });
+
+  it('a 1D alert: the state of its first check is saved within STATE_FLUSH_SECONDS with no later check', async () => {
+    const start = Math.floor(T0 / DAY) * DAY;
+    let t = start + 3600;
+    const fs = memFs();
+    const store = await newStore(() => t, fs);
+    await store.create(sma('AAPL'));
+    const { source, calls, setBars } = fakeSource(() => t);
+    setBars(Array.from({ length: 10 }, (_, i) => bar(start - (10 - i) * DAY, 90)));
+    const scheduler = new AlertScheduler({ store, source, now: () => t, budgetPerMinute: 150 });
+    // A restart reads the file: a new store on the same file system shows what is saved.
+    const saved = async () => (await newStore(() => t, fs)).list()[0]?.state;
+    await scheduler.tick();
+    expect(store.list()[0]?.state).toMatchObject({ lastSide: 'below', lastBarTime: start - DAY });
+    expect(await saved()).toMatchObject({ lastSide: null, lastBarTime: null });
+
+    for (let i = 1; i < STATE_FLUSH_SECONDS; i++) {
+      t += 1;
+      await scheduler.tick();
+    }
+    expect(await saved()).toMatchObject({ lastSide: null, lastBarTime: null });
+    t += 1;
+    await scheduler.tick();
+    expect(calls.filter((c) => c.kind === 'bars')).toHaveLength(1);
+    expect(await saved()).toMatchObject({ lastSide: 'below', lastBarTime: start - DAY });
   });
 });
