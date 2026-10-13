@@ -2,8 +2,9 @@
 
 .chart-overlay-tools {
   position: absolute;
-  /* Below two rows of confluence latch tabs (2 × ROW_HEIGHT_PX in LatchHandle.tsx), so it never covers a tab. */
-  top: 46px;
+  /* Below the first row of confluence latch tabs (ROW_HEIGHT_PX in LatchHandle.tsx): a tab is 16px
+     high, and 6px more leaves a gap. A second-row tab (two latches less than 80px apart) can sit under it. */
+  top: 22px;
   right: 76px; /* clear of the price scale */
   z-index: 5;
 }

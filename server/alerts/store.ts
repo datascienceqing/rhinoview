@@ -53,6 +53,11 @@ export interface AlertsStore {
   deleteEvent(id: EntityId): Promise<{ unchecked: number }>;
   /** The checker's write. Returns the new events. */
   applyChecks(checks: readonly AppliedCheck[]): Promise<AlertEvent[]>;
+  /**
+   * Save a state-only change that is STATE_FLUSH_SECONDS old (or any, with `force`). The checker
+   * calls it on each tick, so a change is saved also when no later check comes (a 1D alert).
+   */
+  flush(force?: boolean): Promise<void>;
   /** Stream messages. Returns the function that unsubscribes. */
   subscribe(listener: (message: AlertStreamMessage) => void): () => void;
   /** Send a message that changes no state (the checker's budget warning) to the listeners. */
@@ -195,6 +200,8 @@ export async function openAlertsStore(filePath: string, opts: AlertsStoreOptions
     }
   }
 
+  const flushDue = () => dirtySince !== null && clock() - dirtySince >= STATE_FLUSH_SECONDS;
+
   let tail: Promise<unknown> = Promise.resolve();
   function serial<T>(task: () => Promise<T>): Promise<T> {
     const run = tail.then(task, task);
@@ -210,7 +217,7 @@ export async function openAlertsStore(filePath: string, opts: AlertsStoreOptions
       const draft = structuredClone(state);
       // `keep`: only `lastCheckedAt` moved; it is not worth a write or a dirty mark.
       const { result, messages, write = true, keep = false } = change(draft);
-      if (write || (dirtySince !== null && clock() - dirtySince >= STATE_FLUSH_SECONDS)) {
+      if (write || flushDue()) {
         await persist(draft);
         dirtySince = null;
       } else if (!keep && dirtySince === null) {
@@ -362,6 +369,14 @@ export async function openAlertsStore(filePath: string, opts: AlertsStoreOptions
         if (statusChanged && fired.length === 0) messages.push({ type: 'alerts' });
         if (!changed && !write) return { result: fired, messages, write: false, keep: true };
         return { result: fired, messages, write };
+      });
+    },
+
+    flush(force = false) {
+      return serial(async () => {
+        if (!(flushDue() || (force && dirtySince !== null))) return;
+        await persist(state);
+        dirtySince = null;
       });
     },
 

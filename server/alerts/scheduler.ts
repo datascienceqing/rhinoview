@@ -202,12 +202,12 @@ export class AlertScheduler {
         if (visit.waiting) waitingSymbols += 1;
       }
       if (waitingSymbols > 0) this.budgetShort(waitingSymbols, now);
-      if (checks.length > 0) {
-        try {
-          await this.deps.store.applyChecks(checks);
-        } catch (err) {
-          this.warnOnce('store', `Alert check: could not save: ${(err as Error).message}`);
-        }
+      try {
+        // With no checks, a state change of an earlier tick can still wait for its write.
+        if (checks.length > 0) await this.deps.store.applyChecks(checks);
+        else await this.deps.store.flush();
+      } catch (err) {
+        this.warnOnce('store', `Alert check: could not save: ${(err as Error).message}`);
       }
     } finally {
       this.running = false;

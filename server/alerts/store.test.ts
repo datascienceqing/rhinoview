@@ -251,6 +251,29 @@ describe('alerts store: checks and events', () => {
     expect(await onDisk()).toBe('below');
   });
 
+  it('flush saves a state-only change once it is STATE_FLUSH_SECONDS old, with no later check', async () => {
+    const a = await s.create(priceBody());
+    const onDisk = async () => JSON.parse(await readFile(file, 'utf8')).alerts[0].state.lastSide;
+    await s.applyChecks([{ alertId: a.id, revision: 1, result: { state: state(), status: 'active', fires: [] }, delayed: false }]);
+    t += STATE_FLUSH_SECONDS - 1;
+    await s.flush();
+    expect(await onDisk()).toBeNull();
+    t += 1;
+    await s.flush();
+    expect(await onDisk()).toBe('below');
+  });
+
+  it('flush(true) saves a state-only change at once; flush with nothing waiting does not write', async () => {
+    const a = await s.create(priceBody());
+    const before = await readFile(file, 'utf8');
+    t += STATE_FLUSH_SECONDS;
+    await s.flush(true);
+    expect(await readFile(file, 'utf8')).toBe(before);
+    await s.applyChecks([{ alertId: a.id, revision: 1, result: { state: state(), status: 'active', fires: [] }, delayed: false }]);
+    await s.flush(true);
+    expect(JSON.parse(await readFile(file, 'utf8')).alerts[0].state.lastSide).toBe('below');
+  });
+
   it('an expiry with no event sends an `alerts` message', async () => {
     const a = await s.create(priceBody());
     messages.length = 0;
