@@ -126,7 +126,7 @@ function Shell() {
         <div className="toolbar-group toolbar-main">
           <Logo />
           <LayoutSwitcher />
-          <SymbolSearch onSelect={select} />
+          <SymbolSearch onSelect={select} typeToSearch />
           <SnapshotReadout symbol={chart.symbol} name={names[chart.symbol] ?? null} />
         </div>
         <div className="toolbar-group toolbar-controls">

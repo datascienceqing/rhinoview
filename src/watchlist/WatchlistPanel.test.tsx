@@ -118,6 +118,48 @@ describe('WatchlistPanel rows', () => {
   });
 });
 
+describe('WatchlistPanel keyboard navigation', () => {
+  it('focuses the row on a cell click, so Up and Down move through the list next', async () => {
+    const { setSymbol } = renderPanel();
+    await screen.findByRole('button', { name: 'AAPL' });
+    await waitFor(() => expect(within(rowOf('MSFT')).queryByText('loading…')).toBeNull());
+    const cell = within(rowOf('MSFT')).getByText(mockSnapshot('MSFT').price?.toFixed(2) ?? '');
+    await userEvent.click(cell);
+    expect(setSymbol).toHaveBeenLastCalledWith('MSFT');
+    expect(screen.getByRole('button', { name: 'MSFT' })).toHaveFocus();
+    await userEvent.keyboard('{ArrowDown}');
+    expect(setSymbol).toHaveBeenLastCalledWith('NVDA');
+    expect(screen.getByRole('button', { name: 'NVDA' })).toHaveFocus();
+    await userEvent.keyboard('{ArrowUp}{ArrowUp}');
+    expect(setSymbol).toHaveBeenLastCalledWith('AAPL');
+    expect(screen.getByRole('button', { name: 'AAPL' })).toHaveFocus();
+    expect(order()).toEqual(DEFAULT); // plain arrows never reorder
+  });
+
+  it('stops at either end of the list', async () => {
+    const { setSymbol } = renderPanel();
+    const aapl = await screen.findByRole('button', { name: 'AAPL' });
+    aapl.focus();
+    await userEvent.keyboard('{ArrowUp}');
+    expect(setSymbol).not.toHaveBeenCalled();
+    screen.getByRole('button', { name: 'GOOGL' }).focus();
+    await userEvent.keyboard('{ArrowDown}');
+    expect(setSymbol).not.toHaveBeenCalled();
+  });
+
+  it('follows the sorted order on screen', async () => {
+    const { setSymbol } = renderPanel();
+    await screen.findByRole('button', { name: 'AAPL' });
+    await waitFor(() => expect(screen.queryByText('loading…')).toBeNull());
+    await userEvent.click(screen.getByRole('button', { name: /sort by last/i }));
+    const sorted = byPrice(DEFAULT, 1);
+    expect(order()).toEqual(sorted);
+    screen.getByRole('button', { name: sorted[0] as string }).focus();
+    await userEvent.keyboard('{ArrowDown}');
+    expect(setSymbol).toHaveBeenLastCalledWith(sorted[1]);
+  });
+});
+
 describe('WatchlistPanel symbol matching', () => {
   it('matches a stored BRK.B to the engine canonical BRK-B', async () => {
     resetMockWorkspace(wlWith(['BRK.B']));

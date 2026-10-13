@@ -212,7 +212,7 @@ export const zh: typeof en = {
   'wl.addLabel': '添加代码到自选',
   'wl.sortedHint': '列表排序时无法调整顺序。请取消排序后再拖动或移动行。',
   'wl.clearSort': '取消排序',
-  'wl.reorderHint': '拖动一行，或在代码上按 Alt+↑ 或 Alt+↓ 调整顺序。',
+  'wl.reorderHint': '按 ↑ 或 ↓ 显示相邻的代码。拖动一行，或在代码上按 Alt+↑ 或 Alt+↓ 调整顺序。',
   'wl.quotesFailed': (p) => `报价未能刷新。${p.reason}`,
   'wl.empty': '此列表为空。搜索代码即可添加。',
   'wl.none': '没有自选列表。请点击“新建列表”创建一个。',
