@@ -153,3 +153,82 @@ describe('SymbolSearch states', () => {
     expect(await screen.findByText(/Data provider error/)).toBeInTheDocument();
   });
 });
+
+describe('SymbolSearch Enter before the results arrive', () => {
+  it('picks the exact symbol when the results arrive', async () => {
+    const onSelect = vi.fn();
+    const searchSymbols = respond([mx, aapl]);
+    renderWithDataSource(<SymbolSearch onSelect={onSelect} debounceMs={30} />, fakeDataSource({ searchSymbols }));
+    await userEvent.setup().type(screen.getByRole('combobox'), 'aapl{Enter}');
+    expect(onSelect).not.toHaveBeenCalled();
+    await waitFor(() => expect(onSelect).toHaveBeenCalledWith(aapl));
+    expect(screen.getByRole('combobox')).toHaveValue('');
+  });
+
+  it('forgets the Enter when the user types again', async () => {
+    const onSelect = vi.fn();
+    renderWithDataSource(<SymbolSearch onSelect={onSelect} debounceMs={30} />, fakeDataSource({ searchSymbols: respond([aapl]) }));
+    const user = userEvent.setup();
+    await user.type(screen.getByRole('combobox'), 'aa{Enter}p');
+    await screen.findByRole('option');
+    expect(onSelect).not.toHaveBeenCalled();
+  });
+});
+
+describe('SymbolSearch type-to-search', () => {
+  function renderPage(typeToSearch = true) {
+    const onSelect = vi.fn();
+    renderWithDataSource(
+      <>
+        <button type="button">Elsewhere</button>
+        <input aria-label="Other field" />
+        <div role="dialog" aria-label="Dialog">
+          <button type="button">In dialog</button>
+        </div>
+        <SymbolSearch onSelect={onSelect} debounceMs={10} typeToSearch={typeToSearch} />
+      </>,
+      fakeDataSource({ searchSymbols: respond([aapl]) }),
+    );
+    return { onSelect, user: userEvent.setup(), input: screen.getByRole('combobox') };
+  }
+
+  it('starts a search from a letter typed anywhere, and Enter shows the symbol', async () => {
+    const { onSelect, user, input } = renderPage();
+    screen.getByRole('button', { name: 'Elsewhere' }).focus();
+    await user.keyboard('aapl');
+    expect(input).toHaveFocus();
+    expect(input).toHaveValue('aapl');
+    await user.keyboard('{Enter}');
+    await waitFor(() => expect(onSelect).toHaveBeenCalledWith(aapl));
+  });
+
+  it('starts from the page body too', async () => {
+    const { user, input } = renderPage();
+    (document.activeElement as HTMLElement | null)?.blur();
+    await user.keyboard('M');
+    expect(input).toHaveFocus();
+    expect(input).toHaveValue('M');
+  });
+
+  it('leaves keys alone in a text field, in a dialog, with a modifier, and when it is off', async () => {
+    const { user, input } = renderPage();
+    const other = screen.getByRole('textbox', { name: 'Other field' });
+    await user.click(other);
+    await user.keyboard('x');
+    expect(other).toHaveValue('x');
+    screen.getByRole('button', { name: 'In dialog' }).focus();
+    await user.keyboard('y');
+    screen.getByRole('button', { name: 'Elsewhere' }).focus();
+    await user.keyboard('{Control>}c{/Control}{Meta>}k{/Meta}{Alt>}z{/Alt}');
+    await user.keyboard(' ');
+    expect(input).toHaveValue('');
+    expect(input).not.toHaveFocus();
+  });
+
+  it('does nothing without the option', async () => {
+    const { user, input } = renderPage(false);
+    screen.getByRole('button', { name: 'Elsewhere' }).focus();
+    await user.keyboard('a');
+    expect(input).toHaveValue('');
+  });
+});

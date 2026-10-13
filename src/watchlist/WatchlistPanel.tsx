@@ -58,8 +58,7 @@ export function WatchlistPanel() {
     const s = focusSymbol.current;
     if (!s) return;
     focusSymbol.current = null;
-    const buttons = tableRef.current?.querySelectorAll<HTMLButtonElement>('button.wl-symbol') ?? [];
-    for (const b of buttons) if (b.dataset.symbol === s) b.focus();
+    focusRow(s);
   });
 
   const shown = useMemo(() => sortSymbols(symbols, q.quotes, sort), [symbols, q.quotes, sort]);
@@ -116,10 +115,25 @@ export function WatchlistPanel() {
     wl.setSymbols(active.id, next);
   }
 
+  function focusRow(symbol: string) {
+    const buttons = tableRef.current?.querySelectorAll<HTMLButtonElement>('button.wl-symbol') ?? [];
+    for (const b of buttons) if (b.dataset.symbol === symbol) b.focus();
+  }
+
   function onRowKey(e: KeyboardEvent<HTMLButtonElement>, symbol: string, index: number) {
-    if (!e.altKey || (e.key !== 'ArrowUp' && e.key !== 'ArrowDown')) return;
+    if (e.key !== 'ArrowUp' && e.key !== 'ArrowDown') return;
+    if (e.ctrlKey || e.metaKey || e.shiftKey) return;
     e.preventDefault();
-    reorder(index, index + (e.key === 'ArrowUp' ? -1 : 1), symbol);
+    const step = e.key === 'ArrowUp' ? -1 : 1;
+    if (e.altKey) {
+      reorder(index, index + step, symbol);
+      return;
+    }
+    // Up and Down show the next symbol in the order on screen, like TradingView. No wrap.
+    const next = shown[index + step];
+    if (!next) return;
+    setSymbol(next);
+    focusRow(next);
   }
 
   function onDrop(e: DragEvent, target: string) {
@@ -257,7 +271,11 @@ export function WatchlistPanel() {
                           canReorder={!sorted}
                           isDropTarget={dropTarget === symbol && dragging !== symbol}
                           onSelect={() => {
-                            if (!dragging) setSymbol(symbol);
+                            if (dragging) return;
+                            setSymbol(symbol);
+                            // A click on a cell (or a button in Safari) does not focus the
+                            // row. Focus it, so Up and Down move through the list next.
+                            focusRow(symbol);
                           }}
                           onRemove={() => removeSymbol(symbol)}
                           onKey={(e) => onRowKey(e, symbol, i)}
@@ -348,7 +366,7 @@ function Row(p: RowProps) {
           className="wl-symbol"
           data-symbol={p.symbol}
           aria-describedby="wl-reorder-hint"
-          aria-keyshortcuts={p.canReorder ? 'Alt+ArrowUp Alt+ArrowDown' : undefined}
+          aria-keyshortcuts={p.canReorder ? 'ArrowUp ArrowDown Alt+ArrowUp Alt+ArrowDown' : 'ArrowUp ArrowDown'}
           title={t('wl.showOnChart', { symbol: p.symbol })}
           onKeyDown={p.onKey}
         >

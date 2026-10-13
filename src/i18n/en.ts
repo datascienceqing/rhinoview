@@ -216,7 +216,7 @@ export const en = {
   'wl.addLabel': 'Add symbol to watchlist',
   'wl.sortedHint': 'Reorder is off while the list is sorted. Clear the sort to drag or move rows.',
   'wl.clearSort': 'Clear sort',
-  'wl.reorderHint': 'Drag a row, or press Alt+Up or Alt+Down on a symbol, to reorder.',
+  'wl.reorderHint': 'Press Up or Down to show the next symbol. Drag a row, or press Alt+Up or Alt+Down on a symbol, to reorder.',
   'wl.quotesFailed': (p: { reason: string }) => `Quotes did not refresh. ${p.reason}`,
   'wl.empty': 'This list is empty. Search for a symbol to add it.',
   'wl.none': 'There are no watchlists. Choose New list to make one.',
