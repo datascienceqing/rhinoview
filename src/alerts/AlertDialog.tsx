@@ -16,8 +16,8 @@ import { indicatorTitle } from '../panes/config';
 import { describeError } from '../ui/errorCopy';
 import { useAlerts } from './AlertsProvider';
 import type { AlertDraft } from './AlertsProvider';
-import { CLOSE_TARGET_KINDS, checkAlertCondition, checkAlertMessage } from './condition';
-import { defaultMessage } from './describe';
+import { CLOSE_TARGET_KINDS, checkAlertCondition, checkAlertMessage, directionOf } from './condition';
+import { defaultMessage, formatLevel, latchDateText } from './describe';
 import { computeExpiresAt } from './expiry';
 
 const DIRECTIONS: readonly AlertDirection[] = ['cross', 'up', 'down'];
@@ -40,9 +40,12 @@ function AlertDialogForm({ draft, onClose }: { draft: AlertDraft; onClose: () =>
   const { create, update } = useAlerts();
   const id = useId();
   const first = useRef<HTMLSelectElement>(null);
+  const form = useRef<HTMLFormElement>(null);
   const editing = draft.id !== undefined;
 
-  const [direction, setDirection] = useState<AlertDirection>(draft.condition.direction);
+  const [direction, setDirection] = useState<AlertDirection>(directionOf(draft.condition));
+  // A confluence alert keeps the level the latch locked: the dialog shows it, and cannot change it.
+  const confluence = draft.condition.type === 'confluence' ? draft.condition : null;
   const [level, setLevel] = useState(draft.condition.type === 'price' ? levelText(draft.condition.level) : '');
   const indicator = draft.condition.type === 'indicator' ? draft.condition : null;
   const lines = indicator ? LINE_KEYS[indicator.indicator.kind] : [];
@@ -56,7 +59,8 @@ function AlertDialogForm({ draft, onClose }: { draft: AlertDraft; onClose: () =>
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  useEffect(() => first.current?.focus(), []);
+  // A confluence alert has no condition field: the first input (the trigger) takes the focus.
+  useEffect(() => (first.current ?? form.current?.querySelector('input'))?.focus(), []);
 
   const otherLines = lines.filter((l) => l !== line);
   // The close is a target only for indicators on the price scale. An old alert that has it
@@ -64,7 +68,9 @@ function AlertDialogForm({ draft, onClose }: { draft: AlertDraft; onClose: () =>
   const closeAllowed = indicator !== null && (CLOSE_TARGET_KINDS.includes(indicator.indicator.kind) || indicator.target.type === 'close');
 
   let condition: AlertCondition;
-  if (!indicator) {
+  if (confluence) {
+    condition = confluence;
+  } else if (!indicator) {
     condition = { type: 'price', direction, level: toNumber(level) };
   } else {
     let target: AlertTarget;
@@ -112,6 +118,7 @@ function AlertDialogForm({ draft, onClose }: { draft: AlertDraft; onClose: () =>
   return (
     <div className="modal-backdrop" onMouseDown={(e) => e.target === e.currentTarget && onClose()}>
       <form
+        ref={form}
         className="alert-dialog"
         role="dialog"
         aria-modal="true"
@@ -129,8 +136,23 @@ function AlertDialogForm({ draft, onClose }: { draft: AlertDraft; onClose: () =>
           <span className="alert-dialog-symbol">
             {draft.symbol}
             {indicator && ` · ${indicatorTitle(indicator.indicator)} · ${t(`timeframe.${indicator.timeframe}`)}`}
+            {confluence && ` · ${indicatorTitle({ kind: 'confluence', params: confluence.params })} · ${t(`timeframe.${confluence.timeframe}`)}`}
           </span>
         </h2>
+
+        {confluence && (
+          <>
+            <div className="alert-field">
+              <span>{t('alerts.field.condition')}</span>
+              <output>{t(`alerts.confluence.${confluence.params.mode}`, { level: formatLevel(confluence.lock.top), count: confluence.lock.count })}</output>
+            </div>
+            <div className="alert-field">
+              <span>{t('alerts.field.latchDate')}</span>
+              <output>{latchDateText(confluence)}</output>
+              <small className="alert-hint">{t('alerts.confluence.hint')}</small>
+            </div>
+          </>
+        )}
 
         {indicator && lines.length > 1 && (
           <label className="alert-field">
@@ -145,18 +167,20 @@ function AlertDialogForm({ draft, onClose }: { draft: AlertDraft; onClose: () =>
           </label>
         )}
 
-        <label className="alert-field">
-          <span>{t('alerts.field.condition')}</span>
-          <select ref={first} value={direction} onChange={(e) => setDirection(e.target.value as AlertDirection)}>
-            {DIRECTIONS.map((d) => (
-              <option key={d} value={d}>
-                {t(`alerts.direction.${d}`)}
-              </option>
-            ))}
-          </select>
-        </label>
+        {!confluence && (
+          <label className="alert-field">
+            <span>{t('alerts.field.condition')}</span>
+            <select ref={first} value={direction} onChange={(e) => setDirection(e.target.value as AlertDirection)}>
+              {DIRECTIONS.map((d) => (
+                <option key={d} value={d}>
+                  {t(`alerts.direction.${d}`)}
+                </option>
+              ))}
+            </select>
+          </label>
+        )}
 
-        {!indicator && (
+        {!indicator && !confluence && (
           <label className="alert-field">
             <span>{t('alerts.field.price')}</span>
             <input type="number" inputMode="decimal" step="0.01" min="0" value={level} onChange={(e) => setLevel(e.target.value)} />

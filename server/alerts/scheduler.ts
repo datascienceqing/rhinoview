@@ -4,7 +4,8 @@
  * The symbols with active alerts form a queue. Each `tick` checks the symbols that are due,
  * the longest-waiting first, while the call budget allows:
  *  - Price alerts of a symbol share one quote, at most each ALERT_MIN_CHECK_SECONDS.
- *  - Indicator alerts of one symbol and one timeframe share one bars call, after a bar close.
+ *  - Indicator and confluence alerts of one symbol and one timeframe share one bars call,
+ *    after a bar close.
  *  - `budgetPerMinute` caps the upstream calls in any 60 s window. Null means no cap
  *    (the synthetic provider). A quote served from the shared cache costs no call.
  *
@@ -16,7 +17,7 @@
  */
 import type { Alert, AlertStreamMessage, Bar, Snapshot, Timeframe, UnixSeconds } from '@shared/types';
 import { ALERT_BUDGET_WARNINGS, ALERT_MIN_CHECK_SECONDS } from '@shared/types';
-import { closedBars, evaluateIndicatorAlert, evaluatePriceAlert, TIMEFRAME_SPAN_SECONDS } from './evaluate';
+import { closedBars, evaluateAlert, evaluatePriceAlert, TIMEFRAME_SPAN_SECONDS } from './evaluate';
 import type { AlertsStore, AppliedCheck } from './store';
 
 /** Default share of the provider budget for alerts (D2). The watchlist keeps the rest. */
@@ -52,8 +53,12 @@ export interface AlertSchedulerDeps {
   notify?: (message: AlertStreamMessage) => void;
 }
 
-/** Bars to load for an indicator: its longest period plus a margin for EMA warmup. */
+/**
+ * Bars to load for an indicator: its longest period plus a margin for EMA warmup. A confluence
+ * alert needs only the volume average: its level is frozen in the alert.
+ */
 function barsNeeded(alert: Alert): number {
+  if (alert.condition.type === 'confluence') return Math.max(300, alert.condition.params.volumeLength + 50);
   if (alert.condition.type !== 'indicator') return 0;
   const numbers = Object.values(alert.condition.indicator.params).filter((v): v is number => typeof v === 'number');
   const sum = numbers.reduce((a, b) => a + b, 0);
@@ -65,6 +70,17 @@ function lookbackSeconds(timeframe: Timeframe, n: number): number {
   const span = TIMEFRAME_SPAN_SECONDS[timeframe];
   const factor = timeframe === '1W' ? 1.1 : timeframe === '1D' ? 1.6 : 6;
   return Math.ceil(n * span * factor) + 7 * 86_400;
+}
+
+/**
+ * The first check of a confluence alert replays the bars from its lock bar, plus the bars of
+ * the volume average before it. Later checks, and other alerts, need nothing older (Infinity).
+ * A range longer than the provider's cap gives the newest bars; the replay then starts at the first.
+ */
+function replayFrom(alert: Alert, timeframe: Timeframe): UnixSeconds {
+  const c = alert.condition;
+  if (c.type !== 'confluence' || alert.state.lastBarTime !== null) return Infinity;
+  return c.lock.time - lookbackSeconds(timeframe, c.params.volumeLength);
 }
 
 export class AlertScheduler {
@@ -208,7 +224,7 @@ export class AlertScheduler {
     const live: Alert[] = [];
     for (const a of alerts) {
       if (now >= a.expiresAt) {
-        const result = a.condition.type === 'price' ? evaluatePriceAlert(a, { price: null, dayHigh: null, dayLow: null }, now) : evaluateIndicatorAlert(a, [], now);
+        const result = evaluateAlert(a, {}, now);
         checks.push({ alertId: a.id, revision: a.revision, result, delayed: false });
       } else live.push(a);
     }
@@ -240,7 +256,7 @@ export class AlertScheduler {
 
     const byTimeframe = new Map<Timeframe, Alert[]>();
     for (const a of live) {
-      if (a.condition.type !== 'indicator') continue;
+      if (a.condition.type === 'price') continue;
       const list = byTimeframe.get(a.condition.timeframe) ?? [];
       list.push(a);
       byTimeframe.set(a.condition.timeframe, list);
@@ -257,13 +273,13 @@ export class AlertScheduler {
       this.lastBarsAt.set(key, now);
       try {
         const n = Math.max(...group.map(barsNeeded));
-        const bars = await this.deps.source.bars(symbol, timeframe, now - lookbackSeconds(timeframe, n), now);
+        const bars = await this.deps.source.bars(symbol, timeframe, Math.min(now - lookbackSeconds(timeframe, n), ...group.map((a) => replayFrom(a, timeframe))), now);
         const newest = closedBars(bars, timeframe, now).at(-1)?.time;
         const known = group.map((a) => a.state.lastBarTime);
         const gotNewBar = newest !== undefined && known.some((t) => t === null || newest > t);
         this.barsMisses.set(key, gotNewBar ? 0 : (this.barsMisses.get(key) ?? 0) + 1);
         for (const a of group) {
-          checks.push({ alertId: a.id, revision: a.revision, result: evaluateIndicatorAlert(a, bars, now), delayed: this.deps.source.delayed });
+          checks.push({ alertId: a.id, revision: a.revision, result: evaluateAlert(a, { bars }, now), delayed: this.deps.source.delayed });
         }
       } catch (err) {
         this.warnOnce(`bars:${symbol}|${timeframe}`, `Alert check: no bars for ${symbol} ${timeframe}: ${(err as Error).message}`);

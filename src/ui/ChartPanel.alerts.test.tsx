@@ -3,7 +3,8 @@
  * lines on the price pane (target: the close), and an indicator pane (target: the value).
  */
 import { fireEvent, screen, waitFor } from '@testing-library/react';
-import type { IndicatorConfig } from '@shared/types';
+import type { ConfluenceParams, IndicatorConfig } from '@shared/types';
+import { DEFAULT_PARAMS } from '../indicators/types';
 import { resetMockAlerts } from '../../mocks/alerts';
 import { AlertDialog, AlertsProvider } from '../alerts';
 import { fakeEventSources } from '../alerts/testing/fakeEventSource';
@@ -25,6 +26,9 @@ const sma: IndicatorConfig = { id: 'sma1', kind: 'sma', params: { period: 50, so
 const ema: IndicatorConfig = { id: 'ema1', kind: 'ema', params: { period: 20, source: 'close' }, color: '#0f0', visible: true };
 const hiddenEma: IndicatorConfig = { ...ema, id: 'ema2', params: { period: 9, source: 'close' }, visible: false };
 const rsi: IndicatorConfig = { id: 'rsi1', kind: 'rsi', params: { period: 14 }, color: '#00f', visible: true };
+// A latch date before the first bar: the latch is active from bar 0 and locks at the first primary.
+const latched: ConfluenceParams = { ...DEFAULT_PARAMS.confluence, latch: 'on', latchTime: 1 };
+const conf: IndicatorConfig = { id: 'conf1', kind: 'confluence', params: latched, color: '#fa0', visible: true };
 
 async function renderPanel(indicators: IndicatorConfig[]) {
   renderWithDataSource(
@@ -75,5 +79,32 @@ describe('chart menu: alert items', () => {
     await screen.findByRole('dialog', { name: /Create alert/ });
     const targets = [...(screen.getByLabelText('Target') as HTMLSelectElement).options].map((o) => o.value);
     expect(targets).toEqual(['value']);
+  });
+});
+
+describe('chart menu: confluence alert', () => {
+  it('a latched confluence has an item at its locked level, and the dialog shows the fixed level and the latch date', async () => {
+    await renderPanel([conf]);
+    rightClick(100, 120);
+    const item = alertItems().find((t) => t?.startsWith('Add alert on CONF Turn (250) at the latched '));
+    expect(item).toBeDefined();
+    fireEvent.click(screen.getByRole('menuitem', { name: item }));
+    const dialog = await screen.findByRole('dialog', { name: /Create alert/ });
+    expect(dialog).toHaveTextContent('CONF Turn (250)');
+    expect(dialog).toHaveTextContent(/Close above \d+\.\d{2} \(\d+ levels\)/);
+    expect(dialog).toHaveTextContent('Latch date');
+    expect(screen.queryByLabelText('Target')).not.toBeInTheDocument();
+    expect(screen.getByLabelText('Message')).toHaveAttribute('placeholder', expect.stringMatching(/^AAPL CONF Turn \(250\) closing above .+ \(latched .+\)$/));
+    fireEvent.click(screen.getByRole('button', { name: 'Create' }));
+    await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument());
+  });
+
+  it('no item when the latch is off or the indicator is hidden', async () => {
+    await renderPanel([
+      { ...conf, params: { ...latched, latch: 'off' } },
+      { ...conf, id: 'conf2', visible: false },
+    ]);
+    rightClick(100, 120);
+    expect(alertItems().filter((t) => t?.includes('CONF'))).toEqual([]);
   });
 });

@@ -12,9 +12,11 @@
  *    last check is a crossing up even when the last price is below again (then it also
  *    crossed back down). The low is the mirror.
  *  - Indicator alerts read CLOSED bars only, each bar after `lastBarTime` in order.
+ *  - Confluence alerts read closed bars too, against the frozen `lock.top` (section 11).
  */
 import type { Alert, AlertCheckState, AlertCondition, AlertStatus, Bar, IndicatorLine, Timeframe, UnixSeconds } from '@shared/types';
 import { computeIndicator } from '../../src/indicators/compute';
+import { sma } from '../../src/indicators/math';
 
 /** One crossing that fires an event. */
 export interface AlertFire {
@@ -55,7 +57,7 @@ export const TIMEFRAME_SPAN_SECONDS: Record<Timeframe, number> = {
 };
 
 type Side = 'above' | 'below';
-type Direction = AlertCondition['direction'];
+type Direction = Extract<AlertCondition, { direction: unknown }>['direction'];
 
 const sideOf = (value: number, target: number): Side => (value >= target ? 'above' : 'below');
 
@@ -187,7 +189,66 @@ export function evaluateIndicatorAlert(alert: Alert, bars: readonly Bar[], now: 
   return finish(alert, state, fires, now);
 }
 
-/** Check any alert. Price alerts need `price`; indicator alerts need `bars`. */
+/**
+ * Check a confluence alert: the latched events of the chart (docs/CONFLUENCE_PLAN.md, 4.9)
+ * against the frozen `lock.top`, on each closed bar after `lastBarTime`.
+ *
+ * Per bar, in this order: a close on the near side of the top arms the alert again; a close on
+ * the far side fires when the alert is armed, the volume check passes, and (mode 'breakdown')
+ * the close-quality check passes. `lastSide` keeps the side the alert counts the price on: the
+ * near side means armed.
+ *
+ * The first check replays the bars from `lock.time`, so the armed state matches the chart. The
+ * replay does not fire, like the first check of the other alerts. When the bars do not reach
+ * back to `lock.time`, the replay starts at the first bar.
+ */
+export function evaluateConfluenceAlert(alert: Alert, bars: readonly Bar[], now: UnixSeconds): AlertCheckResult {
+  const early = precheck(alert, now);
+  if (early) return early;
+  const condition = alert.condition;
+  if (condition.type !== 'confluence') throw new Error('evaluateConfluenceAlert: not a confluence alert');
+
+  const closed = closedBars(bars, condition.timeframe, now);
+  const prev = alert.state;
+  const lastBar = closed[closed.length - 1];
+  if (!lastBar || (prev.lastBarTime !== null && lastBar.time <= prev.lastBarTime)) {
+    return { state: { ...prev, lastCheckedAt: now }, status: 'active', fires: [] };
+  }
+
+  const { params, lock } = condition;
+  const turn = params.mode === 'turn';
+  const near: Side = turn ? 'below' : 'above';
+  const far: Side = turn ? 'above' : 'below';
+  const volAvg = sma(Float64Array.from(closed, (b) => b.volume), params.volumeLength);
+
+  // Bars before the lock bar never count: the chart can make the lock on a forming bar, which
+  // the first check does not see yet.
+  const replay = prev.lastBarTime === null;
+  const after = Math.max(lock.time - 1, prev.lastBarTime ?? -Infinity);
+  const found = closed.findIndex((b) => b.time > after);
+  const start = found === -1 ? closed.length : found;
+
+  let side: Side = prev.lastSide ?? near;
+  const fires: AlertFire[] = [];
+  for (let i = start; i < closed.length; i++) {
+    const bar = closed[i] as Bar;
+    if (turn ? bar.close < lock.top : bar.close > lock.top) side = near;
+    const through = turn ? bar.close > lock.top : bar.close < lock.top;
+    const avg = volAvg[i] as number;
+    const volumeOk = !Number.isNaN(avg) && bar.volume >= avg * params.volumeMult;
+    const range = bar.high - bar.low;
+    const closeOk = turn || range <= 0 || (bar.close - bar.low) / range <= params.closeQuality;
+    if (side === near && through && volumeOk && closeOk) {
+      side = far;
+      if (!replay) fires.push({ crossed: turn ? 'up' : 'down', value: bar.close, target: lock.top, time: bar.time });
+    }
+  }
+
+  const state: AlertCheckState = { ...prev, lastSide: side, lastCheckedAt: now, lastBarTime: lastBar.time };
+  return finish(alert, state, fires, now);
+}
+
+/** Check any alert. Price alerts need `price`; indicator and confluence alerts need `bars`. */
 export function evaluateAlert(
   alert: Alert,
   input: { price?: PriceObservation; bars?: readonly Bar[] },
@@ -196,5 +257,6 @@ export function evaluateAlert(
   if (alert.condition.type === 'price') {
     return evaluatePriceAlert(alert, input.price ?? { price: null, dayHigh: null, dayLow: null }, now);
   }
+  if (alert.condition.type === 'confluence') return evaluateConfluenceAlert(alert, input.bars ?? [], now);
   return evaluateIndicatorAlert(alert, input.bars ?? [], now);
 }

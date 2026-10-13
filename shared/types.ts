@@ -697,6 +697,24 @@ export type AlertCondition =
       line: string;
       direction: AlertDirection;
       target: AlertTarget;
+    }
+  | {
+      /**
+       * A Confluence indicator with its latch on (docs/ALERTS_PLAN.md, section 11). It fires on
+       * the latched event of the chart: a closed bar past `lock.top`, up in mode 'turn' and down
+       * in mode 'breakdown', with the volume check (and the close-quality check in 'breakdown').
+       * After an event, a close back on the near side of `lock.top` arms it again.
+       */
+      type: 'confluence';
+      timeframe: Timeframe;
+      /** A COPY of the params with `latch` 'on' and the latch date: later edits do not change the alert. */
+      params: ConfluenceParams;
+      /**
+       * The primary cluster the latch locked, as the chart showed it when the alert was made.
+       * Frozen: more history or a moved latch handle does not change it. `time` is the open
+       * time of the bar where the lock formed (the first latched bar with a primary cluster).
+       */
+      lock: { bottom: number; top: number; count: number; time: UnixSeconds };
     };
 
 /**
@@ -708,7 +726,11 @@ export type AlertStatus = 'active' | 'paused' | 'triggered' | 'expired';
 
 /** Owned by the server's checker. It never changes the alert's `revision`. */
 export interface AlertCheckState {
-  /** The side of the last observation against the target; null before the first check. */
+  /**
+   * The side of the last observation against the target; null before the first check.
+   * Confluence alerts: the side of `lock.top` the alert counts the price on. It moves to the far
+   * side only with an event, and back to the near side with a close there (the re-arm).
+   */
   lastSide: 'above' | 'below' | null;
   lastCheckedAt: UnixSeconds | null;
   /**
@@ -717,7 +739,7 @@ export interface AlertCheckState {
    */
   lastDayHigh: number | null;
   lastDayLow: number | null;
-  /** Indicator alerts: the last CLOSED bar that was checked. */
+  /** Indicator and confluence alerts: the last CLOSED bar that was checked. */
   lastBarTime: UnixSeconds | null;
   firedCount: number;
   lastFiredAt: UnixSeconds | null;
@@ -778,14 +800,14 @@ export interface AlertEvent {
   firedAt: UnixSeconds;
   /** The direction of the crossing that fired. */
   crossed: 'up' | 'down';
-  /** The price (price alert) or the indicator value (indicator alert) that crossed. */
+  /** The price (price alert), the indicator value (indicator alert) or the close (confluence alert) that crossed. */
   value: number;
   /** The level or the target value at that moment. */
   target: number;
   /** The quote behind it was delayed. */
   delayed: boolean;
   /**
-   * Indicator alerts only: the open time of the closed bar that crossed. After a long gap
+   * Indicator and confluence alerts only: the open time of the closed bar that crossed. After a long gap
    * one check can fire on older bars; `firedAt` is still the time of the check.
    */
   barTime?: UnixSeconds;

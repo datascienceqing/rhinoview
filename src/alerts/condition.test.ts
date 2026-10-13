@@ -1,8 +1,9 @@
-import type { AlertCondition } from '@shared/types';
+import type { AlertCondition, AlertDirection } from '@shared/types';
 import { MAX_ALERT_MESSAGE_LENGTH } from '@shared/types';
-import { ALERT_SYMBOL_RE, checkAlertCondition, checkAlertMessage } from './condition';
+import { DEFAULT_PARAMS } from '../indicators/types';
+import { ALERT_SYMBOL_RE, checkAlertCondition, checkAlertMessage, directionOf } from './condition';
 
-const price = (level: number, direction: AlertCondition['direction'] = 'cross'): AlertCondition => ({ type: 'price', direction, level });
+const price = (level: number, direction: AlertDirection = 'cross'): AlertCondition => ({ type: 'price', direction, level });
 
 const macd = (line: string, target: Extract<AlertCondition, { type: 'indicator' }>['target']): AlertCondition => ({
   type: 'indicator',
@@ -70,6 +71,40 @@ describe('checkAlertCondition: indicator', () => {
 
   it('rejects a target value that is not finite', () => {
     expect(checkAlertCondition(macd('macd', { type: 'value', value: Number.NaN }))).toMatch(/finite/);
+  });
+});
+
+describe('checkAlertCondition: confluence', () => {
+  const LATCH = 1_700_000_000;
+  type Confluence = Extract<AlertCondition, { type: 'confluence' }>;
+  const conf = (over: Partial<Confluence['params']> = {}, lock: Partial<Confluence['lock']> = {}): Confluence => ({
+    type: 'confluence',
+    timeframe: '1D',
+    params: { ...DEFAULT_PARAMS.confluence, latch: 'on', latchTime: LATCH, ...over },
+    lock: { bottom: 98, top: 100, count: 3, time: LATCH + 86_400, ...lock },
+  });
+
+  it('accepts a latched level, and takes the direction from the mode', () => {
+    expect(checkAlertCondition(conf())).toBeNull();
+    expect(directionOf(conf())).toBe('up');
+    expect(directionOf(conf({ mode: 'breakdown' }))).toBe('down');
+  });
+
+  it('needs the latch on, with a date', () => {
+    expect(checkAlertCondition(conf({ latch: 'off' }))).toMatch(/latch/);
+    expect(checkAlertCondition(conf({ latchTime: 0 }))).toMatch(/latch/);
+  });
+
+  it('rejects invalid params with the indicator message', () => {
+    expect(checkAlertCondition(conf({ tolerancePct: 0 }))).not.toBeNull();
+  });
+
+  it('rejects a lock that is not a band of positive prices, a count below 1, or a lock before the latch date', () => {
+    expect(checkAlertCondition(conf({}, { top: Number.NaN }))).toMatch(/positive/);
+    expect(checkAlertCondition(conf({}, { bottom: 0 }))).toMatch(/positive/);
+    expect(checkAlertCondition(conf({}, { bottom: 101 }))).toMatch(/at most/);
+    expect(checkAlertCondition(conf({}, { count: 0 }))).toMatch(/count/);
+    expect(checkAlertCondition(conf({}, { time: LATCH - 1 }))).toMatch(/latch date/);
   });
 });
 

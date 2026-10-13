@@ -3,8 +3,11 @@
  * that the text reads the current language through `t`.
  */
 import type { Alert, AlertCondition, AlertDirection, AlertEvent, AlertStatus } from '@shared/types';
+import { isIntraday } from '@shared/types';
 import { t, translateIn } from '../i18n';
 import { indicatorTitle } from '../panes/config';
+import { formatLatchDate } from '../panes/confluence/LatchHandle';
+import { directionOf } from './condition';
 
 /** ↕ crossing, ↑ crossing up, ↓ crossing down. */
 export const DIRECTION_ARROW: Record<AlertDirection, string> = { cross: '↕', up: '↑', down: '↓' };
@@ -49,8 +52,25 @@ export function targetText(condition: Extract<AlertCondition, { type: 'indicator
   return lineName(target.line) || target.line;
 }
 
+type ConfluenceCondition = Extract<AlertCondition, { type: 'confluence' }>;
+
+/** "CONF Turn (250)". */
+const confluenceTitle = (condition: ConfluenceCondition) => indicatorTitle({ kind: 'confluence', params: condition.params });
+
+/** The latch date as the handle on the chart shows it: "Mar 12", or "Mar 12 10:30" intraday. */
+export const latchDateText = (condition: ConfluenceCondition) => formatLatchDate(condition.params.latchTime, isIntraday(condition.timeframe));
+
 /** The message the app writes when the user leaves it empty: "AAPL crossing 190.00". */
 export function defaultMessage(symbol: string, condition: AlertCondition): string {
+  if (condition.type === 'confluence') {
+    return t('alerts.message.confluence', {
+      symbol,
+      indicator: confluenceTitle(condition),
+      verb: t(`alerts.verb.${condition.params.mode}`),
+      level: formatLevel(condition.lock.top),
+      date: latchDateText(condition),
+    });
+  }
   const verb = t(`alerts.verb.${condition.direction}`);
   if (condition.type === 'price') return t('alerts.message.price', { symbol, verb, level: formatLevel(condition.level) });
   return t('alerts.message.indicator', { symbol, indicator: subjectOf(condition), verb, target: targetText(condition) });
@@ -59,10 +79,11 @@ export function defaultMessage(symbol: string, condition: AlertCondition): strin
 /** The message to show: the user's own, else the default. */
 export const messageOf = (a: Pick<Alert, 'symbol' | 'condition' | 'message'>): string => a.message || defaultMessage(a.symbol, a.condition);
 
-/** A short summary for a row: "↕ 190.00" or "RSI (14) ↑ 70". */
+/** A short summary for a row: "↕ 190.00", "RSI (14) ↑ 70" or "CONF Turn (250) ↑ 123.45". */
 export function summaryOf(condition: AlertCondition): string {
-  const arrow = DIRECTION_ARROW[condition.direction];
+  const arrow = DIRECTION_ARROW[directionOf(condition)];
   if (condition.type === 'price') return `${arrow} ${formatLevel(condition.level)}`;
+  if (condition.type === 'confluence') return `${confluenceTitle(condition)} ${arrow} ${formatLevel(condition.lock.top)}`;
   return `${subjectOf(condition)} ${arrow} ${targetText(condition)}`;
 }
 
@@ -74,7 +95,9 @@ export function matchesSearch(item: { symbol: string; condition: AlertCondition 
   const q = query.trim().toLowerCase();
   if (!q) return true;
   const words = [item.symbol];
-  if (item.condition.type === 'indicator') {
+  if (item.condition.type === 'confluence') {
+    words.push(confluenceTitle(item.condition), translateIn('en', 'indicator.kind.confluence'), translateIn('zh', 'indicator.kind.confluence'));
+  } else if (item.condition.type === 'indicator') {
     const kind = item.condition.indicator.kind;
     words.push(subjectOf(item.condition), translateIn('en', `indicator.kind.${kind}`), translateIn('zh', `indicator.kind.${kind}`));
   }

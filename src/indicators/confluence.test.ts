@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 import type { Bar, ConfluenceParams } from '@shared/types';
 import { buildClusters, computeConfluence, rankClusters } from './confluence';
 import type { ConfluenceCluster, ConfluenceResult } from './confluence';
-import { walk } from './fixtures';
+import { randomBars as randomBarsFrom } from './fixtures';
 import { DEFAULT_PARAMS, InvalidIndicatorParamsError } from './types';
 
 // Bars from [open, high, low, close, volume?] rows. Time = index * 1 day.
@@ -177,9 +177,16 @@ describe('mode breakdown: breakdowns (plan 4.6, 4.8)', () => {
 describe('the latch (plan 4.9)', () => {
   const at = (bar: number) => T0 + bar * DAY;
 
+  it('reports the bar where the lock formed, which can come after the latch bar', () => {
+    // The first primary cluster exists at bar 2, when the pivot high of bar 1 is confirmed.
+    const r = computeConfluence(bars(TURN), P({ latch: 'on', latchTime: at(0) }));
+    expect(r.latch).toMatchObject({ index: 0, holds: true, lockIndex: 2 });
+    expect(computeConfluence(bars(TURN), P({ latch: 'off', latchTime: at(0) })).latch.lockIndex).toBeNull();
+  });
+
   it('breakdown: locks at the first active bar with a primary, and fires once per break', () => {
     const r = computeConfluence(bars(BREAKDOWN), P({ mode: 'breakdown', latch: 'on', latchTime: at(2) }));
-    expect(r.latch).toEqual({ index: 2, holds: true });
+    expect(r.latch).toEqual({ index: 2, holds: true, lockIndex: 2 });
     expect(r.last?.primary).toEqual(c(9, 9, 1));
     expect(r.last?.latched).toBe(true);
     // Bar 5 is still below the locked 9: no second event. Bar 6 closes above 9 (re-arm); bar 7 breaks again.
@@ -244,7 +251,7 @@ describe('the latch (plan 4.9)', () => {
 
   it('is not active before the latch date, and has no index after the last bar', () => {
     const r = computeConfluence(bars(BREAKDOWN), P({ mode: 'breakdown', latch: 'on', latchTime: at(100) }));
-    expect(r.latch).toEqual({ index: null, holds: false });
+    expect(r.latch).toEqual({ index: null, holds: false, lockIndex: null });
     expect(r.events).toEqual(computeConfluence(bars(BREAKDOWN), P({ mode: 'breakdown' })).events);
   });
 
@@ -253,7 +260,7 @@ describe('the latch (plan 4.9)', () => {
     for (const over of [{ latch: 'on', latchTime: 0 }, { latch: 'off', latchTime: at(2) }] as const) {
       const r = computeConfluence(bars(BREAKDOWN), P({ mode: 'breakdown', ...over }));
       expect(r.events).toEqual(plain.events);
-      expect(r.latch).toEqual({ index: null, holds: false });
+      expect(r.latch).toEqual({ index: null, holds: false, lockIndex: null });
       expect(r.last).toEqual(plain.last);
     }
   });
@@ -302,26 +309,7 @@ describe('invalidation (plan 4.7)', () => {
 });
 
 /** Random bars with volume spikes, so events happen with the default params. */
-function randomBars(n: number, seed: number): Bar[] {
-  let s = seed >>> 0;
-  const next = (): number => {
-    s = (Math.imul(s, 1664525) + 1013904223) >>> 0;
-    return s / 2 ** 32;
-  };
-  return walk(n, seed).map((close, i) => {
-    const open = close + (next() - 0.5);
-    return {
-      time: T0 + i * DAY,
-      open,
-      high: Math.max(open, close) + next(),
-      low: Math.min(open, close) - next(),
-      close,
-      volume: Math.round(1000 * (next() < 0.2 ? 2 + next() : 0.5 + next())),
-      vwap: null,
-      transactions: null,
-    };
-  });
-}
+const randomBars = (n: number, seed: number) => randomBarsFrom(n, seed, T0, DAY);
 
 describe('sources and swing levels (plan 4.1)', () => {
   it('has no swing level and no Fibonacci level before swingLookback bars', () => {
@@ -375,7 +363,7 @@ describe('edge cases', () => {
       mode: 'turn',
       events: [],
       last: null,
-      latch: { index: null, holds: false },
+      latch: { index: null, holds: false, lockIndex: null },
     });
   });
 

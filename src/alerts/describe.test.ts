@@ -1,5 +1,6 @@
 import type { Alert, AlertCondition, AlertEvent } from '@shared/types';
 import { applyLocale } from '../i18n/locale';
+import { DEFAULT_PARAMS } from '../indicators/types';
 import { defaultMessage, formatLevel, intervalText, matchesSearch, messageOf, sortAlerts, sortEvents, summaryOf, roundLevel } from './describe';
 
 const price: AlertCondition = { type: 'price', direction: 'cross', level: 190 };
@@ -38,6 +39,31 @@ describe('alert text', () => {
   it('shows the check interval in seconds or minutes', () => {
     expect(intervalText(30)).toBe('Checked every 30 s');
     expect(intervalText(400)).toBe('Checked every 7 min');
+  });
+});
+
+// Latch date 2023-11-14 (UTC). Daily bars show the date only.
+const conf: AlertCondition = {
+  type: 'confluence', timeframe: '1D', params: { ...DEFAULT_PARAMS.confluence, latch: 'on', latchTime: 1_700_000_000 }, lock: { bottom: 121.1, top: 123.45, count: 4, time: 1_700_006_400 },
+};
+const confDown: AlertCondition = { ...conf, params: { ...conf.params, mode: 'breakdown' } } as AlertCondition;
+
+describe('confluence alert text', () => {
+  it('names the indicator, the latched level and the latch date, in both languages', () => {
+    applyLocale('en');
+    expect(defaultMessage('AAPL', conf)).toBe('AAPL CONF Turn (250) closing above 123.45 (latched Nov 14)');
+    expect(defaultMessage('AAPL', confDown)).toBe('AAPL CONF Breakdown (250) closing below 123.45 (latched Nov 14)');
+    applyLocale('zh');
+    expect(defaultMessage('AAPL', conf)).toBe('AAPL CONF Turn (250) 收盘突破 123.45（锁定于 11月14日）');
+    applyLocale('en');
+  });
+
+  it('summarizes with the arrow of the mode, and is found by the indicator name', () => {
+    expect(summaryOf(conf)).toBe('CONF Turn (250) ↑ 123.45');
+    expect(summaryOf(confDown)).toBe('CONF Breakdown (250) ↓ 123.45');
+    expect(matchesSearch({ symbol: 'AAPL', condition: conf }, 'conf')).toBe(true);
+    expect(matchesSearch({ symbol: 'AAPL', condition: conf }, 'confluence')).toBe(true);
+    expect(matchesSearch({ symbol: 'AAPL', condition: conf }, 'rsi')).toBe(false);
   });
 });
 

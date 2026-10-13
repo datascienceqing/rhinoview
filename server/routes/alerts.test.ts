@@ -14,6 +14,7 @@ import type { Alert, AlertEventsResponse, ApiResult } from '@shared/types';
 import { createAlertsHandlers, resetMockAlerts } from '../../mocks/alerts';
 import { openAlertsStore } from '../alerts/store';
 import type { AlertsStore } from '../alerts/store';
+import { DEFAULT_PARAMS } from '../../src/indicators/types';
 import { buildServer } from '../index';
 import type { MarketEngine } from '../market/types';
 
@@ -71,6 +72,19 @@ describe('alerts routes', () => {
     expect(data(await call('DELETE', `/alerts/${a.id}`))).toEqual({ id: a.id });
     const gone = await call('DELETE', `/alerts/${a.id}`);
     expect([gone.status, errCode(gone)]).toEqual([404, 'NOT_FOUND']);
+  });
+
+  it('creates a confluence alert with a latched level, and rejects one without a latch', async () => {
+    const params = { ...DEFAULT_PARAMS.confluence, latch: 'on', latchTime: 1_700_000_000 };
+    const condition = { type: 'confluence', timeframe: '1D', params, lock: { bottom: 98, top: 100, count: 3, time: 1_700_000_000 } };
+    const created = data<Alert>(await call('POST', '/alerts', { symbol: 'aapl', condition }));
+    expect(created.condition).toEqual(condition);
+    // A reload of the file keeps it.
+    const reopened = await openAlertsStore(join(dir, 'alerts.json'), { warn: () => undefined });
+    expect(reopened.list().map((a) => a.condition)).toEqual([condition]);
+    const off = await call('POST', '/alerts', { symbol: 'aapl', condition: { ...condition, params: { ...params, latch: 'off' } } });
+    expect(errCode(off)).toBe('BAD_REQUEST');
+    expect(errCode(await call('POST', '/alerts', { symbol: 'aapl', condition: { ...condition, lock: { ...condition.lock, extra: 1 } } }))).toBe('BAD_REQUEST');
   });
 
   it('rejects unknown fields and bad values with 400, before it looks up the id', async () => {
