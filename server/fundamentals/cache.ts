@@ -2,7 +2,7 @@
  * Caching wrapper for any `FundamentalsProvider` (invariant 9).
  *
  * TTLs: overview and statements 6 hours; earnings 1 hour, because an upcoming report
- * gets its actual values on the day. SUCCESSES ONLY: a rejected call is never stored, so
+ * gets its actual values on the day; news 15 minutes, because articles arrive all day. SUCCESSES ONLY: a rejected call is never stored, so
  * a 429 or a 402 cannot outlive its cause. Concurrent identical calls share one upstream
  * request, and a shared failure is dropped from the in-flight map as soon as it settles.
  *
@@ -13,6 +13,7 @@
 import type {
   EarningsResponse,
   FundamentalsOverview,
+  NewsResponse,
   StatementKind,
   StatementPeriod,
   StatementsResponse,
@@ -22,6 +23,7 @@ import type { FundamentalsProvider } from './types';
 export const OVERVIEW_TTL_MS = 6 * 60 * 60 * 1000;
 export const STATEMENTS_TTL_MS = 6 * 60 * 60 * 1000;
 export const EARNINGS_TTL_MS = 60 * 60 * 1000;
+export const NEWS_TTL_MS = 15 * 60 * 1000;
 /** Bounds memory: a long-running server must not hold every symbol ever asked for. */
 export const MAX_CACHE_ENTRIES = 500;
 
@@ -54,6 +56,10 @@ export class CachedFundamentalsProvider implements FundamentalsProvider {
 
   getEarnings(symbol: string): Promise<EarningsResponse> {
     return this.cached(`earnings|${norm(symbol)}`, EARNINGS_TTL_MS, () => this.inner.getEarnings(symbol));
+  }
+
+  getNews(symbol: string): Promise<NewsResponse> {
+    return this.cached(`news|${norm(symbol)}`, NEWS_TTL_MS, () => this.inner.getNews(symbol));
   }
 
   get size(): number {

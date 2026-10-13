@@ -298,3 +298,39 @@ describe('plausible for the synthetic market engine\'s price (invariants 1, 2)',
     expect((await provider.getOverview('AAPL')).profile.sector).toBe('Technology');
   });
 });
+
+describe('invariant 11 — synthetic news', () => {
+  it('serves news newest first, inside the window, for every symbol in the universe', async () => {
+    for (const m of UNIVERSE) {
+      const res = await provider.getNews(m.symbol);
+      expect(res.symbol).toBe(m.symbol);
+      expect(res.truncated).toBe(false);
+      const times = res.articles.map((a) => a.publishedAt);
+      expect(times, m.symbol).toEqual([...times].sort((a, b) => b - a));
+      for (const t of times) expect(t).toBeLessThanOrEqual(NOW() / 1000);
+    }
+    expect((await provider.getNews('AAPL')).articles.length).toBeGreaterThan(20);
+    expect((await provider.getNews(etfs[0]?.symbol ?? 'SPY')).articles.length).toBeGreaterThan(0);
+  });
+
+  it('says every article is synthetic and gives no link', async () => {
+    for (const a of (await provider.getNews('MSFT')).articles) {
+      expect(a.summary).toContain('not real news');
+      expect(a.url).toBeNull();
+    }
+  });
+
+  it('keeps an article the same when the clock moves', async () => {
+    const later = new SyntheticFundamentalsProvider({ now: () => NOW() + 3 * 86_400_000 });
+    const before = (await provider.getNews('AAPL')).articles;
+    const after = new Set((await later.getNews('AAPL')).articles.map((a) => JSON.stringify(a)));
+    // Articles of the last 50 days are in both windows.
+    const shared = before.filter((a) => a.publishedAt > NOW() / 1000 - 50 * 86_400);
+    expect(shared.length).toBeGreaterThan(0);
+    for (const a of shared) expect(after.has(JSON.stringify(a))).toBe(true);
+  });
+
+  it('rejects a symbol outside the universe', async () => {
+    await expect(provider.getNews('ZZZZ')).rejects.toBeInstanceOf(UnknownSymbolError);
+  });
+});

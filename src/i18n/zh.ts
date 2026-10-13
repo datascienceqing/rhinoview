@@ -254,6 +254,7 @@ export const zh: typeof en = {
   'fund.tab.statements': '财务报表',
   'fund.tab.trends': '趋势',
   'fund.tab.earnings': '财报',
+  'fund.tab.news': '新闻',
   'fund.nm': '无意义',
   'fund.nmNegative': '无意义：盈利为负',
   'fund.nmInterest': '无意义：营业成本主要是利息支出，因此这是存贷利差',
@@ -362,6 +363,13 @@ export const zh: typeof en = {
   'fund.col.revSurprise': '营收差异',
   'fund.moreFailed': '无法加载更多财报。',
   'fund.showMore': '显示更多',
+  'fund.loadingNews': '正在加载新闻…',
+  'fund.noNews': (p: { from: string; to: string }) => `${p.from} 至 ${p.to} 没有新闻。`,
+  'fund.newsRange': (p: { count: number; from: string; to: string }) =>
+    `${p.from} 至 ${p.to} 共 ${p.count} 篇新闻。时间为纽约时间（ET）。`,
+  'fund.newsTruncated': (p: { max: number }) => `只显示最新的 ${p.max} 篇。`,
+  'fund.newsShown': (p: { shown: number; count: number }) => `显示 ${p.shown} / ${p.count} 篇。`,
+  'fund.newsOpens': '在新标签页中打开',
   'fund.marker': '财',
 
   // ── errors ──

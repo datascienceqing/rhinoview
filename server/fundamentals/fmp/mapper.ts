@@ -19,16 +19,20 @@ import type {
   FinancialScores,
   FundamentalsOverview,
   KeyMetricsTTM,
+  NewsArticle,
   StatementKind,
   StatementPeriod,
   StatementRow,
   StatementsResponse,
 } from '@shared/types';
+import { dateTimeToNySeconds } from '../../market/fmp/time';
 import { LINE_ITEMS, MAX_STATEMENT_ROWS, lineItemsFor } from '../lineItems';
+import { safeHttpUrl } from '../news';
 import type {
   FmpEarningsRow,
   FmpGrades,
   FmpKeyMetricsTtm,
+  FmpNewsRow,
   FmpPriceTarget,
   FmpProfileRow,
   FmpRatiosTtm,
@@ -205,4 +209,26 @@ export function mapEarnings(symbol: string, rows: readonly FmpEarningsRow[]): Ea
     }))
     .sort((a, b) => (a.date < b.date ? 1 : a.date > b.date ? -1 : 0));
   return { symbol, events };
+}
+
+/**
+ * News rows to articles, in the order given. A row without a title or without a valid
+ * New York `publishedDate` is dropped: it cannot be listed or placed in time. The
+ * window, duplicates and order are `finishNews`'s job.
+ */
+export function mapNews(rows: readonly FmpNewsRow[]): NewsArticle[] {
+  const out: NewsArticle[] = [];
+  for (const r of rows) {
+    const publishedAt = r.publishedDate === null ? undefined : dateTimeToNySeconds(r.publishedDate.trim());
+    if (r.title === null || publishedAt === undefined) continue;
+    out.push({
+      publishedAt,
+      title: r.title.trim(),
+      summary: r.text?.trim() ?? null,
+      publisher: r.publisher,
+      site: r.site,
+      url: safeHttpUrl(r.url),
+    });
+  }
+  return out;
 }

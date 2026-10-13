@@ -63,3 +63,21 @@
 .fund-page-title { margin: 0; font-size: 18px; font-weight: 600; color: var(--text); }
 .fund-page-symbol { margin-left: 8px; color: var(--text-dim); font-weight: 500; }
 .fund-page-hint { margin-left: auto; color: var(--text-dim); font-size: 12px; }
+
+/* News tab. One column: a reading width, not the full 1440 px. */
+.fund-news { max-width: 860px; }
+.fund-news-range { color: var(--text-dim); margin: 0 0 14px; }
+.fund-news-day h3 { margin: 18px 0 6px; padding-bottom: 4px; font-size: 12px; font-weight: 600; color: var(--text-dim); text-transform: uppercase; border-bottom: 1px solid var(--border); }
+.fund-news-day ul { list-style: none; margin: 0; padding: 0; }
+.fund-news-item { padding: 10px 0; border-bottom: 1px solid var(--border); }
+.fund-news-item:last-child { border-bottom: 0; }
+.fund-news-item h4 { margin: 0 0 4px; font-size: 14px; font-weight: 600; line-height: 1.4; }
+.fund-news-item a { color: var(--text); text-decoration: none; }
+.fund-news-item a:hover { color: var(--accent); text-decoration: underline; }
+.fund-news-item a:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.fund-news-meta { display: flex; flex-wrap: wrap; gap: 4px 12px; margin: 0 0 4px; color: var(--text-dim); font-size: 12px; }
+.fund-news-summary {
+  margin: 0; color: var(--text-dim); line-height: 1.5;
+  display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden;
+}
+.fund-news-more { display: flex; align-items: center; gap: 12px; margin-top: 14px; color: var(--text-dim); }

@@ -8,7 +8,7 @@ import { http } from 'msw';
 import type { StatementKind, StatementPeriod } from '@shared/types';
 import { DEFAULT_EARNINGS_LIMIT, MAX_EARNINGS_LIMIT } from '@shared/types';
 import { fail, ok } from './envelope';
-import { earningsFor, hasFundamentals, overviewFor, statementsFor } from './fundamentalsData';
+import { earningsFor, hasFundamentals, newsFor, overviewFor, statementsFor } from './fundamentalsData';
 
 const badRequest = (message: string) => fail({ code: 'BAD_REQUEST', message });
 
@@ -64,6 +64,11 @@ export function createFundamentalsHandlers() {
       // Newest first, so the newest `limit` events are a prefix.
       const full = earningsFor(r.symbol);
       return ok({ ...full, events: full.events.slice(0, limit) });
+    }),
+
+    http.get('*/api/fundamentals/news', ({ request }) => {
+      const r = resolveSymbol(new URL(request.url));
+      return 'response' in r ? r.response : ok(newsFor(r.symbol));
     }),
   ];
 }

@@ -8,7 +8,14 @@
  * coherence rule. Market bars have all of those. Different access patterns get
  * different seams, so a provider can serve one and not the other.
  */
-import type { EarningsResponse, FundamentalsOverview, StatementKind, StatementPeriod, StatementsResponse } from '@shared/types';
+import type {
+  EarningsResponse,
+  FundamentalsOverview,
+  NewsResponse,
+  StatementKind,
+  StatementPeriod,
+  StatementsResponse,
+} from '@shared/types';
 
 export interface FundamentalsProvider {
   /** False for a provider that serves no fundamentals. `/api/capabilities` reports it. */
@@ -22,6 +29,9 @@ export interface FundamentalsProvider {
 
   /** @throws UnknownSymbolError */
   getEarnings(symbol: string): Promise<EarningsResponse>;
+
+  /** News of the last NEWS_WINDOW_MONTHS months (invariant 11). @throws UnknownSymbolError */
+  getNews(symbol: string): Promise<NewsResponse>;
 }
 
 // ───────────────────────────────────────────────────────────────────────────────
@@ -93,4 +103,12 @@ export interface FundamentalsProvider {
 //     flows sum exactly to the fiscal year (revenue, net income, operating cash flow),
 //     and its balance-sheet fiscal-year values equal Q4. It is what the tests and
 //     offline development use, so it must model reality, not only fill the screen.
+//
+// 11. NEWS IS A WINDOW, NOT A SNAPSHOT. `getNews` covers the New York dates from
+//     NEWS_WINDOW_MONTHS calendar months before today to today (`newsWindow`). Articles
+//     are newest first, without duplicates, at most MAX_NEWS_ARTICLES. A known symbol
+//     with no news is an EMPTY list, not UnknownSymbolError. FMP's `publishedDate` is New
+//     York wall-clock time (measured), so it goes through the New York conversion, never
+//     through `Date.parse`. A link that is not http or https is `null`: the UI puts the
+//     link in an `href`. Cache news for 15 minutes; articles arrive all day.
 // ───────────────────────────────────────────────────────────────────────────────

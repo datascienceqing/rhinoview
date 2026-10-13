@@ -146,3 +146,20 @@ export const earningsRow = z.object({
 });
 export const earningsResponse = z.array(earningsRow);
 export type FmpEarningsRow = z.infer<typeof earningsRow>;
+
+/**
+ * `/news/stock`. Rows are third-party text, so the row shape is lenient: a row without a
+ * title or with a bad date is dropped by the mapper, and one bad row does not fail the
+ * request. `publishedDate` is New York wall-clock time, "YYYY-MM-DD HH:MM:SS" (measured).
+ * `text` is a short excerpt. `image` exists but is not read.
+ */
+export const newsRow = z.object({
+  publishedDate: nullableText,
+  title: nullableText,
+  text: nullableText,
+  publisher: nullableText,
+  site: nullableText,
+  url: nullableText,
+});
+export const newsResponse = z.array(newsRow);
+export type FmpNewsRow = z.infer<typeof newsRow>;

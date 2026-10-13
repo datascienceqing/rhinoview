@@ -140,7 +140,7 @@ describe('GET /api/capabilities — fundamentals flag (Phase 5)', () => {
     const app = buildServer({
       engine: eodEngine(),
       provider: 'fmp',
-      fundamentals: { available: true, getOverview: vi.fn(), getStatements: vi.fn(), getEarnings: vi.fn() },
+      fundamentals: { available: true, getOverview: vi.fn(), getStatements: vi.fn(), getEarnings: vi.fn(), getNews: vi.fn() },
     });
     const body = (await app.inject({ method: 'GET', url: '/api/capabilities' })).json();
     expect(body.ok && body.data.fundamentals).toBe(true);

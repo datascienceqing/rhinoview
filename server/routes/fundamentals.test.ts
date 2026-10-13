@@ -6,7 +6,14 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import type { FastifyInstance } from 'fastify';
 import { DEFAULT_EARNINGS_LIMIT, MAX_EARNINGS_LIMIT } from '@shared/types';
-import type { ApiResult, Capabilities, EarningsResponse, FundamentalsOverview, StatementsResponse } from '@shared/types';
+import type {
+  ApiResult,
+  Capabilities,
+  EarningsResponse,
+  FundamentalsOverview,
+  NewsResponse,
+  StatementsResponse,
+} from '@shared/types';
 import { FmpPaymentRequiredError, FmpUpstreamError } from '../market/fmp/client';
 import { CachedFundamentalsProvider } from '../fundamentals/cache';
 import { createFixtureFundamentals } from '../fundamentals/fmp/fixtureSource';
@@ -41,6 +48,7 @@ function fake(overrides: Partial<FundamentalsProvider> = {}) {
     getOverview: vi.fn(() => Promise.reject(new Error('unexpected'))),
     getStatements: vi.fn(() => Promise.reject(new Error('unexpected'))),
     getEarnings: vi.fn(() => Promise.reject(new Error('unexpected'))),
+    getNews: vi.fn(() => Promise.reject(new Error('unexpected'))),
     ...overrides,
   } satisfies FundamentalsProvider;
   return provider;
@@ -73,6 +81,17 @@ describe('success', () => {
     serve(new SyntheticFundamentalsProvider());
     const { body } = await get<EarningsResponse>('/api/fundamentals/earnings?symbol=AAPL');
     expect(body.ok && body.data.events.length).toBeGreaterThan(0);
+  });
+
+  it('serves news, newest first, inside the window it states', async () => {
+    serve(new SyntheticFundamentalsProvider());
+    const { status, body } = await get<NewsResponse>('/api/fundamentals/news?symbol=AAPL');
+    expect(status).toBe(200);
+    if (!body.ok) throw new Error('expected ok');
+    expect(body.data.symbol).toBe('AAPL');
+    expect(body.data.articles.length).toBeGreaterThan(0);
+    const times = body.data.articles.map((a) => a.publishedAt);
+    expect(times).toEqual([...times].sort((a, b) => b - a));
   });
 
   it('passes the symbol to the provider trimmed, as the caller spelled it', async () => {
@@ -173,6 +192,8 @@ describe('validation — BAD_REQUEST, and the provider is not called', () => {
     `/api/fundamentals/overview?symbol=%5E${'A'.repeat(16)}`,
     '/api/fundamentals/overview?symbol=AAPL&symbol=MSFT',
     '/api/fundamentals/earnings',
+    '/api/fundamentals/news',
+    '/api/fundamentals/news?symbol=AA%20PL',
     '/api/fundamentals/statements?symbol=AAPL',
     '/api/fundamentals/statements?symbol=AAPL&statement=income',
     '/api/fundamentals/statements?symbol=AAPL&period=annual',
@@ -190,6 +211,7 @@ describe('validation — BAD_REQUEST, and the provider is not called', () => {
     expect(provider.getOverview).not.toHaveBeenCalled();
     expect(provider.getStatements).not.toHaveBeenCalled();
     expect(provider.getEarnings).not.toHaveBeenCalled();
+    expect(provider.getNews).not.toHaveBeenCalled();
   });
 
   it('names the offending parameter', async () => {
@@ -228,12 +250,13 @@ describe('error mapping', () => {
     expect(body).toMatchObject({ ok: false, error: { code: 'UNKNOWN_SYMBOL', message: 'Unknown symbol: ZZZZ' } });
   });
 
-  it('maps an empty FMP profile to UNKNOWN_SYMBOL on all three routes', async () => {
+  it('maps an empty FMP profile to UNKNOWN_SYMBOL on all four routes', async () => {
     serve(createFixtureFundamentals());
     for (const url of [
       '/api/fundamentals/overview?symbol=NOPE',
       '/api/fundamentals/statements?symbol=NOPE&statement=income&period=annual',
       '/api/fundamentals/earnings?symbol=NOPE',
+      '/api/fundamentals/news?symbol=NOPE',
     ]) {
       const { status, body } = await get(url);
       expect(status).toBe(404);

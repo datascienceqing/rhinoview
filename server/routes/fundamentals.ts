@@ -1,5 +1,5 @@
 /**
- * `GET /api/fundamentals/{overview,statements,earnings}`.
+ * `GET /api/fundamentals/{overview,statements,earnings,news}`.
  * See docs/CONTRACT.md (Phase 5) and server/fundamentals/types.ts.
  *
  * Handlers: zod-parse the query, call the provider, render the envelope. Provider errors
@@ -91,5 +91,9 @@ export function registerFundamentalsRoutes(app: FastifyInstance, deps: Fundament
       const res = await fundamentals.getEarnings(q.symbol);
       return { ...res, events: res.events.slice(0, q.limit) };
     }),
+  );
+
+  app.get('/api/fundamentals/news', (req, reply) =>
+    serve(req, reply, overviewQuery, (q) => fundamentals.getNews(q.symbol)),
   );
 }

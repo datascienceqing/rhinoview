@@ -8,6 +8,7 @@
 import type {
   EarningsResponse,
   FundamentalsOverview,
+  NewsResponse,
   StatementKind,
   StatementPeriod,
   StatementsResponse,
@@ -15,7 +16,7 @@ import type {
 import { DEFAULT_EARNINGS_LIMIT } from '@shared/types';
 import { apiRequest } from '../data';
 
-/** Server caches overview/statements 6 h and earnings 1 h; five minutes here is well inside both. */
+/** Server caches overview/statements 6 h, earnings 1 h and news 15 min; five minutes here is inside all three. */
 const TTL_MS = 5 * 60_000;
 
 interface Entry {
@@ -62,4 +63,9 @@ export function fetchEarnings(symbol: string, limit: number = DEFAULT_EARNINGS_L
   return cached(`earnings:${symbol}:${limit}`, () =>
     apiRequest<EarningsResponse>('/fundamentals/earnings', { params: { symbol, limit: String(limit) } }),
   );
+}
+
+/** The news of the server's window (the last two months), newest first. */
+export function fetchNews(symbol: string): Promise<NewsResponse> {
+  return cached(`news:${symbol}`, () => apiRequest<NewsResponse>('/fundamentals/news', { params: { symbol } }));
 }

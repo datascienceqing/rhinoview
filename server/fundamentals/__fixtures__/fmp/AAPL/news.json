@@ -1,0 +1,88 @@
+{
+  "status": 200,
+  "path": "/news/stock?symbols=AAPL&from=2026-08-02&to=2026-10-02&limit=250&page=0",
+  "fetchedAt": "2026-10-02T20:00:00.000Z",
+  "synthetic": true,
+  "body": [
+    {
+      "symbol": "AAPL",
+      "publishedDate": "2026-10-02 15:42:10",
+      "publisher": "Example Wire",
+      "title": "Apple supplier orders rise ahead of the holiday quarter",
+      "image": "https://images.example.com/news/aapl-0.jpg",
+      "site": "example.com",
+      "text": "Synthetic text. Orders from component suppliers rose in September, according to a sample survey.",
+      "url": "https://www.example.com/news/aapl/0"
+    },
+    {
+      "symbol": "AAPL",
+      "publishedDate": "2026-10-02 09:05:00",
+      "publisher": "Sample Markets Daily",
+      "title": "Apple shares open higher with the technology sector",
+      "image": "https://images.example.com/news/aapl-1.jpg",
+      "site": "example.com",
+      "text": "Synthetic text. The shares opened 0.8% higher in the first minutes of the session.",
+      "url": "https://www.example.com/news/aapl/1"
+    },
+    {
+      "symbol": "AAPL",
+      "publishedDate": "2026-09-30 17:20:33",
+      "publisher": "Example Wire",
+      "title": "What to expect from Apple's fiscal fourth-quarter report",
+      "image": "https://images.example.com/news/aapl-2.jpg",
+      "site": "example.com",
+      "text": "Synthetic text. Analysts in a sample poll expect services revenue to grow again.",
+      "url": "https://www.example.com/news/aapl/2"
+    },
+    {
+      "symbol": "AAPL",
+      "publishedDate": "2026-09-24 11:00:00",
+      "publisher": "Placeholder Business News",
+      "title": "Apple updates its developer program terms",
+      "image": "https://images.example.com/news/aapl-3.jpg",
+      "site": "example.com",
+      "text": "Synthetic text. The update changes the fee schedule for small developers.",
+      "url": "https://www.example.com/news/aapl/3"
+    },
+    {
+      "symbol": "AAPL",
+      "publishedDate": "2026-09-09 13:15:00",
+      "publisher": "Sample Markets Daily",
+      "title": "Apple presents new hardware at its September event",
+      "image": "https://images.example.com/news/aapl-4.jpg",
+      "site": "example.com",
+      "text": "Synthetic text. The event showed three new devices and a software update.",
+      "url": "https://www.example.com/news/aapl/4"
+    },
+    {
+      "symbol": "AAPL",
+      "publishedDate": "2026-08-27 08:30:00",
+      "publisher": "Example Wire",
+      "title": "Apple to hold its product event on September 9",
+      "image": "https://images.example.com/news/aapl-5.jpg",
+      "site": "example.com",
+      "text": "Synthetic text. The company sent invitations for an event at its campus.",
+      "url": "https://www.example.com/news/aapl/5"
+    },
+    {
+      "symbol": "AAPL",
+      "publishedDate": "2026-08-14 19:48:02",
+      "publisher": "Placeholder Business News",
+      "title": "Apple stock ends the week near its monthly high",
+      "image": "https://images.example.com/news/aapl-6.jpg",
+      "site": "example.com",
+      "text": "Synthetic text. The shares closed the week 2.1% higher.",
+      "url": "https://www.example.com/news/aapl/6"
+    },
+    {
+      "symbol": "AAPL",
+      "publishedDate": "2026-08-03 07:12:45",
+      "publisher": "Example Wire",
+      "title": "Apple quarterly results: the main numbers",
+      "image": "https://images.example.com/news/aapl-7.jpg",
+      "site": "example.com",
+      "text": "Synthetic text. Revenue and earnings per share were above the sample estimates.",
+      "url": "https://www.example.com/news/aapl/7"
+    }
+  ]
+}

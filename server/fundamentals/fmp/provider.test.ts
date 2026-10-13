@@ -6,10 +6,13 @@
  */
 import { describe, expect, it } from 'vitest';
 import type { StatementRow } from '@shared/types';
+import { MAX_NEWS_ARTICLES } from '@shared/types';
 import { RateLimitedError, UpstreamUnauthorizedError } from '../../provider/errors';
 import { FmpPaymentRequiredError, FmpUpstreamError } from '../../market/fmp/client';
 import { UnknownSymbolError } from '../../market/types';
 import { createFixtureFundamentals } from './fixtureSource';
+import { MOCK_AS_OF } from './mockData';
+import { NEWS_MAX_PAGES, NEWS_PAGE_SIZE } from './provider';
 import { INTEREST_COST_SHARE_THRESHOLD, grossMarginIsInterestSpread } from './mapper';
 import type { FmpStatementRow } from './schemas';
 import { fixtureFetch, fixtureRows, json, providerOver, readFixture, TEST_KEY } from './testing';
@@ -514,5 +517,112 @@ describe('gross margin of a lender (grossMarginNotMeaningful)', () => {
 
   it('reads the size of the interest expense, whatever its sign', () => {
     expect(grossMarginIsInterestSpread(row(100, -87))).toBe(true);
+  });
+});
+
+describe('invariant 11 — news is a window', () => {
+  const nowMs = MOCK_AS_OF * 1000; // 2026-10-02 16:00 New York
+  const fixtures = () => createFixtureFundamentals({ now: () => nowMs });
+
+  /** `count` distinct rows, one minute apart, newest first, all inside the window. */
+  const page = (start: number, count: number) =>
+    Array.from({ length: count }, (_, i) => {
+      const minute = start + i;
+      const d = new Date(Date.UTC(2026, 8, 20, 12, 0) - minute * 60_000);
+      const iso = d.toISOString().slice(0, 19).replace('T', ' ');
+      return { publishedDate: iso, title: `Story ${minute}`, text: null, publisher: 'P', site: 'example.com', url: `https://example.com/${minute}` };
+    });
+
+  it('maps the recorded AAPL news newest first, with New York times read as New York times', async () => {
+    const res = await fixtures().getNews('AAPL');
+    expect(res).toMatchObject({ symbol: 'AAPL', from: '2026-08-02', to: '2026-10-02', truncated: false });
+    expect(res.articles).toHaveLength(8);
+    // "2026-10-02 15:42:10" in New York (EDT) is 19:42:10 UTC.
+    expect(res.articles[0]).toEqual({
+      publishedAt: Date.UTC(2026, 9, 2, 19, 42, 10) / 1000,
+      title: 'Apple supplier orders rise ahead of the holiday quarter',
+      summary: 'Synthetic text. Orders from component suppliers rose in September, according to a sample survey.',
+      publisher: 'Example Wire',
+      site: 'example.com',
+      url: 'https://www.example.com/news/aapl/0',
+    });
+    const times = res.articles.map((a) => a.publishedAt);
+    expect(times).toEqual([...times].sort((a, b) => b - a));
+  });
+
+  it('asks /news/stock for the window, 250 rows a page, after the profile', async () => {
+    const fetch = fixtureFetch();
+    await providerOver(fetch, () => nowMs).getNews('aapl');
+    expect(fetch.paths()).toEqual(['/profile', '/news/stock']);
+    const q = fetch.calls[1]?.searchParams;
+    expect(q?.get('symbols')).toBe('AAPL');
+    expect(q?.get('from')).toBe('2026-08-02');
+    expect(q?.get('to')).toBe('2026-10-02');
+    expect(q?.get('limit')).toBe(String(NEWS_PAGE_SIZE));
+    expect(q?.get('page')).toBe('0');
+  });
+
+  it('reads pages until one is short', async () => {
+    const fetch = fixtureFetch({
+      '/news/stock': (url) => {
+        const n = Number(url.searchParams.get('page'));
+        return json(page(n * NEWS_PAGE_SIZE, n < 2 ? NEWS_PAGE_SIZE : 10));
+      },
+    });
+    const res = await providerOver(fetch, () => nowMs).getNews('AAPL');
+    expect(fetch.paths().filter((p) => p === '/news/stock')).toHaveLength(3);
+    expect(res.articles).toHaveLength(2 * NEWS_PAGE_SIZE + 10);
+    expect(res.truncated).toBe(false);
+  });
+
+  it('stops at the page cap and reports the window as truncated', async () => {
+    const fetch = fixtureFetch({
+      '/news/stock': (url) => json(page(Number(url.searchParams.get('page')) * NEWS_PAGE_SIZE, NEWS_PAGE_SIZE)),
+    });
+    const res = await providerOver(fetch, () => nowMs).getNews('AAPL');
+    expect(fetch.paths().filter((p) => p === '/news/stock')).toHaveLength(NEWS_MAX_PAGES);
+    expect(res.articles).toHaveLength(MAX_NEWS_ARTICLES);
+    expect(res.truncated).toBe(true);
+  });
+
+  it('removes a row repeated on the next page', async () => {
+    const fetch = fixtureFetch({
+      '/news/stock': (url) => (url.searchParams.get('page') === '0' ? json(page(0, NEWS_PAGE_SIZE)) : json(page(NEWS_PAGE_SIZE - 1, 5))),
+    });
+    expect((await providerOver(fetch, () => nowMs).getNews('AAPL')).articles).toHaveLength(NEWS_PAGE_SIZE + 4);
+  });
+
+  it('drops rows without a title or a valid date, and links that are not http or https', async () => {
+    const good = { publishedDate: '2026-09-01 10:00:00', title: 'Good', text: '  Excerpt  ', publisher: null, site: null };
+    const fetch = fixtureFetch({
+      '/news/stock': () =>
+        json([
+          { ...good, url: 'javascript:alert(1)' },
+          { ...good, title: '', url: 'https://example.com/a' },
+          { ...good, title: null, url: 'https://example.com/b' },
+          { ...good, publishedDate: '2026-09-01T10:00:00Z', url: 'https://example.com/c' },
+          { ...good, publishedDate: null, url: 'https://example.com/d' },
+        ]),
+    });
+    const res = await providerOver(fetch, () => nowMs).getNews('AAPL');
+    expect(res.articles).toEqual([
+      { publishedAt: Date.UTC(2026, 8, 1, 14) / 1000, title: 'Good', summary: 'Excerpt', publisher: null, site: null, url: null },
+    ]);
+  });
+
+  it('answers an empty list, not an unknown symbol, for a known symbol with no news', async () => {
+    expect((await fixtures().getNews('RIVN')).articles).toEqual([]);
+    expect((await fixtures().getNews('JPM')).articles).toEqual([]);
+  });
+
+  it('decides an unknown symbol from the profile and does not ask for news', async () => {
+    const fetch = fixtureFetch();
+    await expect(providerOver(fetch).getNews('NOPE')).rejects.toBeInstanceOf(UnknownSymbolError);
+    expect(fetch.paths()).toEqual(['/profile']);
+  });
+
+  it('fails as UNAUTHORIZED when the plan lacks news, and as an upstream error on a bad shape', async () => {
+    await expect(providerOver(fixtureFetch({ '/news/stock': gated })).getNews('AAPL')).rejects.toBeInstanceOf(UpstreamUnauthorizedError);
+    await expect(providerOver(fixtureFetch({ '/news/stock': () => json({ error: 'x' }) })).getNews('AAPL')).rejects.toBeInstanceOf(FmpUpstreamError);
   });
 });

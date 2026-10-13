@@ -395,6 +395,7 @@ record measured FMP behaviour that is not what you would guess.
 | `GET /api/fundamentals/overview` | `symbol` | `FundamentalsOverview` |
 | `GET /api/fundamentals/statements` | `symbol`, `statement` (`income`\|`balance`\|`cashflow`), `period` (`annual`\|`quarter`) | `StatementsResponse` |
 | `GET /api/fundamentals/earnings` | `symbol`, optional `limit` (integer 1–`MAX_EARNINGS_LIMIT` (400), default `DEFAULT_EARNINGS_LIMIT` (40)) | `EarningsResponse` |
+| `GET /api/fundamentals/news` | `symbol` | `NewsResponse` |
 
 - Unknown symbol → `UNKNOWN_SYMBOL` (404). Plan tier lacks the data → `UNAUTHORIZED`.
 - The overview is partial-success: unavailable sections are listed in `unavailable`.
@@ -409,6 +410,14 @@ record measured FMP behaviour that is not what you would guess.
   costs no extra upstream call. A `limit` that is not an integer in range → `BAD_REQUEST`.
   The client loads 40 first and offers "Show more", which asks for 40 more.
 - Real recorded responses for five symbols are in `server/fundamentals/__fixtures__/fmp/`.
+- News (added 2026-10-12, user request): the articles of the last `NEWS_WINDOW_MONTHS` (2)
+  calendar months, New York dates, newest first, at most `MAX_NEWS_ARTICLES` (2000). The
+  server reads all pages of FMP `/news/stock` (250 rows a page) for the window, removes
+  duplicates, and keeps only `http`/`https` links. Cache: 15 min. An empty list is a valid
+  answer: a known symbol can have no news.
+- FMP news, measured 2026-10-12: `publishedDate` is New York wall-clock time with no zone
+  (the newest article read 17:05 at 21:15 UTC). The page size is at most 250. AAPL had
+  1,365 articles in two months; JPM 432; RIVN 114. An unknown symbol answers `[]`.
 
 ## Alerts
 

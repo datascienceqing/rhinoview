@@ -25,6 +25,12 @@ Each symbol tests one difficult case:
 | TSM  | Reports in TWD, trades in USD. Its EPS in TWD is larger than its USD price. |
 | RIVN | Losses. The P/E is negative (-4.02 here). |
 
+`news.json` (AAPL, MSFT, RIVN) is different: it was WRITTEN by hand in the shape of a
+`/news/stock` response recorded on 2026-10-12, not recorded and converted. Every title,
+text and link is invented; links go to `example.com`. RIVN answers an empty list, which is
+valid: a known symbol can have no news. JPM and TSM have no news fixture, which the
+fixture source also answers with an empty list.
+
 `_gated/` holds FMP's own HTTP 402 bodies for quarterly `ratios` and `key-metrics`,
 which the Starter plan does not include. They are error text, not data.
 
