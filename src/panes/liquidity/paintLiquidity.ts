@@ -20,6 +20,8 @@ export const LABEL_ALPHA = 0.9;
 /** Width in px of the mark on a sweep bar. */
 export const SWEEP_MARK_WIDTH = 3;
 export const LEVEL_DASH: readonly number[] = [4, 3];
+/** In CSS pixels. Under 1 is still visible: the pane paints at the device pixel ratio. */
+export const LEVEL_WIDTH = 0.75;
 export const LABEL_FONT = '10px sans-serif';
 const LABEL_GAP = 3;
 
@@ -96,7 +98,7 @@ export function paintLiquidity(
 
     ctx.globalAlpha = 1;
     ctx.strokeStyle = style.levelColor;
-    ctx.lineWidth = 1;
+    ctx.lineWidth = LEVEL_WIDTH;
     ctx.setLineDash(z.status === 'broken' ? [...LEVEL_DASH] : []);
     ctx.beginPath();
     ctx.moveTo(h.x, yLevel);

@@ -351,6 +351,7 @@ export const en = {
   'fund.chart.operating': 'Operating',
   'fund.chart.net': 'Net',
   'fund.chart.fcf': 'Free cash flow',
+  'fund.chart.growth': 'Growth (year over year)',
   'fund.chart.noData': 'no data',
   'fund.chart.range': (p: { title: string; from: string; to: string }) => `${p.title}, ${p.from} to ${p.to}`,
   'fund.outcome.beat': 'Beat',

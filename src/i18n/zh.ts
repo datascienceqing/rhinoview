@@ -345,6 +345,7 @@ export const zh: typeof en = {
   'fund.chart.operating': '营业利润率',
   'fund.chart.net': '净利率',
   'fund.chart.fcf': '自由现金流',
+  'fund.chart.growth': '同比增长',
   'fund.chart.noData': '暂无数据',
   'fund.chart.range': (p) => `${p.title}，${p.from} 至 ${p.to}`,
   'fund.outcome.beat': '超预期',

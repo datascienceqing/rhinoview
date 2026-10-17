@@ -190,7 +190,7 @@ describe('Trends tab', () => {
     const user = userEvent.setup();
     const { unmount } = drawer('AAPL');
     await user.click(screen.getByRole('tab', { name: 'Trends' }));
-    for (const t of ['Revenue', 'Net income', 'EPS (diluted)', 'Margins', 'Free cash flow']) {
+    for (const t of ['Revenue', 'Net income', 'EPS (diluted)', 'Margins', 'Growth', 'Free cash flow']) {
       expect(await screen.findByTestId(`chart-${t}`)).toBeInTheDocument();
     }
     expect(screen.getByTestId('chart-Margins').querySelectorAll('path').length).toBe(3);
