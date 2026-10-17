@@ -22,6 +22,9 @@ export const SECONDARY_LINE_ALPHA = 0.6;
 export const SOURCE_ALPHA = 0.7;
 export const DASH: readonly number[] = [5, 4];
 export const DOT: readonly number[] = [1, 3];
+/** Line widths in CSS pixels. Under 1 is still visible: the pane paints at the device pixel ratio. */
+export const PRIMARY_LINE_WIDTH = 1.25;
+export const LINE_WIDTH = 0.75;
 export const LABEL_FONT = '10px sans-serif';
 /** Vertical room one label needs; a closer label moves down. */
 export const LABEL_HEIGHT = 12;
@@ -146,7 +149,7 @@ export function paintConfluence(
   // Source lines.
   const wantFibs = drawing.sources === 'both' || drawing.sources === 'fibs';
   const wantMas = drawing.sources === 'both' || drawing.sources === 'mas';
-  ctx.lineWidth = 1;
+  ctx.lineWidth = LINE_WIDTH;
   ctx.strokeStyle = style.sourceColor;
   ctx.setLineDash([...DOT]);
   for (const s of state.sources) {
@@ -175,7 +178,7 @@ export function paintConfluence(
     ctx.fillRect(x0, Math.min(yTop, yBottom), x1 - x0, Math.max(1, Math.abs(yBottom - yTop)));
     ctx.globalAlpha = primary ? 1 : SECONDARY_LINE_ALPHA;
     ctx.strokeStyle = style.modeColor;
-    ctx.lineWidth = primary ? 2 : 1;
+    ctx.lineWidth = primary ? PRIMARY_LINE_WIDTH : LINE_WIDTH;
     ctx.setLineDash(primary ? [] : [...DASH]);
     hLine(ctx, x0, x1, yTop);
     const name = primary ? words.trigger : words.secondary;
@@ -189,7 +192,7 @@ export function paintConfluence(
   }
 
   // Invalidation, from its pivot bar.
-  ctx.lineWidth = 1;
+  ctx.lineWidth = LINE_WIDTH;
   ctx.setLineDash([...DASH]);
   if (state.invalidation) {
     const y = geom.yOf(state.invalidation.price);

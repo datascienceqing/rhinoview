@@ -39,6 +39,8 @@ const VOLUME_SCALE_MARGINS = { top: 0.8, bottom: 0 } as const;
 const VOLUME_ALPHA = 0.5;
 /** Line keys drawn as histograms. */
 const HISTOGRAM_KEYS: ReadonlySet<string> = new Set(['histogram', 'volume']);
+/** Lines that sit on the candles: a 1 px line keeps the bars readable under them. */
+const THIN_LINE_KINDS: ReadonlySet<IndicatorKind> = new Set(['volume', 'sma', 'ema']);
 
 type LineHandle = { type: 'line'; api: ISeriesApi<'Line'> } | { type: 'histogram'; api: ISeriesApi<'Histogram'> };
 
@@ -261,7 +263,7 @@ export class IndicatorPanes {
       const color = key === 'signal' ? MACD_SIGNAL_COLOR : undefined;
       handle = {
         type,
-        api: chart.addSeries(LineSeries, { ...options, lineWidth: kind === 'volume' ? 1 : 2, ...(color && { color }) }, paneIndex),
+        api: chart.addSeries(LineSeries, { ...options, lineWidth: THIN_LINE_KINDS.has(kind) ? 1 : 2, ...(color && { color }) }, paneIndex),
       };
     }
     if (separate && !entry.pane) {

@@ -97,6 +97,18 @@ function Charts({ points, currency, grossNotMeaningful }: { points: TrendPoint[]
           ]}
         />
         <TrendChart
+          id="Growth"
+          title={t('fund.chart.growth')}
+          kind="line"
+          labels={labels}
+          format={formatFraction}
+          tick={formatFractionTick}
+          series={[
+            { name: t('fund.chart.revenue'), color: 'var(--accent)', values: points.map((p) => p.revenueGrowth) },
+            { name: t('fund.chart.epsSeries'), color: 'var(--warn)', values: points.map((p) => p.epsGrowth) },
+          ]}
+        />
+        <TrendChart
           id="Free cash flow"
           title={t('fund.chart.fcf')}
           kind="bar"

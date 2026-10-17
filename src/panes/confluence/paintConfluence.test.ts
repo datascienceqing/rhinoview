@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from 'vitest';
 import type { ConfluenceState } from '../../indicators/confluence';
-import { LABEL_HEIGHT, PRIMARY_ALPHA, SECONDARY_ALPHA, paintConfluence, spreadLabels } from './paintConfluence';
+import { LABEL_HEIGHT, LINE_WIDTH, PRIMARY_ALPHA, PRIMARY_LINE_WIDTH, SECONDARY_ALPHA, paintConfluence, spreadLabels } from './paintConfluence';
 import type { ConfluenceDrawing, ConfluenceGeom } from './paintConfluence';
 
 /** A context that records each call with the style at that moment. */
@@ -81,7 +81,7 @@ describe('paintConfluence', () => {
     // Span start: bar 9 at x 90, minus half a bar. Top 112 -> y 776, bottom 110 -> y 780.
     expect(box?.args).toEqual([85, 776, 715, 4]);
     expect(box?.fill).toBe('MODE');
-    const trigger = calls.find((c) => c.op === 'stroke' && c.width === 2);
+    const trigger = calls.find((c) => c.op === 'stroke' && c.width === PRIMARY_LINE_WIDTH);
     expect(trigger).toMatchObject({ stroke: 'MODE', alpha: 1, dash: [] });
   });
 
@@ -90,7 +90,7 @@ describe('paintConfluence', () => {
     paintConfluence(context, drawing(), geom, style, words);
     expect(calls.some((c) => c.op === 'fillRect' && c.alpha === SECONDARY_ALPHA)).toBe(true);
     const lines = calls.filter((c) => c.op === 'stroke' && c.stroke === 'MODE');
-    expect(lines.some((c) => c.width === 1 && c.dash.length > 0)).toBe(true);
+    expect(lines.some((c) => c.width === LINE_WIDTH && c.dash.length > 0)).toBe(true);
   });
 
   it('labels each level with its price at the right edge', () => {
