@@ -147,3 +147,27 @@ export function macd(closes: Float64Array, fast: number, slow: number, signalPer
   }
   return { macd: line, signal, histogram };
 }
+
+/**
+ * Average true range with Wilder smoothing, like Pine's `ta.atr`. The true range of bar 0
+ * is its high - low (no previous close). The first value sits at index `period - 1`,
+ * seeded with the simple mean of the first `period` true ranges.
+ */
+export function atr(high: Float64Array, low: Float64Array, close: Float64Array, period: number): Float64Array {
+  const n = high.length;
+  const out = new Float64Array(n).fill(NaN);
+  if (n < period) return out;
+  const tr = new Float64Array(n);
+  for (let i = 0; i < n; i++) {
+    const h = high[i] as number;
+    const l = low[i] as number;
+    tr[i] = i === 0 ? h - l : Math.max(h - l, Math.abs(h - (close[i - 1] as number)), Math.abs(l - (close[i - 1] as number)));
+  }
+  let avg = windowMean(tr, 0, period);
+  out[period - 1] = avg;
+  for (let i = period; i < n; i++) {
+    avg = (avg * (period - 1) + (tr[i] as number)) / period;
+    out[i] = avg;
+  }
+  return out;
+}

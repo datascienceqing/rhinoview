@@ -307,6 +307,13 @@ decimals `tolerancePct` 0.05–5 (0.75), `bandWidthMult` 0–20 (0), `turnMinDis
 integer Unix seconds 0–4102444800 (0, no date). The workspace store refuses any other value
 with `BAD_REQUEST`.
 
+`fvg` (fair value gaps, `src/indicators/fvg.ts`) is a valid `IndicatorKind` for layouts, but
+this endpoint does not serve it: its output is drawings, not lines. `FvgParams`: decimals
+`minGapAtrPct` and `displacementAtrPct` 0–1000 (0, filter off); integers `maxZones` 1–500 (30)
+and `boxLength` 1–500 (20); `extend` `right`|`fixed` (`right`); `labels` `off`|`on` (`off`);
+`mitigation` `wick`|`fill` (`wick`); `mitigatedStyle` `dim`|`remove` (`dim`). The workspace
+store refuses any other value with `BAD_REQUEST`.
+
 Upstream: `/rest/stocks/technical-indicators/{sma,ema,macd,rsi}`.
 
 ---

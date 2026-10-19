@@ -15,6 +15,7 @@ import type {
   ConfluenceMode,
   ConfluenceParams,
   ConfluenceSources,
+  FvgParams,
   IndicatorKind,
   IndicatorParams,
   IndicatorSeries,
@@ -52,6 +53,7 @@ export const DEFAULT_PARAMS: {
   vpvr: VpvrParams;
   liquidity: LiquidityParams;
   confluence: ConfluenceParams;
+  fvg: FvgParams;
 } = {
   sma: { period: 20, source: 'close' },
   ema: { period: 20, source: 'close' },
@@ -79,6 +81,17 @@ export const DEFAULT_PARAMS: {
     sources: 'both',
     latch: 'off',
     latchTime: 0,
+  },
+  // The defaults of the user's Pine script.
+  fvg: {
+    minGapAtrPct: 0,
+    displacementAtrPct: 0,
+    maxZones: 30,
+    extend: 'right',
+    boxLength: 20,
+    labels: 'off',
+    mitigation: 'wick',
+    mitigatedStyle: 'dim',
   },
 };
 
@@ -130,6 +143,21 @@ export const CONFLUENCE_LATCH: readonly ConfluenceParams['latch'][] = ['off', 'o
 /** Pivots kept per side, newest first: a safety cap, not a setting (plan §4.2). */
 export const CONFLUENCE_MAX_PIVOTS = 50;
 
+/** Numeric FVG fields. `integer: false` marks a decimal field. */
+export type FvgNumericKey = 'minGapAtrPct' | 'displacementAtrPct' | 'maxZones' | 'boxLength';
+export const FVG_BOUNDS: Record<FvgNumericKey, { min: number; max: number; integer: boolean }> = {
+  minGapAtrPct: { min: 0, max: 1000, integer: false },
+  displacementAtrPct: { min: 0, max: 1000, integer: false },
+  maxZones: { min: 1, max: 500, integer: true },
+  boxLength: { min: 1, max: 500, integer: true },
+};
+export const FVG_EXTEND: readonly FvgParams['extend'][] = ['right', 'fixed'];
+export const FVG_LABELS: readonly FvgParams['labels'][] = ['off', 'on'];
+export const FVG_MITIGATION: readonly FvgParams['mitigation'][] = ['wick', 'fill'];
+export const FVG_MITIGATED_STYLE: readonly FvgParams['mitigatedStyle'][] = ['dim', 'remove'];
+/** The ATR length of the two FVG filters. Fixed, like the Pine script. */
+export const FVG_ATR_PERIOD = 14;
+
 /** Bounds of the VPVR fields. VPVR params are not periods, so PERIOD_MIN/MAX do not apply. */
 export const VPVR_BOUNDS: Record<keyof VpvrParams, { min: number; max: number }> = {
   rows: { min: 2, max: 400 },
@@ -155,6 +183,7 @@ export const LINE_KEYS: Record<IndicatorKind, readonly string[]> = {
   vpvr: [],
   liquidity: [],
   confluence: [],
+  fvg: [],
 };
 
 /** Thrown for parameters outside the bounds above, or a MACD with `fast >= slow`. */
@@ -215,4 +244,7 @@ export class InvalidIndicatorParamsError extends Error {
 // 9. LIQUIDITY HAS NO LINES. Its output is drawings (zones and sweeps), computed from all
 //    loaded bars by `computeLiquidity` in `liquidity.ts`. `computeIndicator` validates the
 //    params and returns `lines: []`, warmup 0, like VPVR.
+//
+// 10. FVG HAS NO LINES. Its output is boxes, computed from all loaded bars by `computeFvg`
+//    in `fvg.ts`. `computeIndicator` validates the params and returns `lines: []`, warmup 0.
 // ───────────────────────────────────────────────────────────────────────────────

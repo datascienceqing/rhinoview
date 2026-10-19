@@ -1,5 +1,6 @@
 import type {
   ConfluenceParams,
+  FvgParams,
   IndicatorConfig,
   IndicatorKind,
   IndicatorParams,
@@ -9,12 +10,12 @@ import type {
   RsiParams,
   VpvrParams,
 } from '@shared/types';
-import { CONFLUENCE_BOUNDS, DEFAULT_PARAMS, LIQUIDITY_BOUNDS, PERIOD_MAX, PERIOD_MIN, VPVR_BOUNDS } from '../indicators/types';
+import { CONFLUENCE_BOUNDS, DEFAULT_PARAMS, FVG_BOUNDS, LIQUIDITY_BOUNDS, PERIOD_MAX, PERIOD_MIN, VPVR_BOUNDS } from '../indicators/types';
 import { checkIndicatorParams } from '../indicators/params';
 import { t } from '../i18n';
 import type { MessageKey } from '../i18n';
 
-export const INDICATOR_KINDS: readonly IndicatorKind[] = ['sma', 'ema', 'rsi', 'macd', 'volume', 'vpvr', 'liquidity', 'confluence'];
+export const INDICATOR_KINDS: readonly IndicatorKind[] = ['sma', 'ema', 'rsi', 'macd', 'volume', 'vpvr', 'liquidity', 'confluence', 'fvg'];
 
 /** The kind's name in the current language. SMA, EMA, RSI, MACD and VRVP stay as they are. */
 export function kindLabel(kind: IndicatorKind): string {
@@ -81,6 +82,11 @@ const conf = (
   const { min, max } = CONFLUENCE_BOUNDS[key];
   return { key, labelKey, min, max, ...(step === undefined ? {} : { step }), ...(when ? { when } : {}) };
 };
+/** FVG number fields with the bounds of the param check. */
+const fvg = (key: keyof typeof FVG_BOUNDS, labelKey: MessageKey, step?: number, when?: ParamField['when']): ParamField => {
+  const { min, max } = FVG_BOUNDS[key];
+  return { key, labelKey, min, max, ...(step === undefined ? {} : { step }), ...(when ? { when } : {}) };
+};
 const TURN = { key: 'mode', value: 'turn' };
 const BREAKDOWN = { key: 'mode', value: 'breakdown' };
 
@@ -121,6 +127,12 @@ export const PARAM_FIELDS: Record<IndicatorKind, readonly ParamField[]> = {
     conf('volumeLength', 'param.volumeLength'),
     conf('volumeMult', 'param.volumeMult', 0.1),
     conf('closeQuality', 'param.closeQuality', 0.05, BREAKDOWN),
+  ],
+  fvg: [
+    fvg('minGapAtrPct', 'param.minGapAtrPct', 0.1),
+    fvg('displacementAtrPct', 'param.displacementAtrPct', 0.1),
+    fvg('maxZones', 'param.maxZones'),
+    fvg('boxLength', 'param.boxLength', undefined, { key: 'extend', value: 'fixed' }),
   ],
 };
 
@@ -211,6 +223,49 @@ export const PARAM_CHOICES: Record<IndicatorKind, readonly ParamChoice[]> = {
       fallback: DEFAULT_PARAMS.confluence.latch,
     },
   ],
+  fvg: [
+    {
+      key: 'extend',
+      labelKey: 'param.extend',
+      options: [
+        { value: 'right', labelKey: 'param.extend.right' },
+        { value: 'fixed', labelKey: 'param.extend.fixed' },
+      ],
+      required: true,
+      fallback: DEFAULT_PARAMS.fvg.extend,
+      first: true,
+    },
+    {
+      key: 'mitigation',
+      labelKey: 'param.mitigation',
+      options: [
+        { value: 'wick', labelKey: 'param.mitigation.wick' },
+        { value: 'fill', labelKey: 'param.mitigation.fill' },
+      ],
+      required: true,
+      fallback: DEFAULT_PARAMS.fvg.mitigation,
+    },
+    {
+      key: 'mitigatedStyle',
+      labelKey: 'param.mitigatedStyle',
+      options: [
+        { value: 'dim', labelKey: 'param.mitigatedStyle.dim' },
+        { value: 'remove', labelKey: 'param.mitigatedStyle.remove' },
+      ],
+      required: true,
+      fallback: DEFAULT_PARAMS.fvg.mitigatedStyle,
+    },
+    {
+      key: 'labels',
+      labelKey: 'param.labels',
+      options: [
+        { value: 'off', labelKey: 'param.labels.off' },
+        { value: 'on', labelKey: 'param.labels.on' },
+      ],
+      required: true,
+      fallback: DEFAULT_PARAMS.fvg.labels,
+    },
+  ],
 };
 
 /** Whether `field` shows for the current select values (`choiceValues`). */
@@ -253,6 +308,8 @@ export function defaultParams(kind: IndicatorKind): IndicatorParams {
       return { ...DEFAULT_PARAMS.liquidity };
     case 'confluence':
       return { ...DEFAULT_PARAMS.confluence };
+    case 'fvg':
+      return { ...DEFAULT_PARAMS.fvg };
   }
 }
 
@@ -330,6 +387,9 @@ export function isVpvrParams(p: IndicatorParams): p is VpvrParams {
 export function isLiquidityParams(p: IndicatorParams): p is LiquidityParams {
   return 'lookback' in p;
 }
+export function isFvgParams(p: IndicatorParams): p is FvgParams {
+  return 'maxZones' in p;
+}
 /** Tested before the helpers above: confluence has no `lookback` or `period` key, on purpose. */
 export function isConfluenceParams(p: IndicatorParams): p is ConfluenceParams {
   return 'swingLookback' in p;
@@ -364,6 +424,10 @@ export function sanitizeParams(kind: IndicatorKind, raw: unknown): IndicatorPara
     const latchTime = rec['latchTime'] ?? 0;
     const out = { ...DEFAULT_PARAMS.confluence, ...nums, ...choices, latchTime } as ConfluenceParams;
     return checkIndicatorParams('confluence', out) === null ? out : null;
+  }
+  if (kind === 'fvg') {
+    const out = { ...DEFAULT_PARAMS.fvg, ...nums, ...choices } as FvgParams;
+    return checkIndicatorParams('fvg', out) === null ? out : null;
   }
   if (kind === 'liquidity') {
     return {
@@ -409,6 +473,7 @@ export function indicatorTitle(config: Pick<IndicatorConfig, 'kind' | 'params'>)
   if (isConfluenceParams(p)) {
     return t('indicator.title.confluence', { mode: p.mode === 'turn' ? 'Turn' : 'Breakdown', lookback: p.swingLookback });
   }
+  if (isFvgParams(p)) return t('indicator.title.fvg', { maxZones: p.maxZones });
   if (isMacdParams(p)) return t('indicator.title', { name, args: `${p.fastPeriod}, ${p.slowPeriod}, ${p.signalPeriod}` });
   if (isVpvrParams(p)) return t('indicator.title.vpvr', { name, rows: p.rows });
   // D2: "Liquidity" in the menu, "LIQ (10)" as the title.
