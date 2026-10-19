@@ -16,7 +16,7 @@ import {
 
 describe('validateParams', () => {
   it('accepts the defaults for every kind', () => {
-    for (const kind of ['sma', 'ema', 'rsi', 'macd', 'volume', 'vpvr', 'liquidity', 'confluence', 'fvg'] as const) {
+    for (const kind of ['sma', 'ema', 'rsi', 'macd', 'volume', 'vpvr', 'liquidity', 'confluence', 'fvg', 'cvwap'] as const) {
       const p = defaultParams(kind) as unknown as Record<string, number>;
       expect(validateParams(kind, p)).toEqual({});
     }
@@ -225,6 +225,31 @@ describe('fvg config', () => {
     expect(sanitizeParams('fvg', { ...ok, mitigation: 'close' })).toBeNull();
     expect(sanitizeParams('fvg', { ...ok, extend: undefined })).toBeNull();
     expect(sanitizeParams('fvg', { ...ok, maxZones: 501 })).toBeNull();
+  });
+});
+
+describe('cvwap config', () => {
+  it('is named "Chart VWAP", starts orange with the Pine defaults, and shows the band multiplier in the title', () => {
+    const c = createIndicator('cvwap', []);
+    expect(kindLabel('cvwap')).toBe('Chart VWAP');
+    expect(c.color).toBe('#ff9800');
+    expect(c.params).toEqual({ bandMult: 0, average: 'on', ohlc: 'off', ohlcLabels: 'on' });
+    expect(indicatorTitle(c)).toBe('Chart VWAP');
+    expect(indicatorTitle({ ...c, params: { ...c.params, bandMult: 1.5 } })).toBe('Chart VWAP (1.5σ)');
+  });
+
+  it('accepts a decimal band multiplier and checks the bounds', () => {
+    expect(validateParams('cvwap', { bandMult: 2.5 })).toEqual({});
+    expect(Object.keys(validateParams('cvwap', { bandMult: -0.5 }))).toEqual(['bandMult']);
+    expect(Object.keys(validateParams('cvwap', { bandMult: 10.5 }))).toEqual(['bandMult']);
+  });
+
+  it('sanitizes stored params, keeps the switches, and rejects bad ones', () => {
+    const ok = { bandMult: 1, average: 'off', ohlc: 'on', ohlcLabels: 'off' };
+    expect(sanitizeParams('cvwap', { ...ok, extra: 1 })).toEqual(ok);
+    expect(sanitizeParams('cvwap', { ...ok, ohlc: 'yes' })).toBeNull();
+    expect(sanitizeParams('cvwap', { ...ok, average: undefined })).toBeNull();
+    expect(sanitizeParams('cvwap', { ...ok, bandMult: 11 })).toBeNull();
   });
 });
 

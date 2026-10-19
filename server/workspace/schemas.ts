@@ -8,7 +8,7 @@ import { TIMEFRAMES } from '@shared/types';
 import type { IndicatorKind, IndicatorParams } from '@shared/types';
 
 const CHART_TYPES = ['candlestick', 'line', 'bar'] as const;
-const KINDS = ['sma', 'ema', 'rsi', 'macd', 'volume', 'vpvr', 'liquidity', 'confluence', 'fvg'] as const satisfies readonly IndicatorKind[];
+const KINDS = ['sma', 'ema', 'rsi', 'macd', 'volume', 'vpvr', 'liquidity', 'confluence', 'fvg', 'cvwap'] as const satisfies readonly IndicatorKind[];
 
 const timeframe = z.enum(TIMEFRAMES as readonly [string, ...string[]]) as unknown as z.ZodType<
   (typeof TIMEFRAMES)[number]

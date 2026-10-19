@@ -1,5 +1,6 @@
 import type {
   ConfluenceParams,
+  CvwapParams,
   FvgParams,
   IndicatorKind,
   IndicatorParams,
@@ -14,6 +15,8 @@ import {
   CONFLUENCE_LATCH,
   CONFLUENCE_MODES,
   CONFLUENCE_SOURCES,
+  CVWAP_BOUNDS,
+  CVWAP_SWITCH,
   FVG_BOUNDS,
   FVG_EXTEND,
   FVG_LABELS,
@@ -79,6 +82,16 @@ function fvgError(p: Partial<FvgParams>): string | null {
   return null;
 }
 
+function cvwapError(p: Partial<CvwapParams>): string | null {
+  const { min, max } = CVWAP_BOUNDS.bandMult;
+  const err = decimalError('bandMult', p.bandMult, min, max);
+  if (err) return err;
+  for (const key of ['average', 'ohlc', 'ohlcLabels'] as const) {
+    if (!CVWAP_SWITCH.some((v) => v === p[key])) return `${key} must be one of ${CVWAP_SWITCH.join(', ')}`;
+  }
+  return null;
+}
+
 /**
  * The reason `params` are not acceptable for `kind`, or `null` when they are.
  *
@@ -111,6 +124,7 @@ export function checkIndicatorParams(kind: IndicatorKind, params: IndicatorParam
   }
   if (kind === 'confluence') return confluenceError(params as Partial<ConfluenceParams>);
   if (kind === 'fvg') return fvgError(params as Partial<FvgParams>);
+  if (kind === 'cvwap') return cvwapError(params as Partial<CvwapParams>);
   if (kind === 'macd') {
     const p = params as Partial<MacdParams>;
     const err =

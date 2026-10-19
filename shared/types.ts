@@ -90,7 +90,7 @@ export interface Snapshot {
 
 // ───────────────────────────── Indicators ─────────────────────────────
 
-export type IndicatorKind = 'sma' | 'ema' | 'rsi' | 'macd' | 'volume' | 'vpvr' | 'liquidity' | 'confluence' | 'fvg';
+export type IndicatorKind = 'sma' | 'ema' | 'rsi' | 'macd' | 'volume' | 'vpvr' | 'liquidity' | 'confluence' | 'fvg' | 'cvwap';
 
 /** Where an indicator draws: on the price pane, or in its own pane below. */
 export type IndicatorPlacement = 'overlay' | 'separate';
@@ -110,6 +110,8 @@ export const INDICATOR_PLACEMENT: Record<IndicatorKind, IndicatorPlacement> = {
   confluence: 'overlay',
   // Fair value gap boxes drawn on the price pane, at price levels.
   fvg: 'overlay',
+  // VWAP of the visible bars drawn on the price pane, at price levels.
+  cvwap: 'overlay',
 };
 
 export interface MovingAverageParams {
@@ -207,6 +209,19 @@ export interface FvgParams {
   mitigatedStyle: 'dim' | 'remove';
 }
 
+/**
+ * Chart VWAP: the VWAP of hlc3 anchored on the leftmost visible bar. `bandMult` is a decimal,
+ * the multiplier of the standard deviation bands; 0 hides the bands. `average` draws the
+ * mean close of the visible bars. `ohlc` draws the open, high, low and close of the visible
+ * range; `ohlcLabels` adds the high and low values and their distance to the close in percent.
+ */
+export interface CvwapParams {
+  bandMult: number;
+  average: 'off' | 'on';
+  ohlc: 'off' | 'on';
+  ohlcLabels: 'off' | 'on';
+}
+
 export interface MacdParams {
   fastPeriod: number;
   slowPeriod: number;
@@ -221,7 +236,8 @@ export type IndicatorParams =
   | VpvrParams
   | LiquidityParams
   | ConfluenceParams
-  | FvgParams;
+  | FvgParams
+  | CvwapParams;
 
 /**
  * One point of a computed indicator line.
@@ -236,7 +252,7 @@ export interface IndicatorPoint {
   value: number | null;
 }
 
-/** A single named line. MACD yields three of these; Volume two ('volume', 'ma'); SMA/EMA/RSI one; VPVR, Liquidity, Confluence and FVG none. */
+/** A single named line. MACD yields three of these; Volume two ('volume', 'ma'); SMA/EMA/RSI one; VPVR, Liquidity, Confluence, FVG and Chart VWAP none. */
 export interface IndicatorLine {
   /** Stable key within the indicator, e.g. 'macd' | 'signal' | 'histogram' | 'value'. */
   key: string;

@@ -546,6 +546,18 @@ describe('layout contents (invariant 10)', () => {
     expect(l.indicators).toEqual([liq]);
   });
 
+  it('stores a cvwap indicator with a decimal band multiplier and switches', async () => {
+    const cvwap: IndicatorConfig = {
+      id: 'c1',
+      kind: 'cvwap',
+      params: { bandMult: 1.5, average: 'off', ohlc: 'on', ohlcLabels: 'on' },
+      color: '#ff9800',
+      visible: true,
+    };
+    const l = await (await open()).createLayout({ name: 'C', indicators: [cvwap] });
+    expect(l.indicators).toEqual([cvwap]);
+  });
+
   it('stores an fvg indicator with decimals and enum fields', async () => {
     const fvg: IndicatorConfig = {
       id: 'f1',
@@ -615,6 +627,8 @@ describe('layout contents (invariant 10)', () => {
     ['liquidity with a bad zone mode', { ...sma, kind: 'liquidity', params: { lookback: 10, zoneMode: 'body', sweepMode: 'wicks', minTouches: 0, maxAge: 300, sweepExtend: 20 } as never }],
     ['liquidity with a missing sweep mode', { ...sma, kind: 'liquidity', params: { lookback: 10, zoneMode: 'wick', minTouches: 0, maxAge: 300, sweepExtend: 20 } as never }],
     ['fvg with a bad mitigation mode', { ...sma, kind: 'fvg', params: { minGapAtrPct: 0, displacementAtrPct: 0, maxZones: 30, extend: 'right', boxLength: 20, labels: 'off', mitigation: 'close', mitigatedStyle: 'dim' } as never }],
+    ['cvwap with a bad switch', { ...sma, kind: 'cvwap', params: { bandMult: 0, average: 'yes', ohlc: 'off', ohlcLabels: 'on' } as never }],
+    ['cvwap with a negative band multiplier', { ...sma, kind: 'cvwap', params: { bandMult: -1, average: 'on', ohlc: 'off', ohlcLabels: 'on' } }],
     ['vpvr with a period instead of rows', { ...sma, kind: 'vpvr', params: { period: 20 } as never }],
     ['macd with fast >= slow', { ...sma, kind: 'macd', params: { fastPeriod: 26, slowPeriod: 12, signalPeriod: 9 } }],
     ['macd with a missing period', { ...sma, kind: 'macd', params: { fastPeriod: 12, slowPeriod: 26 } as never }],

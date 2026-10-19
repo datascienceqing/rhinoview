@@ -314,6 +314,12 @@ and `boxLength` 1–500 (20); `extend` `right`|`fixed` (`right`); `labels` `off`
 `mitigation` `wick`|`fill` (`wick`); `mitigatedStyle` `dim`|`remove` (`dim`). The workspace
 store refuses any other value with `BAD_REQUEST`.
 
+`cvwap` (Chart VWAP, `src/indicators/cvwap.ts`) is a valid `IndicatorKind` for layouts, but
+this endpoint does not serve it: its anchor is the leftmost visible bar, so the client
+computes it at draw time. `CvwapParams`: decimal `bandMult` 0–10 (0, bands off); `average`,
+`ohlc` and `ohlcLabels` `off`|`on` (`on`, `off`, `on`). The workspace store refuses any other
+value with `BAD_REQUEST`.
+
 Upstream: `/rest/stocks/technical-indicators/{sma,ema,macd,rsi}`.
 
 ---
