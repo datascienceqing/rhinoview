@@ -76,6 +76,61 @@ describe('getBars intraday', () => {
     expect(offsets).toEqual([0, 1, 2, 3, 4, 5, 6].map((k) => 9.5 * 3600 + k * 3600));
   });
 
+  it('folds 4h from the 1hour endpoint: two buckets a session, 09:30 and 13:30', async () => {
+    const fetch = fakeFetch(() => serve('chart-1hour-AAPL-2026-09-30_10-01'));
+    const { bars, truncated } = await ask(engineWith(fetch), '4h', NY('2026-09-30'), at('2026-10-01 16:00:00'));
+    expect(fetch.calls[0]?.pathname.endsWith('/historical-chart/1hour')).toBe(true);
+    expect(truncated).toBe(false);
+    // Two full sessions in the fixture -> two buckets each.
+    expect(bars).toHaveLength(4);
+    expect(bars.map((b) => b.time)).toEqual([
+      at('2026-09-30 09:30:00'),
+      at('2026-09-30 13:30:00'),
+      at('2026-10-01 09:30:00'),
+      at('2026-10-01 13:30:00'),
+    ]);
+    expect(bars[0]).toMatchObject({ vwap: null, transactions: null });
+  });
+
+  it('makes every 4h bar the exact aggregate of its 1h bars (invariant 2)', async () => {
+    const range = [NY('2026-09-30'), at('2026-10-01 16:00:00')] as const;
+    const hourly = (await ask(engineWith(fakeFetch(() => serve('chart-1hour-AAPL-2026-09-30_10-01'))), '1h', ...range)).bars;
+    const four = (await ask(engineWith(fakeFetch(() => serve('chart-1hour-AAPL-2026-09-30_10-01'))), '4h', ...range)).bars;
+    let covered = 0;
+    for (const p of four) {
+      const kids = hourly.filter((h) => h.time >= p.time && h.time < p.time + 4 * 3600);
+      expect(kids.length).toBeGreaterThan(0);
+      covered += kids.length;
+      expect(p.open).toBe(kids[0]?.open);
+      expect(p.close).toBe(kids.at(-1)?.close);
+      expect(p.high).toBe(Math.max(...kids.map((k) => k.high)));
+      expect(p.low).toBe(Math.min(...kids.map((k) => k.low)));
+      expect(p.volume).toBe(kids.reduce((n, k) => n + k.volume, 0));
+    }
+    // A bucket never spans two sessions, so the 14 hourly bars are covered exactly once.
+    expect(covered).toBe(hourly.length);
+  });
+
+  it('never folds the 15:30 half hour into a bar that reaches past the close', async () => {
+    const { bars } = await ask(engineWith(fakeFetch(() => serve('chart-1hour-AAPL-2026-09-30_10-01'))), '4h', NY('2026-09-30'), at('2026-10-01 16:00:00'));
+    // The second bucket of a session opens 13:30 and holds 13:30, 14:30 and 15:30 only.
+    const second = bars[1];
+    expect(second?.time).toBe(at('2026-09-30 13:30:00'));
+    expect(second?.time ?? 0).toBeLessThan(at('2026-09-30 16:00:00'));
+  });
+
+  it('drops the oldest 4h bucket when FMP clipped inside its day, and reports truncated', async () => {
+    // First hourly bar of 30 Sept is 11:30, so the 09:30 bucket lost its open: drop it.
+    const rows = [
+      { date: '2026-09-30 11:30:00', open: 1, low: 1, high: 2, close: 2, volume: 10 },
+      { date: '2026-09-30 13:30:00', open: 3, low: 3, high: 4, close: 4, volume: 20 },
+    ];
+    const fetch = fakeFetch(() => responseOf({ status: 200, body: JSON.stringify(rows) }));
+    const { bars, truncated } = await ask(engineWith(fetch), '4h', NY('2026-09-30'), at('2026-09-30 16:00:00'));
+    expect(truncated).toBe(true);
+    expect(bars.map((b) => b.time)).toEqual([at('2026-09-30 13:30:00')]);
+  });
+
   it('filters to the requested range, inclusive on bar time', async () => {
     const from = at('2026-10-01 10:00:00');
     const to = at('2026-10-01 10:10:00');

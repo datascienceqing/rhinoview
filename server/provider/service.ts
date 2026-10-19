@@ -34,7 +34,10 @@ import type { IndicatorRequest } from './indicators';
  * Most bars any one request may return, per timeframe (CONTRACT "Request bounds").
  * The engine is synchronous, so a request blocks the event loop for as long as it
  * takes to build these. Measured on the synthetic engine, cold, all history, rotating
- * symbols (worst of 8): 1m/5m 10k bars ~40 ms, 15m 10k ~65 ms, 1h 5k ~75 ms, 1D 2k ~170 ms, 1W 500 ~230 ms (400 chosen: ~185 ms).
+ * symbols (worst of 8): 1m/5m 10k bars ~40 ms, 15m 10k ~65 ms, 1h 5k ~75 ms, 4h 2k ~85 ms,
+ * 1D 2k ~170 ms, 1W 500 ~230 ms (400 chosen: ~185 ms).
+ * A 4h bar aggregates 240 minutes against a daily bar's 390, so the same 2,000-bar cap
+ * costs half as much and still reaches ~5 years back at ~2 bars a session.
  * Daily is capped lowest because its per-bar cost is ~10x intraday's, and a weekly bar
  * costs ~5 daily ones when the engine's day memo is cold (2,400 weekly bars took ~900 ms cold),
  * so weekly is capped by work, not by how much history there is.
@@ -44,6 +47,7 @@ export const BAR_CAPS: Record<Timeframe, number> = {
   '5m': 10_000,
   '15m': 10_000,
   '1h': 5_000,
+  '4h': 2_000,
   '1D': 2_000,
   '1W': 400,
 };
@@ -59,7 +63,7 @@ export const BAR_CAPS: Record<Timeframe, number> = {
 export const LIVE_SLACK_SECONDS = 120;
 
 /** Bars of each timeframe in one full session (09:30-16:00), for sizing a window. */
-const BARS_PER_SESSION: Record<Exclude<Timeframe, '1W'>, number> = { '1m': 390, '5m': 78, '15m': 26, '1h': 7, '1D': 1 };
+const BARS_PER_SESSION: Record<Exclude<Timeframe, '1W'>, number> = { '1m': 390, '5m': 78, '15m': 26, '1h': 7, '4h': 2, '1D': 1 };
 /** Lower bound on trading days per calendar day over a window of weeks (holidays, weekends). */
 const MIN_TRADING_DAY_DENSITY = 0.55;
 const DAY_SECONDS = 86_400;
@@ -86,6 +90,7 @@ const TIMEFRAME_SPAN_SECONDS: Record<Timeframe, number> = {
   '5m': 300,
   '15m': 900,
   '1h': 3_600,
+  '4h': 14_400,
   '1D': 86_400,
   '1W': 604_800,
 };

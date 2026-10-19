@@ -2,7 +2,7 @@
  * Pure conversions from FMP rows to contract types. No I/O, no clock.
  */
 import type { Bar, Snapshot, UnixSeconds } from '@shared/types';
-import { dayStartUnix, mondayOf, nyDayOf } from '../calendar';
+import { dayStartUnix, mondayOf, nyDayOf, sessionOpenUnix } from '../calendar';
 import type { EodRow, IntradayRow, QuoteRow } from './schemas';
 import { dateTimeToNySeconds, dateToNySeconds } from './time';
 
@@ -109,6 +109,47 @@ export function aggregateWeekly(daily: readonly Bar[]): Bar[] {
   }
   flush();
   return weeks;
+}
+
+/** Seconds in a 4h bucket. A session holds two of them; the second one is short. */
+const FOUR_HOUR_SECONDS = 4 * 3600;
+
+/**
+ * Hourly bars -> 4h bars, bucketed from each session's OPEN exactly as the synthetic
+ * engine does. A normal session (09:30-16:00) gives a bar at 09:30 and a short one at
+ * 13:30; an early close gives one. Buckets never span two sessions, so an overnight gap
+ * cannot land inside a bar.
+ *
+ * 240 is a whole multiple of 60, so each 4h bar is exactly the first/last/max/min/sum of
+ * its hourly bars and engine invariant 2 holds by construction — the same reason `1W` is
+ * folded from daily bars here rather than fetched.
+ *
+ * FMP intraday rows carry no VWAP or trade count, so both stay null (never 0,
+ * CONTRACT guarantee 3). Input must be ascending; output is.
+ */
+export function aggregateFourHour(hourly: readonly Bar[]): Bar[] {
+  const out: Bar[] = [];
+  let currentStart: number | undefined;
+  let acc: Bar | undefined;
+
+  for (const h of hourly) {
+    const open = sessionOpenUnix(nyDayOf(h.time));
+    // A row before the session open (FMP has none, but the data is not ours) keeps its
+    // own time as the bucket start rather than folding backwards into the prior session.
+    const start = h.time < open ? h.time : open + Math.floor((h.time - open) / FOUR_HOUR_SECONDS) * FOUR_HOUR_SECONDS;
+    if (acc === undefined || start !== currentStart) {
+      if (acc) out.push(acc);
+      currentStart = start;
+      acc = { ...h, time: start, vwap: null, transactions: null };
+    } else {
+      acc.high = Math.max(acc.high, h.high);
+      acc.low = Math.min(acc.low, h.low);
+      acc.close = h.close;
+      acc.volume += h.volume;
+    }
+  }
+  if (acc) out.push(acc);
+  return out;
 }
 
 /**

@@ -15,6 +15,7 @@ export const CHUNK_SECONDS: Record<Timeframe, number> = {
   '5m': 7 * DAY,
   '15m': 14 * DAY,
   '1h': 45 * DAY,
+  '4h': 180 * DAY,
   '1D': 180 * DAY,
   '1W': 3 * 365 * DAY,
 };

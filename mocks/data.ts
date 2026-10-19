@@ -197,13 +197,13 @@ function buildSeries(lastSession: number): Series {
   const dailyDayOf = dailyDays;
 
   const sessionDays = weekdaysEnding(lastSession, SESSION_DAYS);
-  const intraday: Record<'5m' | '15m' | '1h', Bar[]> = { '5m': [], '15m': [], '1h': [] };
+  const intraday: Record<'5m' | '15m' | '1h' | '4h', Bar[]> = { '5m': [], '15m': [], '1h': [], '4h': [] };
   sessionDays.forEach((day, dayIndex) => {
     const open = nyWallToUnix(day, SESSION_OPEN_SECONDS);
     const factor = 1 + (((dayIndex * 37) % 21) - 10) / 400; // +-2.5%, deterministic
     const bars = sessionTemplate.map((b, k) => shifted(b, open + k * 300, factor));
     intraday['5m'].push(...bars);
-    for (const [tf, period] of [['15m', 900], ['1h', 3600]] as const) {
+    for (const [tf, period] of [['15m', 900], ['1h', 3600], ['4h', 14400]] as const) {
       intraday[tf].push(...fold(bars, (b) => Math.floor((b.time - open) / period), (k) => open + k * period));
     }
   });
@@ -214,7 +214,7 @@ function buildSeries(lastSession: number): Series {
     (monday) => nyWallToUnix(monday, 0),
   );
 
-  return { '1m': [], '5m': intraday['5m'], '15m': intraday['15m'], '1h': intraday['1h'], '1D': daily, '1W': weekly };
+  return { '1m': [], '5m': intraday['5m'], '15m': intraday['15m'], '1h': intraday['1h'], '4h': intraday['4h'], '1D': daily, '1W': weekly };
 }
 
 let cached: { lastSession: number; series: Series } | null = null;

@@ -23,6 +23,7 @@ export const zh: typeof en = {
   'timeframe.5m': '5分',
   'timeframe.15m': '15分',
   'timeframe.1h': '1小时',
+  'timeframe.4h': '4小时',
   'timeframe.1D': '日线',
   'timeframe.1W': '周线',
   'timeframe.unavailable': (p) => `当前数据源不提供 ${p.tf}`,

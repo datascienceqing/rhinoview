@@ -5,7 +5,7 @@ describe('timeframes', () => {
   it('classifies every timeframe as intraday or not', () => {
     const intraday = TIMEFRAMES.filter(isIntraday);
     const daily = TIMEFRAMES.filter((tf) => !isIntraday(tf));
-    expect(intraday).toEqual<Timeframe[]>(['1m', '5m', '15m', '1h']);
+    expect(intraday).toEqual<Timeframe[]>(['1m', '5m', '15m', '1h', '4h']);
     expect(daily).toEqual<Timeframe[]>(['1D', '1W']);
   });
 });

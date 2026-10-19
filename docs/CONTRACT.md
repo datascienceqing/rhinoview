@@ -119,7 +119,7 @@ Historical OHLCV. The core endpoint.
 | Param | Type | Required | Notes |
 |---|---|---|---|
 | `symbol` | string | yes | 1–16 chars. Pass through **verbatim**; the engine resolves case-insensitively and the response echoes the canonical form. |
-| `timeframe` | `Timeframe` | yes | One of `1m 5m 15m 1h 1D 1W`. Anything else → `BAD_REQUEST`. |
+| `timeframe` | `Timeframe` | yes | One of `1m 5m 15m 1h 4h 1D 1W`. Anything else → `BAD_REQUEST`. |
 | `from` | int | yes | Unix **seconds**, inclusive. Values below 0 are **clamped to 0**, not rejected. |
 | `to` | int | yes | Unix **seconds**, inclusive. Must be `>= from`. |
 | `adjusted` | bool | no | Default `true`. |
@@ -136,6 +136,7 @@ The proxy owns this table. The client never sends `multiplier`/`timespan`.
 | `5m` | 5 | `minute` |
 | `15m` | 15 | `minute` |
 | `1h` | 1 | `hour` |
+| `4h` | 4 | `hour` |
 | `1D` | 1 | `day` |
 | `1W` | 1 | `week` |
 
