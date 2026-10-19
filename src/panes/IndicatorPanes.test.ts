@@ -9,6 +9,7 @@ import { MACD_SIGNAL_COLOR } from './config';
 import { ComputeCache } from './computeCache';
 import type { ConfluencePrimitive } from './confluence/ConfluencePrimitive';
 import type { LiquidityPrimitive } from './liquidity/LiquidityPrimitive';
+import { CvwapPrimitive } from './cvwap/CvwapPrimitive';
 import { FvgPrimitive } from './fvg/FvgPrimitive';
 import type { VpvrPrimitive } from './vpvr/VpvrPrimitive';
 import { fakeComputeIndicator } from './testing/fakeCompute';
@@ -704,6 +705,41 @@ describe('fvg', () => {
   it('detaches the drawing when the indicator is removed', () => {
     const { chart, sync } = setup();
     sync([indicator('fvg')]);
+    sync([]);
+    expect(priceSeries(chart)?.primitives).toHaveLength(0);
+  });
+});
+
+describe('cvwap', () => {
+  const priceSeries = (chart: ReturnType<typeof setup>['chart']) => chart.paneContents[0]?.[0];
+  const primOf = (chart: ReturnType<typeof setup>['chart']) => priceSeries(chart)?.primitives[0] as unknown as CvwapPrimitive;
+
+  it('adds no series and no pane: it is a drawing attached to the price series', () => {
+    const { chart, sync } = setup();
+    sync([indicator('cvwap')]);
+    expect(chart.paneList).toHaveLength(1);
+    expect(tags(chart.paneContents[0] ?? [])).toEqual(['Candlestick']);
+    expect(primOf(chart)).toBeInstanceOf(CvwapPrimitive);
+  });
+
+  it('passes new params, colour and visibility to the drawing, with the theme colours for the bands and levels', () => {
+    const { price, chart, sync } = setup();
+    const config = indicator('cvwap');
+    sync([config]);
+    const prim = primOf(chart);
+    const update = vi.spyOn(prim, 'update');
+    const params = { ...DEFAULT_PARAMS.cvwap, bandMult: 2, ohlc: 'on' as const };
+    sync([{ ...config, params, color: '#123456', visible: false }]);
+    expect(update).toHaveBeenLastCalledWith(
+      bars,
+      params,
+      expect.objectContaining({ vwapColor: '#123456', bandColor: price.colors.up, highColor: price.colors.up, lowColor: price.colors.down, visible: false }),
+    );
+  });
+
+  it('detaches the drawing when the indicator is removed', () => {
+    const { chart, sync } = setup();
+    sync([indicator('cvwap')]);
     sync([]);
     expect(priceSeries(chart)?.primitives).toHaveLength(0);
   });

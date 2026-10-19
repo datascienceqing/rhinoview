@@ -15,6 +15,7 @@ import type {
   ConfluenceMode,
   ConfluenceParams,
   ConfluenceSources,
+  CvwapParams,
   FvgParams,
   IndicatorKind,
   IndicatorParams,
@@ -54,6 +55,7 @@ export const DEFAULT_PARAMS: {
   liquidity: LiquidityParams;
   confluence: ConfluenceParams;
   fvg: FvgParams;
+  cvwap: CvwapParams;
 } = {
   sma: { period: 20, source: 'close' },
   ema: { period: 20, source: 'close' },
@@ -93,6 +95,8 @@ export const DEFAULT_PARAMS: {
     mitigation: 'wick',
     mitigatedStyle: 'dim',
   },
+  // The defaults of the user's Pine script "Chart VWAP".
+  cvwap: { bandMult: 0, average: 'on', ohlc: 'off', ohlcLabels: 'on' },
 };
 
 /** Numeric liquidity fields and their bounds (docs/LIQUIDITY_PLAN.md §5). */
@@ -158,6 +162,10 @@ export const FVG_MITIGATED_STYLE: readonly FvgParams['mitigatedStyle'][] = ['dim
 /** The ATR length of the two FVG filters. Fixed, like the Pine script. */
 export const FVG_ATR_PERIOD = 14;
 
+/** The Chart VWAP band multiplier: a decimal. */
+export const CVWAP_BOUNDS = { bandMult: { min: 0, max: 10 } } as const;
+export const CVWAP_SWITCH: readonly CvwapParams['average'][] = ['off', 'on'];
+
 /** Bounds of the VPVR fields. VPVR params are not periods, so PERIOD_MIN/MAX do not apply. */
 export const VPVR_BOUNDS: Record<keyof VpvrParams, { min: number; max: number }> = {
   rows: { min: 2, max: 400 },
@@ -184,6 +192,7 @@ export const LINE_KEYS: Record<IndicatorKind, readonly string[]> = {
   liquidity: [],
   confluence: [],
   fvg: [],
+  cvwap: [],
 };
 
 /** Thrown for parameters outside the bounds above, or a MACD with `fast >= slow`. */
@@ -247,4 +256,8 @@ export class InvalidIndicatorParamsError extends Error {
 //
 // 10. FVG HAS NO LINES. Its output is boxes, computed from all loaded bars by `computeFvg`
 //    in `fvg.ts`. `computeIndicator` validates the params and returns `lines: []`, warmup 0.
+//
+// 11. CHART VWAP HAS NO LINES. Its anchor is the leftmost visible bar, so it changes with
+//    the view, like VPVR: `computeCvwap` in `cvwap.ts` runs on the visible bars at draw time.
+//    `computeIndicator` validates the params and returns `lines: []`, warmup 0.
 // ───────────────────────────────────────────────────────────────────────────────

@@ -1,6 +1,6 @@
 import { HistogramSeries, LineSeries, LineStyle } from 'lightweight-charts';
 import type { IChartApi, IPaneApi, IPriceLine, ISeriesApi, ISeriesPrimitive, Time } from 'lightweight-charts';
-import type { Bar, ConfluenceParams, FvgParams, IndicatorConfig, IndicatorKind, IndicatorSeries, LiquidityParams, VpvrParams } from '@shared/types';
+import type { Bar, ConfluenceParams, CvwapParams, FvgParams, IndicatorConfig, IndicatorKind, IndicatorSeries, LiquidityParams, VpvrParams } from '@shared/types';
 import { INDICATOR_PLACEMENT } from '@shared/types';
 import { withAlpha } from '../chart/theme';
 import type { ChartTheme } from '../chart/theme';
@@ -8,6 +8,8 @@ import { LINE_KEYS } from '../indicators/types';
 import { MACD_SIGNAL_COLOR } from './config';
 import { ConfluencePrimitive } from './confluence/ConfluencePrimitive';
 import type { ConfluenceStyle } from './confluence/ConfluencePrimitive';
+import { CvwapPrimitive } from './cvwap/CvwapPrimitive';
+import type { CvwapStyle } from './cvwap/CvwapPrimitive';
 import { toHistogramData, toLineData, toVolumeData } from './convert';
 import type { ComputedIndicator } from './computeCache';
 import { FvgPrimitive } from './fvg/FvgPrimitive';
@@ -21,7 +23,7 @@ import type { VpvrStyle } from './vpvr/VpvrPrimitive';
 export interface ChartHost {
   readonly api: IChartApi | null;
   readonly colors: Pick<ChartTheme, 'up' | 'down' | 'text' | 'background'>;
-  /** Drawings on the price series (volume profile, liquidity, confluence, FVG). The host keeps them across chart type changes. */
+  /** Drawings on the price series (volume profile, liquidity, confluence, FVG, Chart VWAP). The host keeps them across chart type changes. */
   attachPricePrimitive?(primitive: ISeriesPrimitive<Time>): void;
   detachPricePrimitive?(primitive: ISeriesPrimitive<Time>): void;
 }
@@ -41,6 +43,8 @@ const VOLUME_SCALE_MARGINS = { top: 0.8, bottom: 0 } as const;
 const VOLUME_ALPHA = 0.5;
 /** Mitigated FVG boxes: a mid grey that shows on the dark and the light theme. */
 const FVG_MITIGATED_COLOR = '#9598a1';
+/** Chart VWAP average, open and close levels: the same grey. */
+const CVWAP_GREY = FVG_MITIGATED_COLOR;
 
 /** Line keys drawn as histograms. */
 const HISTOGRAM_KEYS: ReadonlySet<string> = new Set(['histogram', 'volume']);
@@ -54,8 +58,8 @@ interface Entry {
   lines: Map<string, LineHandle>;
   /** Pane of a `separate` indicator. Held by reference, never by index: indices shift when a pane below is removed. */
   pane: IPaneApi<Time> | null;
-  /** The drawing of a VPVR, a Liquidity, a Confluence or an FVG indicator, which have no series. */
-  primitive: VpvrPrimitive | LiquidityPrimitive | ConfluencePrimitive | FvgPrimitive | null;
+  /** The drawing of a VPVR, a Liquidity, a Confluence, an FVG or a Chart VWAP indicator, which have no series. */
+  primitive: VpvrPrimitive | LiquidityPrimitive | ConfluencePrimitive | FvgPrimitive | CvwapPrimitive | null;
   /** The bars last given to `primitive`. */
   bars: readonly Bar[] | undefined;
   /** RSI's 30/70 guides, kept so a theme change can recolour them. */
@@ -222,6 +226,10 @@ export class IndicatorPanes {
       entry.primitive = new FvgPrimitive(config.params as FvgParams, this.fvgStyle(config));
       this.host.attachPricePrimitive?.(entry.primitive);
     }
+    if (config.kind === 'cvwap') {
+      entry.primitive = new CvwapPrimitive(config.params as CvwapParams, this.cvwapStyle(config));
+      this.host.attachPricePrimitive?.(entry.primitive);
+    }
     if (config.kind === 'rsi') {
       const rsi = entry.lines.get('value');
       if (rsi?.type === 'line') {
@@ -310,6 +318,20 @@ export class IndicatorPanes {
     return { upColor: up, downColor: down, mitigatedColor: FVG_MITIGATED_COLOR, textColor: config.color, visible: config.visible };
   }
 
+  /** The VWAP in the indicator colour; the bands and the high in the theme up colour, the low in the down colour. */
+  private cvwapStyle(config: IndicatorConfig): CvwapStyle {
+    const { up, down } = this.host.colors;
+    return {
+      vwapColor: config.color,
+      bandColor: up,
+      averageColor: CVWAP_GREY,
+      highColor: up,
+      lowColor: down,
+      levelColor: CVWAP_GREY,
+      visible: config.visible,
+    };
+  }
+
   /** D6: the up colour in mode "turn", the down colour in mode "breakdown"; the indicator colour for the sources. */
   private confluenceStyle(config: IndicatorConfig): ConfluenceStyle {
     const { up, down, text, background } = this.host.colors;
@@ -328,6 +350,8 @@ export class IndicatorPanes {
           entry.primitive.update(drawn, config.params as LiquidityParams, this.liquidityStyle(config));
         } else if (entry.primitive instanceof FvgPrimitive) {
           entry.primitive.update(drawn, config.params as FvgParams, this.fvgStyle(config));
+        } else if (entry.primitive instanceof CvwapPrimitive) {
+          entry.primitive.update(drawn, config.params as CvwapParams, this.cvwapStyle(config));
         } else if (entry.primitive instanceof ConfluencePrimitive) {
           entry.primitive.update(drawn, config.params as ConfluenceParams, this.confluenceStyle(config));
         } else {

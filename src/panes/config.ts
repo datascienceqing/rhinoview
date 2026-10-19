@@ -1,5 +1,6 @@
 import type {
   ConfluenceParams,
+  CvwapParams,
   FvgParams,
   IndicatorConfig,
   IndicatorKind,
@@ -10,12 +11,12 @@ import type {
   RsiParams,
   VpvrParams,
 } from '@shared/types';
-import { CONFLUENCE_BOUNDS, DEFAULT_PARAMS, FVG_BOUNDS, LIQUIDITY_BOUNDS, PERIOD_MAX, PERIOD_MIN, VPVR_BOUNDS } from '../indicators/types';
+import { CONFLUENCE_BOUNDS, CVWAP_BOUNDS, DEFAULT_PARAMS, FVG_BOUNDS, LIQUIDITY_BOUNDS, PERIOD_MAX, PERIOD_MIN, VPVR_BOUNDS } from '../indicators/types';
 import { checkIndicatorParams } from '../indicators/params';
 import { t } from '../i18n';
 import type { MessageKey } from '../i18n';
 
-export const INDICATOR_KINDS: readonly IndicatorKind[] = ['sma', 'ema', 'rsi', 'macd', 'volume', 'vpvr', 'liquidity', 'confluence', 'fvg'];
+export const INDICATOR_KINDS: readonly IndicatorKind[] = ['sma', 'ema', 'rsi', 'macd', 'volume', 'vpvr', 'liquidity', 'confluence', 'fvg', 'cvwap'];
 
 /** The kind's name in the current language. SMA, EMA, RSI, MACD and VRVP stay as they are. */
 export function kindLabel(kind: IndicatorKind): string {
@@ -134,6 +135,7 @@ export const PARAM_FIELDS: Record<IndicatorKind, readonly ParamField[]> = {
     fvg('maxZones', 'param.maxZones'),
     fvg('boxLength', 'param.boxLength', undefined, { key: 'extend', value: 'fixed' }),
   ],
+  cvwap: [{ key: 'bandMult', labelKey: 'param.bandMult', ...CVWAP_BOUNDS.bandMult, step: 0.5 }],
 };
 
 /** One select field: a string param with a fixed set of values. */
@@ -156,6 +158,18 @@ const MA_SOURCE_CHOICE: ParamChoice = {
   required: false,
   fallback: 'close',
 };
+
+/** A Chart VWAP off/on select field. */
+const cvwapSwitch = (key: 'average' | 'ohlc' | 'ohlcLabels', labelKey: MessageKey): ParamChoice => ({
+  key,
+  labelKey,
+  options: [
+    { value: 'off', labelKey: 'param.labels.off' },
+    { value: 'on', labelKey: 'param.labels.on' },
+  ],
+  required: true,
+  fallback: DEFAULT_PARAMS.cvwap[key],
+});
 
 /** Select fields per kind, in display order, shown after the number fields. */
 export const PARAM_CHOICES: Record<IndicatorKind, readonly ParamChoice[]> = {
@@ -266,6 +280,11 @@ export const PARAM_CHOICES: Record<IndicatorKind, readonly ParamChoice[]> = {
       fallback: DEFAULT_PARAMS.fvg.labels,
     },
   ],
+  cvwap: [
+    cvwapSwitch('average', 'param.average'),
+    cvwapSwitch('ohlc', 'param.ohlc'),
+    cvwapSwitch('ohlcLabels', 'param.ohlcLabels'),
+  ],
 };
 
 /** Whether `field` shows for the current select values (`choiceValues`). */
@@ -310,6 +329,8 @@ export function defaultParams(kind: IndicatorKind): IndicatorParams {
       return { ...DEFAULT_PARAMS.confluence };
     case 'fvg':
       return { ...DEFAULT_PARAMS.fvg };
+    case 'cvwap':
+      return { ...DEFAULT_PARAMS.cvwap };
   }
 }
 
@@ -390,6 +411,9 @@ export function isLiquidityParams(p: IndicatorParams): p is LiquidityParams {
 export function isFvgParams(p: IndicatorParams): p is FvgParams {
   return 'maxZones' in p;
 }
+export function isCvwapParams(p: IndicatorParams): p is CvwapParams {
+  return 'ohlcLabels' in p;
+}
 /** Tested before the helpers above: confluence has no `lookback` or `period` key, on purpose. */
 export function isConfluenceParams(p: IndicatorParams): p is ConfluenceParams {
   return 'swingLookback' in p;
@@ -429,6 +453,10 @@ export function sanitizeParams(kind: IndicatorKind, raw: unknown): IndicatorPara
     const out = { ...DEFAULT_PARAMS.fvg, ...nums, ...choices } as FvgParams;
     return checkIndicatorParams('fvg', out) === null ? out : null;
   }
+  if (kind === 'cvwap') {
+    const out = { ...DEFAULT_PARAMS.cvwap, ...nums, ...choices } as CvwapParams;
+    return checkIndicatorParams('cvwap', out) === null ? out : null;
+  }
   if (kind === 'liquidity') {
     return {
       lookback: nums['lookback'] ?? 0,
@@ -455,12 +483,15 @@ export function pickColor(existing: readonly IndicatorConfig[]): string {
  */
 export const VPVR_DEFAULT_COLOR = '#2962ff';
 
+/** Chart VWAP starts orange, like the Pine script. */
+export const CVWAP_DEFAULT_COLOR = '#ff9800';
+
 export function createIndicator(kind: IndicatorKind, existing: readonly IndicatorConfig[]): IndicatorConfig {
   return {
     id: newIndicatorId(),
     kind,
     params: defaultParams(kind),
-    color: kind === 'vpvr' ? VPVR_DEFAULT_COLOR : pickColor(existing),
+    color: kind === 'vpvr' ? VPVR_DEFAULT_COLOR : kind === 'cvwap' ? CVWAP_DEFAULT_COLOR : pickColor(existing),
     visible: true,
   };
 }
@@ -474,6 +505,7 @@ export function indicatorTitle(config: Pick<IndicatorConfig, 'kind' | 'params'>)
     return t('indicator.title.confluence', { mode: p.mode === 'turn' ? 'Turn' : 'Breakdown', lookback: p.swingLookback });
   }
   if (isFvgParams(p)) return t('indicator.title.fvg', { maxZones: p.maxZones });
+  if (isCvwapParams(p)) return p.bandMult > 0 ? t('indicator.title.cvwapBands', { mult: p.bandMult }) : name;
   if (isMacdParams(p)) return t('indicator.title', { name, args: `${p.fastPeriod}, ${p.slowPeriod}, ${p.signalPeriod}` });
   if (isVpvrParams(p)) return t('indicator.title.vpvr', { name, rows: p.rows });
   // D2: "Liquidity" in the menu, "LIQ (10)" as the title.
