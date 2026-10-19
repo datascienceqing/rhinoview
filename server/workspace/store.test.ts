@@ -546,6 +546,18 @@ describe('layout contents (invariant 10)', () => {
     expect(l.indicators).toEqual([liq]);
   });
 
+  it('stores an fvg indicator with decimals and enum fields', async () => {
+    const fvg: IndicatorConfig = {
+      id: 'f1',
+      kind: 'fvg',
+      params: { minGapAtrPct: 12.5, displacementAtrPct: 0, maxZones: 40, extend: 'fixed', boxLength: 30, labels: 'on', mitigation: 'fill', mitigatedStyle: 'remove' },
+      color: '#ff9800',
+      visible: true,
+    };
+    const l = await (await open()).createLayout({ name: 'F', indicators: [fvg] });
+    expect(l.indicators).toEqual([fvg]);
+  });
+
   it('stores a confluence indicator with decimals, enums and a latch date, and keeps it after a reopen', async () => {
     const conf: IndicatorConfig = {
       id: 'c1',
@@ -602,6 +614,7 @@ describe('layout contents (invariant 10)', () => {
     ['liquidity with lookback 1', { ...sma, kind: 'liquidity', params: { lookback: 1, zoneMode: 'wick', sweepMode: 'wicks', minTouches: 0, maxAge: 300, sweepExtend: 20 } }],
     ['liquidity with a bad zone mode', { ...sma, kind: 'liquidity', params: { lookback: 10, zoneMode: 'body', sweepMode: 'wicks', minTouches: 0, maxAge: 300, sweepExtend: 20 } as never }],
     ['liquidity with a missing sweep mode', { ...sma, kind: 'liquidity', params: { lookback: 10, zoneMode: 'wick', minTouches: 0, maxAge: 300, sweepExtend: 20 } as never }],
+    ['fvg with a bad mitigation mode', { ...sma, kind: 'fvg', params: { minGapAtrPct: 0, displacementAtrPct: 0, maxZones: 30, extend: 'right', boxLength: 20, labels: 'off', mitigation: 'close', mitigatedStyle: 'dim' } as never }],
     ['vpvr with a period instead of rows', { ...sma, kind: 'vpvr', params: { period: 20 } as never }],
     ['macd with fast >= slow', { ...sma, kind: 'macd', params: { fastPeriod: 26, slowPeriod: 12, signalPeriod: 9 } }],
     ['macd with a missing period', { ...sma, kind: 'macd', params: { fastPeriod: 12, slowPeriod: 26 } as never }],

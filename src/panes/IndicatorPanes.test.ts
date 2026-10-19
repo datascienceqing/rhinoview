@@ -9,6 +9,7 @@ import { MACD_SIGNAL_COLOR } from './config';
 import { ComputeCache } from './computeCache';
 import type { ConfluencePrimitive } from './confluence/ConfluencePrimitive';
 import type { LiquidityPrimitive } from './liquidity/LiquidityPrimitive';
+import { FvgPrimitive } from './fvg/FvgPrimitive';
 import type { VpvrPrimitive } from './vpvr/VpvrPrimitive';
 import { fakeComputeIndicator } from './testing/fakeCompute';
 import { indicator, makeBars } from './testing/testHelpers';
@@ -673,6 +674,40 @@ describe('liquidity', () => {
   });
 });
 
+describe('fvg', () => {
+  const priceSeries = (chart: ReturnType<typeof setup>['chart']) => chart.paneContents[0]?.[0];
+  const primOf = (chart: ReturnType<typeof setup>['chart']) => priceSeries(chart)?.primitives[0] as unknown as FvgPrimitive;
+
+  it('adds no series and no pane: it is a drawing attached to the price series', () => {
+    const { chart, sync } = setup();
+    sync([indicator('fvg')]);
+    expect(chart.paneList).toHaveLength(1);
+    expect(tags(chart.paneContents[0] ?? [])).toEqual(['Candlestick']);
+    expect(primOf(chart)).toBeInstanceOf(FvgPrimitive);
+  });
+
+  it('passes new params, colour and visibility to the drawing, with the theme colours for the boxes', () => {
+    const { price, chart, sync } = setup();
+    const config = indicator('fvg');
+    sync([config]);
+    const prim = primOf(chart);
+    const update = vi.spyOn(prim, 'update');
+    const params = { ...DEFAULT_PARAMS.fvg, maxZones: 5, labels: 'on' as const };
+    sync([{ ...config, params, color: '#123456', visible: false }]);
+    expect(update).toHaveBeenLastCalledWith(
+      bars,
+      params,
+      expect.objectContaining({ upColor: price.colors.up, downColor: price.colors.down, textColor: '#123456', visible: false }),
+    );
+  });
+
+  it('detaches the drawing when the indicator is removed', () => {
+    const { chart, sync } = setup();
+    sync([indicator('fvg')]);
+    sync([]);
+    expect(priceSeries(chart)?.primitives).toHaveLength(0);
+  });
+});
 
 describe('confluence', () => {
   const priceSeries = (chart: ReturnType<typeof setup>['chart']) => chart.paneContents[0]?.[0];

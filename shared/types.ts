@@ -90,7 +90,7 @@ export interface Snapshot {
 
 // ───────────────────────────── Indicators ─────────────────────────────
 
-export type IndicatorKind = 'sma' | 'ema' | 'rsi' | 'macd' | 'volume' | 'vpvr' | 'liquidity' | 'confluence';
+export type IndicatorKind = 'sma' | 'ema' | 'rsi' | 'macd' | 'volume' | 'vpvr' | 'liquidity' | 'confluence' | 'fvg';
 
 /** Where an indicator draws: on the price pane, or in its own pane below. */
 export type IndicatorPlacement = 'overlay' | 'separate';
@@ -108,6 +108,8 @@ export const INDICATOR_PLACEMENT: Record<IndicatorKind, IndicatorPlacement> = {
   liquidity: 'overlay',
   // Trigger clusters and their breaks drawn on the price pane, at price levels.
   confluence: 'overlay',
+  // Fair value gap boxes drawn on the price pane, at price levels.
+  fvg: 'overlay',
 };
 
 export interface MovingAverageParams {
@@ -185,6 +187,26 @@ export interface ConfluenceParams {
   latchTime: number;
 }
 
+/** Which price test mitigates a fair value gap: a wick into the gap, or a close through its far edge. */
+export type FvgMitigation = 'wick' | 'fill';
+
+/**
+ * Fair value gaps: three-bar imbalances where the wicks of bars 1 and 3 do not overlap.
+ * `minGapAtrPct` and `displacementAtrPct` are decimals, in percent of ATR(14); 0 turns the
+ * filter off. `maxZones` and `boxLength` are counts. `boxLength` applies only when `extend`
+ * is 'fixed'.
+ */
+export interface FvgParams {
+  minGapAtrPct: number;
+  displacementAtrPct: number;
+  maxZones: number;
+  extend: 'right' | 'fixed';
+  boxLength: number;
+  labels: 'off' | 'on';
+  mitigation: FvgMitigation;
+  mitigatedStyle: 'dim' | 'remove';
+}
+
 export interface MacdParams {
   fastPeriod: number;
   slowPeriod: number;
@@ -198,7 +220,8 @@ export type IndicatorParams =
   | VolumeParams
   | VpvrParams
   | LiquidityParams
-  | ConfluenceParams;
+  | ConfluenceParams
+  | FvgParams;
 
 /**
  * One point of a computed indicator line.
@@ -213,7 +236,7 @@ export interface IndicatorPoint {
   value: number | null;
 }
 
-/** A single named line. MACD yields three of these; Volume two ('volume', 'ma'); SMA/EMA/RSI one; VPVR, Liquidity and Confluence none. */
+/** A single named line. MACD yields three of these; Volume two ('volume', 'ma'); SMA/EMA/RSI one; VPVR, Liquidity, Confluence and FVG none. */
 export interface IndicatorLine {
   /** Stable key within the indicator, e.g. 'macd' | 'signal' | 'histogram' | 'value'. */
   key: string;

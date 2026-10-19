@@ -1,5 +1,6 @@
 import type {
   ConfluenceParams,
+  FvgParams,
   IndicatorKind,
   IndicatorParams,
   LiquidityParams,
@@ -13,6 +14,11 @@ import {
   CONFLUENCE_LATCH,
   CONFLUENCE_MODES,
   CONFLUENCE_SOURCES,
+  FVG_BOUNDS,
+  FVG_EXTEND,
+  FVG_LABELS,
+  FVG_MITIGATED_STYLE,
+  FVG_MITIGATION,
   InvalidIndicatorParamsError,
   LINE_KEYS,
   LIQUIDITY_BOUNDS,
@@ -22,7 +28,7 @@ import {
   PERIOD_MIN,
   VPVR_BOUNDS,
 } from './types';
-import type { ConfluenceNumericKey, LiquidityNumericKey } from './types';
+import type { ConfluenceNumericKey, FvgNumericKey, LiquidityNumericKey } from './types';
 
 const SOURCES: readonly string[] = ['open', 'high', 'low', 'close'];
 
@@ -58,6 +64,21 @@ function confluenceError(p: Partial<ConfluenceParams>): string | null {
   return periodError('latchTime', p.latchTime, 0, LATCH_TIME_MAX);
 }
 
+function fvgError(p: Partial<FvgParams>): string | null {
+  for (const key of Object.keys(FVG_BOUNDS) as FvgNumericKey[]) {
+    const { min, max, integer } = FVG_BOUNDS[key];
+    const err = integer ? periodError(key, p[key], min, max) : decimalError(key, p[key], min, max);
+    if (err) return err;
+  }
+  if (!FVG_EXTEND.some((v) => v === p.extend)) return `extend must be one of ${FVG_EXTEND.join(', ')}`;
+  if (!FVG_LABELS.some((v) => v === p.labels)) return `labels must be one of ${FVG_LABELS.join(', ')}`;
+  if (!FVG_MITIGATION.some((v) => v === p.mitigation)) return `mitigation must be one of ${FVG_MITIGATION.join(', ')}`;
+  if (!FVG_MITIGATED_STYLE.some((v) => v === p.mitigatedStyle)) {
+    return `mitigatedStyle must be one of ${FVG_MITIGATED_STYLE.join(', ')}`;
+  }
+  return null;
+}
+
 /**
  * The reason `params` are not acceptable for `kind`, or `null` when they are.
  *
@@ -89,6 +110,7 @@ export function checkIndicatorParams(kind: IndicatorKind, params: IndicatorParam
     return null;
   }
   if (kind === 'confluence') return confluenceError(params as Partial<ConfluenceParams>);
+  if (kind === 'fvg') return fvgError(params as Partial<FvgParams>);
   if (kind === 'macd') {
     const p = params as Partial<MacdParams>;
     const err =

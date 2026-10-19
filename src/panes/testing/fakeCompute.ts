@@ -198,5 +198,8 @@ export const fakeComputeIndicator: ComputeIndicator = (bars, kind: IndicatorKind
     case 'confluence':
       // Drawn as clusters and events; no lines.
       return { kind, placement, params, lines: [], warmup: 0 };
+    case 'fvg':
+      // Drawn as gap boxes; no lines.
+      return { kind, placement, params, lines: [], warmup: 0 };
   }
 };

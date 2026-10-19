@@ -16,7 +16,7 @@ import {
 
 describe('validateParams', () => {
   it('accepts the defaults for every kind', () => {
-    for (const kind of ['sma', 'ema', 'rsi', 'macd', 'volume', 'vpvr', 'liquidity', 'confluence'] as const) {
+    for (const kind of ['sma', 'ema', 'rsi', 'macd', 'volume', 'vpvr', 'liquidity', 'confluence', 'fvg'] as const) {
       const p = defaultParams(kind) as unknown as Record<string, number>;
       expect(validateParams(kind, p)).toEqual({});
     }
@@ -187,6 +187,44 @@ describe('liquidity config', () => {
     expect(sanitizeParams('liquidity', { ...ok, sweepMode: undefined })).toBeNull();
     expect(sanitizeParams('liquidity', { ...ok, lookback: 1 })).toBeNull();
     expect(sanitizeParams('liquidity', { period: 20 })).toBeNull();
+  });
+});
+
+describe('fvg config', () => {
+  it('is named "FVG", takes the Pine defaults, and is titled "FVG (max boxes)"', () => {
+    const f = createIndicator('fvg', []);
+    expect(kindLabel('fvg')).toBe('FVG');
+    expect(f.params).toEqual({
+      minGapAtrPct: 0,
+      displacementAtrPct: 0,
+      maxZones: 30,
+      extend: 'right',
+      boxLength: 20,
+      labels: 'off',
+      mitigation: 'wick',
+      mitigatedStyle: 'dim',
+    });
+    expect(indicatorTitle(f)).toBe('FVG (30)');
+  });
+
+  it('accepts decimal ATR percentages and checks the bounds', () => {
+    const ok = { minGapAtrPct: 12.5, displacementAtrPct: 0.5, maxZones: 500, boxLength: 1 };
+    expect(validateParams('fvg', ok)).toEqual({});
+    const bad = validateParams('fvg', { minGapAtrPct: -1, displacementAtrPct: 1001, maxZones: 0, boxLength: 2.5 });
+    expect(Object.keys(bad).sort()).toEqual(['boxLength', 'displacementAtrPct', 'maxZones', 'minGapAtrPct']);
+  });
+
+  it('shows the box length only with a fixed box end', () => {
+    const field = PARAM_FIELDS.fvg.find((f) => f.key === 'boxLength');
+    expect(field?.when).toEqual({ key: 'extend', value: 'fixed' });
+  });
+
+  it('sanitizes stored params, keeps the enum fields, and rejects bad ones', () => {
+    const ok = { minGapAtrPct: 10, displacementAtrPct: 0, maxZones: 50, extend: 'fixed', boxLength: 40, labels: 'on', mitigation: 'fill', mitigatedStyle: 'remove' };
+    expect(sanitizeParams('fvg', { ...ok, extra: 1 })).toEqual(ok);
+    expect(sanitizeParams('fvg', { ...ok, mitigation: 'close' })).toBeNull();
+    expect(sanitizeParams('fvg', { ...ok, extend: undefined })).toBeNull();
+    expect(sanitizeParams('fvg', { ...ok, maxZones: 501 })).toBeNull();
   });
 });
 
