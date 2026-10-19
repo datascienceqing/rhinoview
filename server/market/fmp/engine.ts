@@ -5,8 +5,9 @@
  *   - daily bars, quotes, symbol search, profiles and splits work;
  *   - Starter serves 5min, 15min and 1hour intraday; 1min and the batch quote
  *     endpoints answer HTTP 402.
- * So this engine serves `5m`, `15m`, `1h`, `1D` and `1W`. `1W` is built from daily bars rather
- * than fetched, which makes engine invariant 2 (1W over 1D) hold by construction.
+ * So this engine serves `5m`, `15m`, `1h`, `4h`, `1D` and `1W`. `1W` is built from daily bars
+ * and `4h` from hourly bars rather than fetched, which makes engine invariant 2 (1W over 1D,
+ * 4h over 1h) hold by construction.
  *
  * SEAM NOTE. `MarketEngine` (server/market/types.ts, frozen) is SYNCHRONOUS. A provider
  * that talks to the network cannot be. This class therefore implements
@@ -14,14 +15,14 @@
  * does NOT satisfy `MarketEngine` as written. Plugging it into `MarketService` needs
  * the seam to allow `T | Promise<T>`; see the report that accompanies this change.
  */
-import type { SearchResult, Snapshot, Timeframe, UnixSeconds } from '@shared/types';
+import type { Bar, SearchResult, Snapshot, Timeframe, UnixSeconds } from '@shared/types';
 import { SESSION_OPEN_SECOND, mondayOf, nyDayOf, nyWallToUnix, sessionMinutes, sessionOpenUnix } from '../calendar';
 import { UnknownSymbolError } from '../types';
 import type { EngineBarsRequest, EngineBarsResult, EngineSymbol, MarketEngine } from '../types';
 import { UnsupportedRequestError, UpstreamUnauthorizedError } from '../../provider/errors';
 import { FmpClient, FmpPaymentRequiredError } from './client';
 import type { FmpClientOptions } from './client';
-import { FMP_ROW_CAP, aggregateWeekly, eodRowsToBars, intradayRowsToBars, snapshotFromQuote } from './convert';
+import { FMP_ROW_CAP, aggregateFourHour, aggregateWeekly, eodRowsToBars, intradayRowsToBars, snapshotFromQuote } from './convert';
 import { eodResponseSchema, intradayResponseSchema, profileResponseSchema, quoteResponseSchema, searchResponseSchema } from './schemas';
 import type { ProfileRow, SearchRow } from './schemas';
 import { dateToNySeconds, dayNumberToDate } from './time';
@@ -42,8 +43,14 @@ export interface FmpEngineOptions extends Omit<FmpClientOptions, 'apiKey'> {
   now?: () => number;
 }
 
-/** 1min is HTTP 402 on FMP Starter (measured), so it is not served. */
-const SUPPORTED: readonly Timeframe[] = ['5m', '15m', '1h', '1D', '1W'];
+/**
+ * 1min is HTTP 402 on FMP Starter (measured), so it is not served.
+ *
+ * `4h` IS served, but it is FOLDED from `1hour` rows rather than fetched. FMP publishes a
+ * `4hour` path; nobody has measured whether this tier answers it, and folding costs one
+ * request we already know works and makes invariant 2 (4h over 1h) hold by construction.
+ */
+const SUPPORTED: readonly Timeframe[] = ['5m', '15m', '1h', '4h', '1D', '1W'];
 const INTRADAY_PATH = { '5m': '5min', '15m': '15min', '1h': '1hour' } as const;
 const INTRADAY_SPAN_SECONDS = { '5m': 300, '15m': 900, '1h': 3600 } as const;
 /** Largest Unix time we will turn into a date string (2100-01-01); the proxy clamps to now long before. */
@@ -180,6 +187,7 @@ export class FmpEngine implements AsyncMarketEngine {
     const to = Math.min(req.to, MAX_UNIX);
     if (to < from) return { bars: [], truncated: false };
 
+    if (req.timeframe === '4h') return this.getFourHourBars(req, from, to, limit);
     if (req.timeframe === '5m' || req.timeframe === '15m' || req.timeframe === '1h') {
       return this.getIntradayBars(req, from, to, limit);
     }
@@ -225,17 +233,9 @@ export class FmpEngine implements AsyncMarketEngine {
   /**
    * Intraday bars. FMP keeps the NEWEST rows when it clips (5min: 624 rows per request,
    * measured), so a clipped answer is missing its OLD end. Row caps for 15min and 1hour are
-   * not measured, so one rule covers all three: report `truncated` when ANY trading session
-   * that ends after `from` lies entirely before the oldest bar's NY day, i.e. a session we
-   * should have data for and got none. A session that closed at or before `from` does not
-   * count; weekends, holidays and early closes follow `../calendar`. The client then
-   * continues from the oldest bar. (A "more than one session" rule lost exactly one whole
-   * session silently.)
-   *
-   * Also `truncated` when FMP clipped INSIDE the oldest bar's day: the first expected bar of
-   * that day (the later of `from` and the session open) is missing, i.e. the oldest bar
-   * starts a whole bar or more after it. A bar that merely starts after `from` within its own
-   * span (from = 10:02, first 5m bar 10:05) is not a gap.
+   * not measured, so two rules cover all three: `missesWholeSession` and
+   * `startsAfterFirstExpectedBar` below. The client then continues from the oldest bar.
+   * (A "more than one session" rule lost exactly one whole session silently.)
    */
   private async getIntradayBars(req: EngineBarsRequest, from: number, to: number, limit: number): Promise<EngineBarsResult> {
     const timeframe = req.timeframe as keyof typeof INTRADAY_PATH;
@@ -250,19 +250,50 @@ export class FmpEngine implements AsyncMarketEngine {
     // Whole NY days come back; the range is inclusive on bar time (CONTRACT guarantee 5).
     let bars = intradayRowsToBars(rows).filter((b) => b.time >= from && b.time <= to);
 
-    let truncated = false;
-    const oldest = bars[0];
-    if (oldest) {
-      const oldestDay = nyDayOf(oldest.time);
-      for (let d = fromDay; d < oldestDay && !truncated; d++) {
-        const minutes = sessionMinutes(d);
-        if (minutes > 0 && nyWallToUnix(d, SESSION_OPEN_SECOND + minutes * 60) > from) truncated = true;
-      }
-      if (!truncated && sessionMinutes(oldestDay) > 0) {
-        const firstExpected = Math.max(from, sessionOpenUnix(oldestDay));
-        truncated = oldest.time >= firstExpected + INTRADAY_SPAN_SECONDS[timeframe];
-      }
+    let truncated =
+      missesWholeSession(bars, from, fromDay) || startsAfterFirstExpectedBar(bars, from, INTRADAY_SPAN_SECONDS[timeframe]);
+    if (bars.length > limit) {
+      bars = bars.slice(bars.length - limit); // keep the NEWEST `limit` bars
+      truncated = true;
     }
+    return { bars, truncated };
+  }
+
+  /**
+   * 4h bars, FOLDED from `1hour` rows (see SUPPORTED). One request, and invariant 2 holds
+   * by construction.
+   *
+   * The hourly series is filtered at the LOWER end only. A 4h bucket must aggregate its
+   * whole set of children to be the same whole-bucket aggregate the synthetic engine
+   * returns, so clipping at `to` would make the newest bar partial; the route layer has
+   * already clamped `to` to now. The lower filter is safe because no child of a kept
+   * bucket is older than the bucket itself.
+   *
+   * Truncation uses the same two rules as the fetched timeframes, but on the hourly
+   * series, since that is what FMP actually sent. The two are reported separately here
+   * because only the second one makes the oldest BUCKET partial: a whole missing session
+   * before the oldest day leaves that day's buckets intact, while a clip inside the
+   * oldest day costs its first bucket its open and part of its volume.
+   */
+  private async getFourHourBars(req: EngineBarsRequest, from: number, to: number, limit: number): Promise<EngineBarsResult> {
+    const fromDay = nyDayOf(from);
+    const rows = intradayResponseSchema.parse(
+      await this.client.getJson(`/historical-chart/${INTRADAY_PATH['1h']}`, {
+        symbol: req.symbol,
+        from: dayNumberToDate(fromDay),
+        to: dayNumberToDate(nyDayOf(to)),
+      }),
+    );
+    const hourly = intradayRowsToBars(rows).filter((b) => b.time >= from);
+    const partialOldest = startsAfterFirstExpectedBar(hourly, from, INTRADAY_SPAN_SECONDS['1h']);
+    let truncated = missesWholeSession(hourly, from, fromDay) || partialOldest;
+
+    let bars = aggregateFourHour(hourly);
+    // The client's next request, ending just before the oldest bar returned, fetches the
+    // dropped bucket whole. Exactly what the weekly path does with a clipped first week.
+    if (partialOldest) bars = bars.slice(1);
+    bars = bars.filter((b) => b.time >= from && b.time <= to);
+
     if (bars.length > limit) {
       bars = bars.slice(bars.length - limit); // keep the NEWEST `limit` bars
       truncated = true;
@@ -275,6 +306,37 @@ export class FmpEngine implements AsyncMarketEngine {
     if (!row) throw new UnknownSymbolError(symbol);
     return snapshotFromQuote(row, this.delayed);
   }
+}
+
+/**
+ * Truncation rule 1: a trading session that ends after `from` lies entirely before the
+ * oldest bar's NY day, i.e. a session we should have data for and got none. A session that
+ * closed at or before `from` does not count. Weekends, holidays and early closes follow
+ * `../calendar`.
+ */
+function missesWholeSession(bars: readonly Bar[], from: number, fromDay: number): boolean {
+  const oldest = bars[0];
+  if (!oldest) return false;
+  const oldestDay = nyDayOf(oldest.time);
+  for (let d = fromDay; d < oldestDay; d++) {
+    const minutes = sessionMinutes(d);
+    if (minutes > 0 && nyWallToUnix(d, SESSION_OPEN_SECOND + minutes * 60) > from) return true;
+  }
+  return false;
+}
+
+/**
+ * Truncation rule 2: FMP clipped INSIDE the oldest bar's day. The first expected bar of
+ * that day (the later of `from` and the session open) is missing, i.e. the oldest bar
+ * starts a whole bar or more after it. A bar that merely starts after `from` within its
+ * own span (from = 10:02, first 5m bar 10:05) is not a gap.
+ */
+function startsAfterFirstExpectedBar(bars: readonly Bar[], from: number, span: number): boolean {
+  const oldest = bars[0];
+  if (!oldest) return false;
+  const oldestDay = nyDayOf(oldest.time);
+  if (sessionMinutes(oldestDay) === 0) return false;
+  return oldest.time >= Math.max(from, sessionOpenUnix(oldestDay)) + span;
 }
 
 /**

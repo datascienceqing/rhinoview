@@ -46,10 +46,10 @@ describe('App', () => {
     expect(lastChart().liveSeries).toHaveLength(1);
   });
 
-  it('lists all six timeframes from the contract and marks 1D active', async () => {
+  it('lists all seven timeframes from the contract and marks 1D active', async () => {
     render(<App />);
     const group = screen.getByRole('group', { name: 'Timeframe' });
-    expect(within(group).getAllByRole('button').map((b) => b.textContent)).toEqual(['1m', '5m', '15m', '1h', '1D', '1W']);
+    expect(within(group).getAllByRole('button').map((b) => b.textContent)).toEqual(['1m', '5m', '15m', '1h', '4h', '1D', '1W']);
     expect(within(group).getByRole('button', { name: '1D' })).toHaveAttribute('aria-pressed', 'true');
     await screen.findByTestId('crosshair-legend');
   });

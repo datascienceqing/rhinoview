@@ -28,6 +28,7 @@ export const en = {
   'timeframe.5m': '5m',
   'timeframe.15m': '15m',
   'timeframe.1h': '1h',
+  'timeframe.4h': '4h',
   'timeframe.1D': '1D',
   'timeframe.1W': '1W',
   'timeframe.unavailable': (p: { tf: string }) => `${p.tf} is not available from this data provider`,

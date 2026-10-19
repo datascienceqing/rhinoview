@@ -13,7 +13,7 @@ import type { EngineBarsRequest, EngineBarsResult, MarketEngine } from '../marke
 
 const DAY = 86_400;
 const WEEK = 7 * DAY;
-const SPAN: Record<Timeframe, number> = { '1m': 60, '5m': 300, '15m': 900, '1h': 3_600, '1D': DAY, '1W': WEEK };
+const SPAN: Record<Timeframe, number> = { '1m': 60, '5m': 300, '15m': 900, '1h': 3_600, '4h': 14_400, '1D': DAY, '1W': WEEK };
 const MONDAY0 = 4 * DAY; // 1970-01-05 00:00 UTC, a Monday
 
 // 2023-11-13 is a Monday; 1_699_833_600 is its 00:00 UTC. "Sessions" run 09:00-17:00 UTC.

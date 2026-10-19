@@ -36,8 +36,8 @@ const bars = (e: ReturnType<typeof engineWith>, timeframe: '1D' | '1W', from: st
   e.getBars({ symbol: 'AAPL', timeframe, from: T(from), to: T(to), adjusted: true, limit: 2000, ...extra });
 
 describe('capabilities', () => {
-  it('serves 5m, 15m, 1h, 1D and 1W, but not 1m: what Starter can actually fetch', () => {
-    expect(engineWith(fakeFetch(() => responseOf({ status: 200, body: '[]' }))).supportedTimeframes).toEqual(['5m', '15m', '1h', '1D', '1W']);
+  it('serves 5m, 15m, 1h, 4h, 1D and 1W, but not 1m: what Starter can actually fetch', () => {
+    expect(engineWith(fakeFetch(() => responseOf({ status: 200, body: '[]' }))).supportedTimeframes).toEqual(['5m', '15m', '1h', '4h', '1D', '1W']);
   });
 });
 

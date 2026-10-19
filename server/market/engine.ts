@@ -6,8 +6,8 @@
  *   PricePath(symbol seed, path index)  →  1-minute OHLCV  →  bucket  →  Bar
  *
  * Every bar of every timeframe is an aggregation of the same minute bars, so a 1h bar
- * *is* the first/last/max/min/sum of its 5m bars, a 1D bar of its 1h bars, a 1W bar of
- * its 1D bars. Nothing is reconciled afterwards. Minute bars are computed on demand
+ * *is* the first/last/max/min/sum of its 5m bars, a 4h bar of its 1h bars, a 1D bar of
+ * its 4h bars, a 1W bar of its 1D bars. Nothing is reconciled afterwards. Minute bars are computed on demand
  * from `(seed, slot * PATH_STRIDE + minute)`; no history is ever materialised, so a
  * bar's value cannot depend on what else was requested (invariant 1).
  *
@@ -48,7 +48,7 @@ const MAX_UNIX: UnixSeconds = Date.UTC(2100, 0, 1) / 1000;
 /** Anchor: the path passes through each symbol's `basePrice` at this session's open. */
 const ANCHOR_DAY = civilToDay(2026, 1, 2);
 
-const BUCKET_MINUTES: Record<'1m' | '5m' | '15m' | '1h', number> = { '1m': 1, '5m': 5, '15m': 15, '1h': 60 };
+const BUCKET_MINUTES: Record<'1m' | '5m' | '15m' | '1h' | '4h', number> = { '1m': 1, '5m': 5, '15m': 15, '1h': 60, '4h': 240 };
 
 const EARLY_CLOSE_VOLUME_FACTOR = 0.55;
 const DAY_AGG_CACHE_LIMIT = 60_000;
@@ -487,7 +487,7 @@ export class SyntheticMarketEngine implements MarketEngine {
     dHi: number,
     adjusted: boolean,
   ): Generator<Unit> {
-    const bucket = tf === '1m' || tf === '5m' || tf === '15m' || tf === '1h' ? BUCKET_MINUTES[tf] : 1;
+    const bucket = tf === '1m' || tf === '5m' || tf === '15m' || tf === '1h' || tf === '4h' ? BUCKET_MINUTES[tf] : 1;
     const step = bucket * 60;
     for (let day = dHi; day >= dLo; day--) {
       const minutes = sessionMinutes(day);

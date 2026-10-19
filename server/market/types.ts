@@ -126,12 +126,12 @@ export interface MarketEngine {
 //
 // 2. CROSS-TIMEFRAME COHERENCE — scoped to timeframe FAMILIES (revised in Phase 5).
 //    Bars must agree when aggregated WITHIN a family:
-//      • the INTRADAY family: 1m → 5m → 15m → 1h
+//      • the INTRADAY family: 1m → 5m → 15m → 1h → 4h
 //      • the DAILY family:    1D → 1W
 //    For a bar and the bars it aggregates: open = first open, close = last close,
 //    high = max high, low = min low, volume = summed volume. Exactly.
 //
-//    The boundary BETWEEN the families (1h → 1D) is NOT required to agree for a real
+//    The boundary BETWEEN the families (4h → 1D) is NOT required to agree for a real
 //    provider, and it does not. Measured on FMP: a session's 5-minute volumes sum to
 //    66–75% of that day's 1D volume, and open/close differ by cents. That is correct
 //    data, not a defect. The official daily bar includes the opening and closing

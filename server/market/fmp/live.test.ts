@@ -2,6 +2,7 @@
  * LIVE integration test against the real FMP API. SKIPPED unless FMP_LIVE=1, so CI stays
  * hermetic and never spends the plan's request budget. Written for FMP Starter: 5min,
  * 15min and 1hour intraday are served; 1min is HTTP 402, so the engine refuses it locally.
+ * 4h is folded from the 1hour rows, so it exercises the same request.
  *
  *   FMP_LIVE=1 npx vitest run --project node server/market/fmp/live
  *
@@ -70,8 +71,8 @@ describe.skipIf(!live)('FMP live (FMP_LIVE=1)', () => {
     expect(mapEngineError(err).code).toBe('UNAUTHORIZED');
   });
 
-  const SPAN: Partial<Record<Timeframe, number>> = { '5m': 300, '15m': 900, '1h': 3600 };
-  for (const timeframe of ['5m', '15m', '1h'] as const) {
+  const SPAN: Partial<Record<Timeframe, number>> = { '5m': 300, '15m': 900, '1h': 3600, '4h': 14_400 };
+  for (const timeframe of ['5m', '15m', '1h', '4h'] as const) {
     it(`serves ${timeframe} bars: ascending, in the regular session, on the bar grid, whole-share volume`, async () => {
       // A week back always holds at least one session, even across a long holiday weekend.
       const from = now - 7 * DAY;

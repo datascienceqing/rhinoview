@@ -24,13 +24,13 @@
 export type UnixSeconds = number;
 
 /** Timeframes the UI exposes. The proxy owns the mapping to upstream multiplier/timespan. */
-export type Timeframe = '1m' | '5m' | '15m' | '1h' | '1D' | '1W';
+export type Timeframe = '1m' | '5m' | '15m' | '1h' | '4h' | '1D' | '1W';
 
-export const TIMEFRAMES: readonly Timeframe[] = ['1m', '5m', '15m', '1h', '1D', '1W'] as const;
+export const TIMEFRAMES: readonly Timeframe[] = ['1m', '5m', '15m', '1h', '4h', '1D', '1W'] as const;
 
 /** True for timeframes finer than one day — drives session gaps and axis formatting. */
 export function isIntraday(tf: Timeframe): boolean {
-  return tf === '1m' || tf === '5m' || tf === '15m' || tf === '1h';
+  return tf === '1m' || tf === '5m' || tf === '15m' || tf === '1h' || tf === '4h';
 }
 
 /**

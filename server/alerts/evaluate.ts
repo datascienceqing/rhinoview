@@ -52,6 +52,7 @@ export const TIMEFRAME_SPAN_SECONDS: Record<Timeframe, number> = {
   '5m': 300,
   '15m': 900,
   '1h': 3_600,
+  '4h': 14_400,
   '1D': 86_400,
   '1W': 604_800,
 };

@@ -131,6 +131,8 @@ describe('invariant 2: cross-timeframe coherence', () => {
     ['5m', '15m', 900],
     ['5m', '1h', 3600],
     ['15m', '1h', 3600],
+    ['1h', '4h', 14400],
+    ['4h', '1D', 86400],
     ['1h', '1D', 86400],
     ['1D', '1W', 6 * 86400], // Mon-Fri midnights, never the next Monday, whatever DST did
   ];
@@ -263,6 +265,13 @@ describe('invariant 3: market calendar (through the engine)', () => {
     expect(ny(five[five.length - 1]?.time ?? 0).minuteOfDay).toBe(12 * 60 + 55);
     const hourly = bars('AAPL', '1h', utc(2025, 11, 28, 12), utc(2025, 11, 28, 23));
     expect(hourly.map((b) => ny(b.time).minuteOfDay)).toEqual([570, 630, 690, 750]);
+  });
+
+  it('lays a normal day out as two 4h bars, 09:30 and 13:30, and an early-close day as one', () => {
+    const normal = bars('AAPL', '4h', utc(2025, 3, 11, 12), utc(2025, 3, 11, 23));
+    expect(normal.map((b) => ny(b.time).minuteOfDay)).toEqual([570, 810]);
+    const early = bars('AAPL', '4h', utc(2025, 11, 28, 12), utc(2025, 11, 28, 23));
+    expect(early.map((b) => ny(b.time).minuteOfDay)).toEqual([570]);
   });
 
   it('lays a normal day out as 09:30, 10:30, ... 15:30 hourly bars (last one is a half hour)', () => {
