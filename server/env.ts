@@ -5,7 +5,7 @@
  *
  * `DATA_PROVIDER` selects where market data comes from. `synthetic` is the default
  * and needs no credentials; `massive` requires a key and is not implemented yet.
- * This is the only place the API key is read. It must never be logged, echoed in an
+ * This is the only place the API keys are read (market data, fundamentals, and DeepSeek). It must never be logged, echoed in an
  * error message, returned in a response body, or interpolated into a URL that could
  * reach a log line.
  */
@@ -31,6 +31,13 @@ const schema = z
     MASSIVE_BASE_URL: optional(z.string().url().default('https://api.massive.com')),
 
     SERVER_PORT: z.coerce.number().int().positive().default(8787),
+
+    /** The AI helper (docs/AI_HELPER_PLAN.md). Without a key, the AI endpoints are off. */
+    DEEPSEEK_API_KEY: optional(z.string().min(1).optional()),
+    DEEPSEEK_BASE_URL: optional(z.string().url().default('https://api.deepseek.com')),
+    DEEPSEEK_MODEL: optional(z.string().min(1).default('deepseek-chat')),
+    /** DeepSeek calls a day (New York day), for all users of this server together. */
+    AI_DAILY_CALL_LIMIT: z.coerce.number().int().min(1).max(10_000).default(50),
 
     /** Where the workspace (named layouts and watchlists) is saved. Gitignored. */
     WORKSPACE_FILE: optional(z.string().min(1).default('data/workspace.json')),
@@ -90,7 +97,7 @@ export const env = parsed.data;
  */
 export function redact(text: string): string {
   let out = text;
-  for (const key of [env.MASSIVE_API_KEY, env.FMP_API_KEY]) {
+  for (const key of [env.MASSIVE_API_KEY, env.FMP_API_KEY, env.DEEPSEEK_API_KEY]) {
     if (key) out = out.split(key).join('[REDACTED]');
   }
   return out;

@@ -97,7 +97,7 @@ export function createHandlers({ latencyMs = 0 }: HandlerOptions = {}) {
     http.get('*/api/health', () => ok({ status: 'up' })),
 
     http.get('*/api/capabilities', () =>
-      ok({ timeframes: [...TIMEFRAMES], delayed: true, provider: 'mock', fundamentals: true }),
+      ok({ timeframes: [...TIMEFRAMES], delayed: true, provider: 'mock', fundamentals: true, ai: false }),
     ),
 
     // Phase 5 domains, each in its own file so parallel workers never edit this one.

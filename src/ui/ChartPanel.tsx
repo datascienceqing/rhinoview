@@ -32,8 +32,6 @@ export interface ChartPanelProps {
   chartType: ChartType;
   /** Phase 5 seam: flags on the price series, for example earnings. */
   markers?: readonly ChartMarker[];
-  /** The chart menu's Financials item; omitted when the server serves no fundamentals. */
-  onOpenFinancials?: () => void;
 }
 
 /**
@@ -56,7 +54,7 @@ export function ChartPanel(props: ChartPanelProps) {
   return <LoadedChartPanel {...props} />;
 }
 
-function LoadedChartPanel({ symbol, timeframe: savedTimeframe, chartType, markers, onOpenFinancials }: ChartPanelProps) {
+function LoadedChartPanel({ symbol, timeframe: savedTimeframe, chartType, markers }: ChartPanelProps) {
   // A saved timeframe the provider cannot serve is drawn as the nearest supported one.
   // The layout itself is untouched until the user picks (see TimeframeSelector).
   const { t } = useI18n();
@@ -184,6 +182,9 @@ function LoadedChartPanel({ symbol, timeframe: savedTimeframe, chartType, marker
     ];
   }
 
+  // With nothing to add an alert to, a right-click opens no menu.
+  const menuItems = menu ? alertItems(menu) : [];
+
   const overlays = computed.filter((c) => INDICATOR_PLACEMENT[c.config.kind] === 'overlay');
   const separate = computed.filter((c) => INDICATOR_PLACEMENT[c.config.kind] === 'separate');
 
@@ -210,14 +211,8 @@ function LoadedChartPanel({ symbol, timeframe: savedTimeframe, chartType, marker
         alertLevels={alertLevels}
       />
 
-      {menu && (
-        <ChartContextMenu
-          x={menu.x}
-          y={menu.y}
-          alertItems={alertItems(menu)}
-          {...(onOpenFinancials ? { onFinancials: onOpenFinancials } : {})}
-          onClose={closeMenu}
-        />
+      {menu && menuItems.length > 0 && (
+        <ChartContextMenu x={menu.x} y={menu.y} alertItems={menuItems} onClose={closeMenu} />
       )}
 
       {history.status === 'ready' && history.bars.length > 0 && (

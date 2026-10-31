@@ -24,6 +24,9 @@ import { QuotesCache } from './cache/quotesCache';
 import { UNAVAILABLE_FUNDAMENTALS, createFundamentalsProvider } from './fundamentals';
 import type { FundamentalsProvider } from './fundamentals';
 import { createWorkspaceStore } from './workspace';
+import { DeepSeekClient } from './ai/deepseek';
+import type { ChatClient } from './ai/deepseek';
+import { registerAiRoutes } from './routes/ai';
 import type { WorkspaceStore } from './workspace';
 
 export interface BuildServerOptions {
@@ -51,6 +54,8 @@ export interface BuildServerOptions {
    * `budgetPerMinute` null means no cap (the synthetic provider).
    */
   alertChecks?: { budgetPerMinute: number | null; tickMs?: number };
+  /** The AI helper. Omitted or a null client: the AI endpoints answer "not configured". */
+  ai?: { client: ChatClient | null; dailyLimit: number };
 }
 
 export function buildServer(opts: BuildServerOptions): FastifyInstance {
@@ -76,12 +81,20 @@ export function buildServer(opts: BuildServerOptions): FastifyInstance {
 
   app.get('/api/health', async () => ({ ok: true as const, data: { status: 'up' } }));
   const fundamentals = opts.fundamentals ?? UNAVAILABLE_FUNDAMENTALS;
-  registerApiRoutes(app, service, { fundamentalsAvailable: fundamentals.available });
+  registerApiRoutes(app, service, { fundamentalsAvailable: fundamentals.available, aiAvailable: Boolean(opts.ai?.client) });
   // One quote cache for the watchlist and the alert checker: a symbol in both costs one call.
   const quotesCache = new QuotesCache();
   registerQuotesRoutes(app, { service, cache: quotesCache });
   registerFundamentalsRoutes(app, { fundamentals });
   registerWorkspaceRoutes(app, { store: opts.workspace ?? null });
+  registerAiRoutes(app, {
+    service,
+    fundamentals,
+    now: opts.now ?? (() => Math.floor(Date.now() / 1000)),
+    provider: service.capabilities().provider,
+    client: opts.ai?.client ?? null,
+    dailyLimit: opts.ai?.dailyLimit ?? 0,
+  });
   let scheduler: AlertScheduler | null = null;
   if (opts.alerts && opts.alertChecks) {
     const checker = new AlertScheduler({
@@ -119,6 +132,12 @@ export async function createServer(): Promise<FastifyInstance> {
     workspace,
     alerts,
     alertChecks: { budgetPerMinute: env.DATA_PROVIDER === 'synthetic' ? null : env.ALERT_CALL_BUDGET },
+    ai: {
+      client: env.DEEPSEEK_API_KEY
+        ? new DeepSeekClient({ apiKey: env.DEEPSEEK_API_KEY, baseUrl: env.DEEPSEEK_BASE_URL, model: env.DEEPSEEK_MODEL })
+        : null,
+      dailyLimit: env.AI_DAILY_CALL_LIMIT,
+    },
   });
 }
 

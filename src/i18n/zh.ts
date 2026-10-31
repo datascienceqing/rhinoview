@@ -468,9 +468,6 @@ export const zh: typeof en = {
   'menu.addOverlayAlert': (p: { indicator: string }) => `为 ${p.indicator} 添加警报…`,
   'menu.addLatchAlert': (p: { indicator: string; level: string }) => `为 ${p.indicator} 锁定价位 ${p.level} 添加警报…`,
   'menu.addIndicatorAlert': (p: { indicator: string; value: string }) => `在 ${p.indicator} ${p.value} 添加警报…`,
-  'menu.theme.dark': '主题：深色',
-  'menu.theme.light': '主题：浅色',
-  'menu.language': (p: { target: string }) => `语言：${p.target}`,
 
   // ── alerts ──
   'alerts.title': '警报',

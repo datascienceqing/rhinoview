@@ -56,13 +56,13 @@ describe('GET /api/capabilities', () => {
     app = buildServer({ engine: eodEngine(), provider: 'fmp' });
     const { status, body } = await get(app, '/api/capabilities');
     expect(status).toBe(200);
-    expect(body).toEqual({ ok: true, data: { timeframes: ['1D', '1W'], delayed: true, provider: 'fmp', fundamentals: false } });
+    expect(body).toEqual({ ok: true, data: { timeframes: ['1D', '1W'], delayed: true, provider: 'fmp', fundamentals: false, ai: false } });
   });
 
   it('lists a full-featured engine in canonical order, whatever order the engine declared', async () => {
     app = buildServer({ engine: eodEngine({ supportedTimeframes: [...TIMEFRAMES].reverse(), delayed: false }) });
     const { body } = await get(app, '/api/capabilities');
-    expect(body).toEqual({ ok: true, data: { timeframes: [...TIMEFRAMES], delayed: false, provider: 'custom', fundamentals: false } });
+    expect(body).toEqual({ ok: true, data: { timeframes: [...TIMEFRAMES], delayed: false, provider: 'custom', fundamentals: false, ai: false } });
   });
 
   it('reads delayed from the engine rather than a literal', async () => {
@@ -71,10 +71,10 @@ describe('GET /api/capabilities', () => {
     expect(body.ok && body.data.delayed).toBe(false);
   });
 
-  it('carries nothing but the four contract fields', async () => {
+  it('carries nothing but the five contract fields', async () => {
     app = buildServer({ engine: eodEngine(), provider: 'fmp' });
     const { body } = await get<Record<string, unknown>>(app, '/api/capabilities');
-    expect(body.ok && Object.keys(body.data).sort()).toEqual(['delayed', 'fundamentals', 'provider', 'timeframes']);
+    expect(body.ok && Object.keys(body.data).sort()).toEqual(['ai', 'delayed', 'fundamentals', 'provider', 'timeframes']);
   });
 });
 
