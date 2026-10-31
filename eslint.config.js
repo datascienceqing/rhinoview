@@ -4,7 +4,8 @@ import reactHooks from 'eslint-plugin-react-hooks';
 import globals from 'globals';
 
 export default tseslint.config(
-  { ignores: ['dist', 'node_modules', 'public', 'coverage'] },
+  // .claude holds agent worktrees: full copies of the repo that the path rules below do not match.
+  { ignores: ['dist', 'node_modules', 'public', 'coverage', '.claude'] },
   js.configs.recommended,
   ...tseslint.configs.recommended,
   {

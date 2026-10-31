@@ -55,6 +55,15 @@ export interface ChartPoint {
   value: number;
 }
 
+/** A point on the price pane: the nearest bar index (not clamped to the loaded bars) and the price. */
+export interface PricePoint {
+  index: number;
+  price: number;
+}
+
+/** A press and a release nearer than this in px is a click, not a drag. */
+const CLICK_SLOP_PX = 4;
+
 /** One live series, tagged so `setData` is checked against the right data shape. */
 type ActiveSeries =
   | { type: 'candlestick'; api: ISeriesApi<'Candlestick'> }
@@ -154,6 +163,45 @@ export class PriceChart {
       return { paneIndex: i, pane, value };
     }
     return null;
+  }
+
+  /**
+   * Pointer moves over the chart and clicks (a press and a release in one spot) on the
+   * price pane, as a bar index and a price, for the drawing tools. A move off the price
+   * pane gives null. Returns the unsubscribe.
+   */
+  subscribePricePointer(handlers: { move(p: PricePoint | null): void; click(p: PricePoint): void }): () => void {
+    const container = this.container;
+    if (!this.chart) return () => undefined;
+    const at = (e: PointerEvent): PricePoint | null => {
+      const point = this.pointAt(e.clientX, e.clientY);
+      const r = point?.pane.getHTMLElement()?.getBoundingClientRect();
+      const index = r ? this.barAt(e.clientX - r.left) : null;
+      return point && point.paneIndex === 0 && index !== null ? { index, price: point.value } : null;
+    };
+    let down: { x: number; y: number } | null = null;
+    const onDown = (e: PointerEvent) => {
+      down = e.button === 0 ? { x: e.clientX, y: e.clientY } : null;
+    };
+    const onUp = (e: PointerEvent) => {
+      const start = down;
+      down = null;
+      if (!start || Math.hypot(e.clientX - start.x, e.clientY - start.y) > CLICK_SLOP_PX) return;
+      const p = at(e);
+      if (p) handlers.click(p);
+    };
+    const onMove = (e: PointerEvent) => handlers.move(at(e));
+    const onLeave = () => handlers.move(null);
+    container.addEventListener('pointerdown', onDown);
+    container.addEventListener('pointerup', onUp);
+    container.addEventListener('pointermove', onMove);
+    container.addEventListener('pointerleave', onLeave);
+    return () => {
+      container.removeEventListener('pointerdown', onDown);
+      container.removeEventListener('pointerup', onUp);
+      container.removeEventListener('pointermove', onMove);
+      container.removeEventListener('pointerleave', onLeave);
+    };
   }
 
   /** The price at the middle of the visible price range (keyboard menu), or null. */

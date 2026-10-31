@@ -17,6 +17,7 @@ import { indicatorTitle } from '../panes/config';
 import { useBarHistory, useCapabilities } from '../data';
 import { IndicatorLegendRow, IndicatorMenu, useComputedIndicators, useIndicators } from '../panes';
 import { LatchHandles } from '../panes/confluence/LatchHandle';
+import { DrawingTools } from '../drawings/DrawingTools';
 import type { PriceChart } from '../chart/PriceChart';
 import type { PaneLayout } from '../panes';
 import { effectiveTimeframe, useActiveChart, useWorkspaceStatus } from '../workspace';
@@ -222,6 +223,10 @@ function LoadedChartPanel({ symbol, timeframe: savedTimeframe, chartType, marker
           intraday={isIntraday(timeframe)}
           onChange={indicatorState.setParams}
         />
+      )}
+
+      {history.status === 'ready' && history.bars.length > 0 && (
+        <DrawingTools chart={priceChart} symbol={symbol} bars={history.bars} />
       )}
 
       {history.status === 'ready' && history.bars.length > 0 && (

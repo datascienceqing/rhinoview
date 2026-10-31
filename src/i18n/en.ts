@@ -60,6 +60,14 @@ export const en = {
   'chart.olderFailed': (p: { reason: string }) => `${p.reason}: couldn’t load older history.`,
   'chart.moreHistory': 'More history available · scroll left',
   'chart.moreHistoryTitle': 'The server returned only the newest bars of the requested range. There is no gap; older bars load as you scroll left.',
+  // ── drawing tools ──
+  'draw.group': 'Drawing tools',
+  'draw.measure': 'Measure',
+  'draw.measureTitle': 'Measure: click two points to see the price change, the change in percent and the bar count',
+  'draw.fib': 'Fib retracement',
+  'draw.fibTitle': 'Fib retracement: click the start and the end of a move',
+  'draw.clear': 'Remove drawings',
+  'draw.bars': (p: { count: number }) => `${p.count} ${plural(Math.abs(p.count), 'bar', 'bars')}`,
 
   // ── symbol search ──
   'search.label': 'Search symbol',

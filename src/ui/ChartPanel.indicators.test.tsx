@@ -12,6 +12,7 @@ import { DEFAULT_PARAMS } from '../indicators/types';
 import { ChartPanel } from './ChartPanel';
 import type { ChartPanelProps } from './ChartPanel';
 import { renderWithDataSource } from './testUtils';
+import { DrawingsPrimitive } from '../drawings/DrawingsPrimitive';
 
 vi.mock('lightweight-charts', async () => (await import('../chart/testing/fakeLightweightCharts')).fakeModule);
 
@@ -210,7 +211,8 @@ describe('parameter editor', () => {
     await add(user, 'Liquidity');
     expect(screen.getByRole('button', { name: 'Remove LIQ (10)' })).toBeInTheDocument();
     expect(lastChart().paneList).toHaveLength(1);
-    expect(lastChart().paneContents[0]?.[0]?.primitives).toHaveLength(1);
+    // The drawing tools keep their own primitive on the price series too.
+    expect(lastChart().paneContents[0]?.[0]?.primitives.filter((p) => !(p instanceof DrawingsPrimitive))).toHaveLength(1);
     fireEvent.change(screen.getByLabelText('Zone'), { target: { value: 'range' } });
     fireEvent.change(screen.getByLabelText('Pivot lookback', { selector: 'input[type="number"]' }), { target: { value: '5' } });
     expect(screen.getByRole('button', { name: 'Remove LIQ (5)' })).toBeInTheDocument();
