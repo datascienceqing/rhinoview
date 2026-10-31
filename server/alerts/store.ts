@@ -15,6 +15,7 @@ import type {
   Alert,
   AlertEvent,
   AlertEventsResponse,
+  AlertOrigin,
   AlertStreamMessage,
   CreateAlertBody,
   EntityId,
@@ -44,7 +45,8 @@ export interface AppliedCheck {
 export interface AlertsStore {
   /** Newest first. */
   list(): Alert[];
-  create(body: CreateAlertBody): Promise<Alert>;
+  /** `origin` comes from the server only (`POST /api/ai/alerts`), never from a request body. */
+  create(body: CreateAlertBody, origin?: AlertOrigin): Promise<Alert>;
   update(id: EntityId, body: UpdateAlertBody): Promise<Alert>;
   remove(id: EntityId): Promise<{ id: EntityId }>;
   /** Newest first. `since` is exclusive. */
@@ -240,7 +242,7 @@ export async function openAlertsStore(filePath: string, opts: AlertsStoreOptions
   return {
     list: () => structuredClone(state.alerts),
 
-    async create(body) {
+    async create(body, origin) {
       const symbol = canonicalSymbol(body.symbol);
       checkFields(body);
       return mutate((s) => {
@@ -259,6 +261,7 @@ export async function openAlertsStore(filePath: string, opts: AlertsStoreOptions
           createdAt: t,
           updatedAt: t,
           state: emptyState(),
+          ...(origin ? { origin: structuredClone(origin) } : {}),
         };
         s.alerts.unshift(alert);
         return { result: alert, messages: [{ type: 'alerts' }] };
@@ -357,6 +360,7 @@ export async function openAlertsStore(filePath: string, opts: AlertsStoreOptions
               delayed: c.delayed,
               ...(a.condition.type !== 'price' ? { barTime: f.time } : {}),
               checked: false,
+              ...(a.origin ? { origin: structuredClone(a.origin) } : {}),
             };
             s.events.unshift(event);
             fired.push(event);

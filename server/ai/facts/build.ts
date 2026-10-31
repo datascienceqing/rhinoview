@@ -174,6 +174,19 @@ function ratingArrow(r: Rating | null | undefined): Arrow {
 
 const eventFact = (bars: readonly Bar[]) => (e: StructureEvent) => ({ kind: e.kind, side: e.side, level: px(e.level), date: day((bars[e.index] as Bar).time) });
 
+/** Zones drawn on the chart: the nearest ones to the price. */
+export const MAX_ZONE_MARKS = 4;
+
+/**
+ * The plan to draw for one side: the retest or continuation plan with the best T1 R:R among
+ * those that reach 2:1; else the at-market plan when it reaches 2:1; else none.
+ */
+export function featuredPlan<P extends { kind: string; meetsTwoToOne: boolean; targets: { rr: number }[] }>(plans: readonly P[]): P | null {
+  const ok = plans.filter((p) => p.meetsTwoToOne);
+  const pending = ok.filter((p) => p.kind !== 'market').sort((a, b) => (b.targets[0]?.rr ?? 0) - (a.targets[0]?.rr ?? 0));
+  return pending[0] ?? ok.find((p) => p.kind === 'market') ?? null;
+}
+
 export function buildFacts(input: FactsInput): Facts {
   const daily = input.bars['1D'];
   const missing: string[] = [];
@@ -334,20 +347,27 @@ export function buildFacts(input: FactsInput): Facts {
   }));
 
   // ── Chart marks: from the plans and the zones, never from the model text ──
+  // One featured plan per side keeps the price scale readable (all plans drew 23 levels).
+  const featured = (['long', 'short'] as const).flatMap((side) => {
+    const best = featuredPlan(roundedPlans.filter((p) => p.side === side));
+    return best ? [best] : [];
+  });
   const lines: Mark[] = [];
   const addLine = (m: Mark) => {
     if (!lines.some((l) => Math.abs(l.price - m.price) < 1e-9)) lines.push(m);
   };
-  for (const p of roundedPlans) {
+  for (const p of featured) {
     const name = `${p.side} ${p.kind}`;
     if (p.kind !== 'market') addLine({ price: p.entryType === 'limit' ? p.entryHigh : p.entryLow, label: `${name} entry`, role: 'trigger' });
     addLine({ price: p.stop, label: `${name} stop`, role: 'stop' });
-    p.targets.forEach((t, i) => addLine({ price: t.price, label: `${name} T${i + 1}`, role: 'target' }));
+    p.targets.slice(0, 2).forEach((t, i) => addLine({ price: t.price, label: `${name} T${i + 1}`, role: 'target' }));
   }
   const zones: ZoneMark[] = [
     ...fvg.map((z) => ({ top: z.top, bottom: z.bottom, label: `${z.side} FVG`, role: z.side === 'bullish' ? ('demand' as const) : ('supply' as const) })),
     ...s1.orderBlocks.map((z) => ({ top: px(z.top), bottom: px(z.bottom), label: `${z.side} order block`, role: z.side === 'bullish' ? ('demand' as const) : ('supply' as const) })),
-  ];
+  ]
+    .sort((a, b) => Math.abs((a.top + a.bottom) / 2 - price) - Math.abs((b.top + b.bottom) / 2 - price))
+    .slice(0, MAX_ZONE_MARKS);
 
   // ── Recent move ──
   const recentMove = [1, 3, 5].flatMap((k) => {

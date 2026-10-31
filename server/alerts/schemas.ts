@@ -95,6 +95,15 @@ const checkState = z
   })
   .strict();
 
+const origin = z
+  .object({
+    kind: z.literal('ai'),
+    analysisId: id,
+    plan: z.string(),
+    role: z.enum(['entry', 'invalidation', 'target']),
+  })
+  .strict();
+
 export const alertSchema = z
   .object({
     id,
@@ -109,6 +118,7 @@ export const alertSchema = z
     createdAt: seconds,
     updatedAt: seconds,
     state: checkState,
+    origin: origin.optional(),
   })
   .strict();
 
@@ -126,6 +136,7 @@ export const alertEventSchema = z
     delayed: z.boolean(),
     barTime: seconds.optional(),
     checked: z.boolean(),
+    origin: origin.optional(),
   })
   .strict();
 

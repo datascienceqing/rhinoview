@@ -38,6 +38,8 @@ const schema = z
     DEEPSEEK_MODEL: optional(z.string().min(1).default('deepseek-chat')),
     /** DeepSeek calls a day (New York day), for all users of this server together. */
     AI_DAILY_CALL_LIMIT: z.coerce.number().int().min(1).max(10_000).default(50),
+    /** Where the facts behind the AI alerts are saved, for their explanation. Gitignored. */
+    AI_ANALYSES_FILE: optional(z.string().min(1).default('data/ai-analyses.json')),
 
     /** Where the workspace (named layouts and watchlists) is saved. Gitignored. */
     WORKSPACE_FILE: optional(z.string().min(1).default('data/workspace.json')),

@@ -10,6 +10,7 @@ import { ALERT_INDICATOR_KINDS } from '@shared/types';
 import type { AlertCondition, AlertIndicatorKind, AlertTarget, ConfluenceParams, IndicatorConfig } from '@shared/types';
 import { CLOSE_TARGET_KINDS } from '../alerts/condition';
 import { useAlerts } from '../alerts/AlertsProvider';
+import { useAiMarks, useAiMaybe } from '../ai/AiProvider';
 import { formatLevel, formatValue, roundLevel } from '../alerts/describe';
 import { LINE_KEYS } from '../indicators/types';
 import { computeConfluence } from '../indicators/confluence';
@@ -58,7 +59,8 @@ function LoadedChartPanel({ symbol, timeframe: savedTimeframe, chartType, marker
   // A saved timeframe the provider cannot serve is drawn as the nearest supported one.
   // The layout itself is untouched until the user picks (see TimeframeSelector).
   const { t } = useI18n();
-  const timeframe = effectiveTimeframe(savedTimeframe, useCapabilities());
+  const capabilities = useCapabilities();
+  const timeframe = effectiveTimeframe(savedTimeframe, capabilities);
   const tfLabel = t(`timeframe.${timeframe}`);
   const history = useBarHistory(symbol, timeframe);
   const [hoverTime, setHoverTime] = useState<number | null>(null);
@@ -182,8 +184,17 @@ function LoadedChartPanel({ symbol, timeframe: savedTimeframe, chartType, marker
     ];
   }
 
+  const aiMarks = useAiMarks(symbol);
+  const ai = useAiMaybe();
+
   // With nothing to add an alert to, a right-click opens no menu.
-  const menuItems = menu ? alertItems(menu) : [];
+  const menuItems = menu
+    ? [
+        // First item on the price pane: AI alerts from the plans (docs/AI_HELPER_PLAN.md, step D).
+        ...(menu.pane === 'price' && ai && capabilities?.ai ? [{ id: 'ai-alerts', label: t('menu.aiAlerts'), onSelect: () => ai.runAlerts(symbol) }] : []),
+        ...alertItems(menu),
+      ]
+    : [];
 
   const overlays = computed.filter((c) => INDICATOR_PLACEMENT[c.config.kind] === 'overlay');
   const separate = computed.filter((c) => INDICATOR_PLACEMENT[c.config.kind] === 'separate');
@@ -209,6 +220,7 @@ function LoadedChartPanel({ symbol, timeframe: savedTimeframe, chartType, marker
         {...(markers ? { markers } : {})}
         onContextMenu={setMenu}
         alertLevels={alertLevels}
+        aiMarks={aiMarks}
       />
 
       {menu && menuItems.length > 0 && (

@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-import type { Bar, ChartType } from '@shared/types';
+import type { AiMarks, Bar, ChartType } from '@shared/types';
 import { IndicatorPanes } from '../panes/IndicatorPanes';
 import type { PaneLayout } from '../panes/IndicatorPanes';
 import type { ComputedIndicator } from '../panes/computeCache';
@@ -34,6 +34,8 @@ export interface ChartViewProps {
   onContextMenu?: (target: ChartMenuTarget) => void;
   /** Levels of the active price alerts of this symbol: dashed lines (plan section 4.7). */
   alertLevels?: readonly number[];
+  /** The levels and zones of an AI analysis of this symbol (docs/AI_HELPER_PLAN.md, step C). */
+  aiMarks?: AiMarks | null;
   /** The chart after it is created, and null when it is disposed: overlays (the latch handle) read its geometry. */
   onChart?: (chart: PriceChart | null) => void;
 }
@@ -57,6 +59,7 @@ export function ChartView({
   markers = NO_MARKERS,
   onContextMenu,
   alertLevels = NO_LEVELS,
+  aiMarks = null,
   onChart,
 }: ChartViewProps) {
   const containerRef = useRef<HTMLDivElement>(null);
@@ -149,6 +152,10 @@ export function ChartView({
   useEffect(() => {
     chartRef.current?.setAlertLines(alertLevels);
   }, [alertLevels]);
+
+  useEffect(() => {
+    chartRef.current?.setAiMarks(aiMarks);
+  }, [aiMarks]);
 
   // The keyboard opens the same menu: the menu key or Shift+F10. The price is the middle
   // of the visible range, and the menu opens at the middle of the chart.

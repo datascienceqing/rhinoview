@@ -803,9 +803,20 @@ export interface Alert {
   createdAt: UnixSeconds;
   updatedAt: UnixSeconds;
   state: AlertCheckState;
+  /** Set only by `POST /api/ai/alerts`: the analysis and the plan level behind the alert. */
+  origin?: AlertOrigin;
 }
 
-/** `POST /api/alerts`. Omitted fields take the defaults: `once`, `1M`, ''. */
+/** Where an AI alert came from (docs/AI_HELPER_PLAN.md, step D). The explanation (step E) reads it. */
+export interface AlertOrigin {
+  kind: 'ai';
+  analysisId: EntityId;
+  /** For example "short retest". */
+  plan: string;
+  role: 'entry' | 'invalidation' | 'target';
+}
+
+/** `POST /api/alerts`. Omitted fields take the defaults: `once`, `1M`, ''. The client cannot set `origin`. */
 export interface CreateAlertBody {
   symbol: string;
   condition: AlertCondition;
@@ -854,6 +865,8 @@ export interface AlertEvent {
   barTime?: UnixSeconds;
   /** The user saw it: dismissed the popup, clicked it, or marked all as checked. */
   checked: boolean;
+  /** A copy of the alert's origin, for an AI alert. */
+  origin?: AlertOrigin;
 }
 
 /** `GET /api/alerts/events?since=`. Newest first. */
@@ -931,3 +944,26 @@ export type AiAnalyzeEvent =
   | { type: 'done'; text: string; check: AiNumberCheck }
   | { type: 'error'; error: ApiError };
 
+/** `POST /api/ai/alerts` body. */
+export interface AiAlertsRequest {
+  symbol: string;
+}
+
+/** A plan level that did not become an alert, and why. */
+export interface AiRejectedAlert {
+  plan: string;
+  role: AlertOrigin['role'];
+  level: number;
+  /** A constant message, safe to show. */
+  reason: string;
+}
+
+/** `POST /api/ai/alerts` — the alerts that the server added, and the plan levels it rejected. */
+export interface AiAlertsResponse {
+  analysisId: EntityId;
+  symbol: string;
+  added: Alert[];
+  rejected: AiRejectedAlert[];
+  /** The facts said the prices are generated. */
+  synthetic: boolean;
+}

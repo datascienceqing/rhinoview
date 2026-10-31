@@ -27,6 +27,8 @@ import { createWorkspaceStore } from './workspace';
 import { DeepSeekClient } from './ai/deepseek';
 import type { ChatClient } from './ai/deepseek';
 import { registerAiRoutes } from './routes/ai';
+import { openAnalysesStore } from './ai/analyses';
+import type { AnalysesStore } from './ai/analyses';
 import type { WorkspaceStore } from './workspace';
 
 export interface BuildServerOptions {
@@ -55,7 +57,7 @@ export interface BuildServerOptions {
    */
   alertChecks?: { budgetPerMinute: number | null; tickMs?: number };
   /** The AI helper. Omitted or a null client: the AI endpoints answer "not configured". */
-  ai?: { client: ChatClient | null; dailyLimit: number };
+  ai?: { client: ChatClient | null; dailyLimit: number; analyses?: AnalysesStore | null };
 }
 
 export function buildServer(opts: BuildServerOptions): FastifyInstance {
@@ -94,6 +96,8 @@ export function buildServer(opts: BuildServerOptions): FastifyInstance {
     provider: service.capabilities().provider,
     client: opts.ai?.client ?? null,
     dailyLimit: opts.ai?.dailyLimit ?? 0,
+    alerts: opts.alerts ?? null,
+    analyses: opts.ai?.analyses ?? null,
   });
   let scheduler: AlertScheduler | null = null;
   if (opts.alerts && opts.alertChecks) {
@@ -137,6 +141,7 @@ export async function createServer(): Promise<FastifyInstance> {
         ? new DeepSeekClient({ apiKey: env.DEEPSEEK_API_KEY, baseUrl: env.DEEPSEEK_BASE_URL, model: env.DEEPSEEK_MODEL })
         : null,
       dailyLimit: env.AI_DAILY_CALL_LIMIT,
+      analyses: await openAnalysesStore(env.AI_ANALYSES_FILE),
     },
   });
 }

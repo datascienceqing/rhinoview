@@ -561,3 +561,25 @@ with one `AiAnalyzeEvent` as JSON. The order:
   answer in 120 s → `UPSTREAM_TIMEOUT`; anything else → `UPSTREAM_ERROR`. The messages are
   constants; the key is in the `Authorization` header only, and never in a response or a log.
 - When the client closes the connection, the server stops the DeepSeek request.
+
+## `POST /api/ai/alerts`
+
+**Body:** `AiAlertsRequest` — `{ symbol }`, strict (unknown fields → `BAD_REQUEST`).
+
+**Success:** `ApiResult<AiAlertsResponse>` — `{ analysisId, symbol, added, rejected, synthetic }`.
+
+- The server builds the facts with no direction, so both sides get plans. It makes price
+  alerts from the featured plan of each side (the plan that the chart draws). There is no
+  DeepSeek call, so the daily limit does not change.
+- For each plan: the entry (not for an at-market plan), the invalidation (not for a
+  continuation plan), and T1 (only when price must pass the entry before T1).
+- A level is rejected, with a constant `reason`, when the price is already past it, when it
+  is more than 3 × ATR(1D) away, when its plan does not reach 2:1, or when an active or
+  paused price alert of the symbol is within 0.1 × ATR(1D).
+- Each alert is `once`. Its expiry is the longest choice that ends before the next earnings
+  day (`1M`, `3w`, `2w`, `1w`). When even `1w` does not, the message names the earnings day.
+- Each added alert has `origin: { kind: 'ai', analysisId, plan, role }`. A fired event keeps a
+  copy of it. `POST /api/alerts` cannot set `origin` (the strict schema rejects it).
+- The facts are saved under `analysisId` in `AI_ANALYSES_FILE` (default
+  `data/ai-analyses.json`, newest 200), for the explanation of a fired alert.
+- Without the alerts store or the analyses store: `INTERNAL` (500), "AI alerts are not available."
