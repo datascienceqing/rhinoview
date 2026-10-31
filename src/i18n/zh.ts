@@ -55,6 +55,14 @@ export const zh: typeof en = {
   'chart.olderFailed': (p) => `${p.reason}：无法加载更早的历史。`,
   'chart.moreHistory': '还有更多历史 · 向左滚动',
   'chart.moreHistoryTitle': '服务器只返回了所请求区间中最新的 K 线。数据没有缺口；向左滚动时会加载更早的 K 线。',
+  // ── drawing tools ──
+  'draw.group': '绘图工具',
+  'draw.measure': '测量',
+  'draw.measureTitle': '测量：点击两个点，查看价格变化、变化百分比和 K 线数量',
+  'draw.fib': '斐波那契回撤',
+  'draw.fibTitle': '斐波那契回撤：点击一段走势的起点和终点',
+  'draw.clear': '删除绘图',
+  'draw.bars': (p: { count: number }) => `${p.count} 根 K 线`,
 
   // ── symbol search ──
   'search.label': '搜索代码',
