@@ -14,6 +14,8 @@ import { barsQuery, indicatorQuery, parseQuery, searchQuery, snapshotQuery } fro
 export interface ApiRouteOptions {
   /** Whether a FundamentalsProvider is available; reported by /api/capabilities. */
   fundamentalsAvailable: boolean;
+  /** Whether the AI endpoints are served; reported by /api/capabilities. */
+  aiAvailable?: boolean;
 }
 
 export function registerApiRoutes(app: FastifyInstance, service: MarketService, opts: ApiRouteOptions): void {
@@ -34,7 +36,7 @@ export function registerApiRoutes(app: FastifyInstance, service: MarketService, 
   );
 
   app.get('/api/capabilities', (_req, reply) =>
-    respond(reply, (): Capabilities => ({ ...service.capabilities(), fundamentals: opts.fundamentalsAvailable })),
+    respond(reply, (): Capabilities => ({ ...service.capabilities(), fundamentals: opts.fundamentalsAvailable, ai: opts.aiAvailable ?? false })),
   );
 
   app.get('/api/search', (req, reply) =>

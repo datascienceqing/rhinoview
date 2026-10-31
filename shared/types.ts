@@ -373,6 +373,8 @@ export interface Capabilities {
   provider: string;
   /** Whether the fundamentals endpoints are served at all. When false, the UI hides the panel. */
   fundamentals: boolean;
+  /** Whether the AI endpoints are served (a DeepSeek key is configured). When false, the UI hides every AI item. */
+  ai: boolean;
 }
 
 // ───────────────────────────── Batch quotes ─────────────────────────────
@@ -879,3 +881,53 @@ export type AlertStreamMessage =
    * some alerts are checked late. Sent at most ALERT_BUDGET_WARNINGS times per server run.
    */
   | { type: 'budget'; budgetPerMinute: number; waitingSymbols: number };
+
+// ───────────────────────────── AI helper ─────────────────────────────
+// docs/AI_HELPER_PLAN.md. The server calculates every number (the facts); the model writes text.
+
+export const MAX_AI_QUESTION_LENGTH = 500;
+
+/** `POST /api/ai/analyze` body. */
+export interface AiAnalyzeRequest {
+  symbol: string;
+  question: string;
+}
+
+/** A level that the chart draws for an analysis. Made from the facts, never from the model text. */
+export interface AiMarkLine {
+  price: number;
+  label: string;
+  role: 'supply' | 'demand' | 'trigger' | 'target' | 'stop';
+}
+
+export interface AiMarkZone {
+  top: number;
+  bottom: number;
+  label: string;
+  role: 'supply' | 'demand';
+}
+
+export interface AiMarks {
+  lines: AiMarkLine[];
+  zones: AiMarkZone[];
+}
+
+/** Numbers in the answer that are not in the facts. The UI marks them. */
+export interface AiNumberCheck {
+  /** How many numbers the check looked at. */
+  checked: number;
+  /** The numbers as the answer wrote them, in order, without duplicates. */
+  unknown: string[];
+}
+
+/**
+ * One event of the `POST /api/ai/analyze` stream (`text/event-stream`, one JSON object in
+ * each `data:` line). The order is `facts`, then zero or more `delta`, then `done` or `error`.
+ * A failure before the stream starts is a normal JSON envelope with its HTTP status.
+ */
+export type AiAnalyzeEvent =
+  | { type: 'facts'; symbol: string; facts: Record<string, unknown>; marks: AiMarks }
+  | { type: 'delta'; text: string }
+  | { type: 'done'; text: string; check: AiNumberCheck }
+  | { type: 'error'; error: ApiError };
+

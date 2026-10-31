@@ -157,7 +157,6 @@ function Shell() {
               timeframe={chart.timeframe}
               chartType={chart.chartType}
               markers={markers}
-              {...(capabilities?.fundamentals ? { onOpenFinancials: () => setFinancialsOpen(true) } : {})}
             />
           </main>
         </div>

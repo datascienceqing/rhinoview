@@ -475,9 +475,6 @@ export const en = {
   'menu.addOverlayAlert': (p: { indicator: string }) => `Add alert on ${p.indicator}…`,
   'menu.addLatchAlert': (p: { indicator: string; level: string }) => `Add alert on ${p.indicator} at the latched ${p.level}…`,
   'menu.addIndicatorAlert': (p: { indicator: string; value: string }) => `Add alert on ${p.indicator} at ${p.value}…`,
-  'menu.theme.dark': 'Theme: dark',
-  'menu.theme.light': 'Theme: light',
-  'menu.language': (p: { target: string }) => `Language: ${p.target}`,
 
   // ── alerts ──
   'alerts.title': 'Alerts',

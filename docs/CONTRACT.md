@@ -518,3 +518,46 @@ never change the workspace revision. The server checks the alerts; the client on
   - State-only changes are saved within 60 s; events and status changes are saved at once.
 - The MSW mock (`mocks/alerts.ts`) implements this table. It has no checker; `mockFireAlert`
   fires an alert for tests and pushes a `fired` message to the open streams.
+
+# AI helper
+
+The plan is `docs/AI_HELPER_PLAN.md`. The types are in `shared/types.ts` under the AI helper
+banner. The server calculates every number (the facts); the model writes the text only.
+
+## `GET /api/capabilities` — one new field
+
+`ai: boolean` — whether `/api/ai/*` is served, that is, whether `DEEPSEEK_API_KEY` is set.
+When false, the UI hides every AI item.
+
+## `POST /api/ai/analyze`
+
+**Body:** `AiAnalyzeRequest` — `{ symbol, question }`. `symbol` uses the workspace format.
+`question` is 1–`MAX_AI_QUESTION_LENGTH` (500) characters after a trim.
+
+**Before the stream** — a normal `ApiResult` envelope with its HTTP status. None of these
+calls DeepSeek, and none counts against the daily limit:
+
+| Case | Code |
+|---|---|
+| No DeepSeek key | `INTERNAL` (500), "The AI helper is not configured." |
+| Bad body | `BAD_REQUEST` (400) |
+| Unknown symbol, no daily bars | `UNKNOWN_SYMBOL` (404), `NO_DATA` (404), as for `/api/bars` |
+| Daily limit reached (`AI_DAILY_CALL_LIMIT`, per New York day, all users) | `RATE_LIMITED` (429) |
+
+**The stream** — `200`, `Content-Type: text/event-stream`. Each event is one `data:` line
+with one `AiAnalyzeEvent` as JSON. The order:
+
+1. `facts` — the facts that the model gets, and `marks` (the chart lines and zones, made
+   from the plans and the zones, never from the model text).
+2. `delta` — zero or more pieces of the answer text.
+3. `done` with the whole text and the number check, or `error` with an `ApiError`.
+
+- The facts: only `4h`, `1D`, and `1W` bars are fetched (`1M` is folded from `1W`). A failure
+  of the 4H or 1W bars, the snapshot, or a fundamentals call leaves that part empty; the
+  facts list it in `dataCheck.missing`.
+- The number check (`server/ai/numberCheck.ts`) looks at each number with decimals and each
+  integer of 100 or more. `unknown` lists the numbers that are not in the facts.
+- DeepSeek errors: a refused key or no balance → `UNAUTHORIZED`; 429 → `RATE_LIMITED`; no
+  answer in 120 s → `UPSTREAM_TIMEOUT`; anything else → `UPSTREAM_ERROR`. The messages are
+  constants; the key is in the `Authorization` header only, and never in a response or a log.
+- When the client closes the connection, the server stops the DeepSeek request.

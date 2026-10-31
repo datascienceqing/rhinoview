@@ -91,18 +91,15 @@ describe('ChartView: alert lines', () => {
 });
 
 describe('ChartContextMenu', () => {
-  // The theme item stores the theme; each test starts from the default.
-  beforeEach(() => localStorage.clear());
-  afterEach(() => {
-    localStorage.clear();
-    delete document.documentElement.dataset.theme;
-  });
   function renderMenu(over: Partial<Parameters<typeof ChartContextMenu>[0]> = {}) {
     const props = {
       x: 50,
       y: 60,
-      alertItems: [{ id: 'alert', label: 'Add alert at 150.00…', onSelect: vi.fn() }],
-      onFinancials: vi.fn(),
+      alertItems: [
+        { id: 'alert', label: 'Add alert at 150.00…', onSelect: vi.fn() },
+        { id: 'alert-sma', label: 'Add alert on SMA 20…', onSelect: vi.fn() },
+        { id: 'alert-ema', label: 'Add alert on EMA 50…', onSelect: vi.fn() },
+      ],
       onClose: vi.fn(),
       ...over,
     };
@@ -119,7 +116,7 @@ describe('ChartContextMenu', () => {
   it('lists the items in order and focuses the first', () => {
     renderMenu();
     const items = screen.getAllByRole('menuitem').map((b) => b.textContent);
-    expect(items).toEqual(['Add alert at 150.00…', 'Theme: light', 'Language: 中文', 'Financials']);
+    expect(items).toEqual(['Add alert at 150.00…', 'Add alert on SMA 20…', 'Add alert on EMA 50…']);
     expect(screen.getAllByRole('menuitem')[0]).toHaveFocus();
   });
 
@@ -130,16 +127,8 @@ describe('ChartContextMenu', () => {
     expect(p.onClose).toHaveBeenCalled();
   });
 
-  it('switches the theme and the language', () => {
-    renderMenu();
-    fireEvent.click(screen.getByRole('menuitem', { name: 'Theme: light' }));
-    expect(document.documentElement.dataset.theme).toBe('light');
-    fireEvent.click(screen.getByRole('menuitem', { name: 'Language: 中文' }));
-    expect(document.documentElement.dataset.locale).toBe('zh');
-  });
-
   it('Esc, a click outside and a scroll close it; arrows move the focus', () => {
-    const p = renderMenu({ onFinancials: undefined });
+    const p = renderMenu();
     const items = screen.getAllByRole('menuitem');
     expect(items).toHaveLength(3);
     fireEvent.keyDown(screen.getByRole('menu'), { key: 'ArrowDown' });
@@ -178,8 +167,8 @@ describe('ChartContextMenu', () => {
     clock.mockRestore();
   });
 
-  it('without an add-alert item it shows the other items', () => {
-    renderMenu({ alertItems: [] });
-    expect(screen.getAllByRole('menuitem')[0]).toHaveTextContent('Theme: light');
+  it('has no theme, language, or Financials items', () => {
+    renderMenu();
+    expect(screen.queryByRole('menuitem', { name: /Theme|Language|Financials/ })).toBeNull();
   });
 });

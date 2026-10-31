@@ -2,12 +2,11 @@
  * The chart menu (docs/ALERTS_PLAN.md, section 4.1). It opens at the pointer on a right-click
  * on the chart, or at the middle of the chart with the menu key or Shift+F10.
  *
- * Items: add an alert, switch the theme, switch the language, open Financials. Esc, a click
- * outside, a real scroll (not the small wheel noise of a touch mouse), or a window resize closes it. Near an edge it opens to the other side.
+ * Items: the add-alert items. Theme, language, and Financials are in the toolbar only (user
+ * decision, 2026-10-31). Esc, a click outside, a real scroll (not the small wheel noise of a touch mouse), or a window resize closes it. Near an edge it opens to the other side.
  */
 import { useLayoutEffect, useEffect, useRef, useState } from 'react';
 import { useI18n } from '../i18n';
-import { useTheme } from '../theme';
 
 export interface ChartMenuItem {
   id: string;
@@ -18,10 +17,8 @@ export interface ChartMenuItem {
 export interface ChartContextMenuProps {
   x: number;
   y: number;
-  /** The add-alert items (the price, then indicators); empty when nothing at the point can have an alert. */
+  /** The add-alert items (the price, then indicators). The caller does not open an empty menu. */
   alertItems: readonly ChartMenuItem[];
-  /** Opens Financials; omitted when the server serves no fundamentals. */
-  onFinancials?: () => void;
   onClose(): void;
 }
 
@@ -40,18 +37,12 @@ function wheelPixels(e: WheelEvent): number {
   return (Math.abs(e.deltaX) + Math.abs(e.deltaY)) * scale;
 }
 
-export function ChartContextMenu({ x, y, alertItems, onFinancials, onClose }: ChartContextMenuProps) {
-  const { t, toggleLocale } = useI18n();
-  const { theme, toggleTheme } = useTheme();
+export function ChartContextMenu({ x, y, alertItems, onClose }: ChartContextMenuProps) {
+  const { t } = useI18n();
   const ref = useRef<HTMLDivElement>(null);
   const [pos, setPos] = useState({ left: x, top: y });
 
-  const items: ChartMenuItem[] = [
-    ...alertItems,
-    { id: 'theme', label: theme === 'dark' ? t('menu.theme.light') : t('menu.theme.dark'), onSelect: toggleTheme },
-    { id: 'language', label: t('menu.language', { target: t('locale.toggle') }), onSelect: toggleLocale },
-    ...(onFinancials ? [{ id: 'financials', label: t('toolbar.financials'), onSelect: onFinancials }] : []),
-  ];
+  const items = alertItems;
 
   // Open to the other side of the pointer when the menu would cross the window edge.
   useLayoutEffect(() => {
