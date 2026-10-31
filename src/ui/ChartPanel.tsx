@@ -78,6 +78,11 @@ function LoadedChartPanel({ symbol, timeframe: savedTimeframe, chartType, marker
       return keys.length === Object.keys(prev).length && keys.every((k) => prev[k] === next[k]) ? prev : next;
     });
   }, []);
+  // The OHLCV row of the legend: the drawing toolbar stays clear of it.
+  const [legendRow, setLegendRow] = useState<HTMLElement | null>(null);
+  const onOverlayTop = useCallback((el: HTMLDivElement | null) => {
+    setLegendRow(el?.querySelector<HTMLElement>('[data-testid="crosshair-legend"]') ?? null);
+  }, []);
   const { alerts, openDialog } = useAlerts();
   const [menu, setMenu] = useState<ChartMenuTarget | null>(null);
   const closeMenu = useCallback(() => setMenu(null), []);
@@ -226,11 +231,11 @@ function LoadedChartPanel({ symbol, timeframe: savedTimeframe, chartType, marker
       )}
 
       {history.status === 'ready' && history.bars.length > 0 && (
-        <DrawingTools chart={priceChart} symbol={symbol} bars={history.bars} />
+        <DrawingTools chart={priceChart} symbol={symbol} bars={history.bars} legend={legendRow} />
       )}
 
       {history.status === 'ready' && history.bars.length > 0 && (
-        <div className="chart-overlay-top">
+        <div className="chart-overlay-top" ref={onOverlayTop}>
           <div className="legend-title">
             {symbol} · {tfLabel}
           </div>
