@@ -10,7 +10,7 @@
  * Drawings are kept in memory for this session only: the workspace contract has no field
  * for them.
  */
-import { useEffect, useMemo, useReducer, useRef } from 'react';
+import { useEffect, useMemo, useReducer, useRef, useState } from 'react';
 import type { Bar } from '@shared/types';
 import type { PriceChart } from '../chart/PriceChart';
 import { useI18n } from '../i18n';
@@ -69,12 +69,48 @@ export interface DrawingToolsProps {
   chart: PriceChart | null;
   symbol: string;
   bars: readonly Bar[];
+  /** The OHLCV legend row. The toolbar stays right of its text. */
+  legend?: HTMLElement | null;
 }
 
-export function DrawingTools({ chart, symbol, bars }: DrawingToolsProps) {
+/** The `left` of .drawing-toolbar in drawings.css. Keep the two the same. */
+const DEFAULT_LEFT = 'max(12px, calc(50% - 288px))';
+
+/** Space in px between the end of the legend text and the toolbar. */
+export const LEGEND_GAP_PX = 16;
+
+/**
+ * The least `left` (px, in the chart panel) that keeps the toolbar clear of the legend text.
+ * The legend text changes width with the prices under the crosshair, so the value only
+ * grows, and the toolbar does not jump while the pointer moves. A new symbol starts again.
+ */
+function useLegendClearance(legend: HTMLElement | null | undefined, toolbar: HTMLElement | null, symbol: string): number {
+  const [clearance, setClearance] = useState(0);
+  useEffect(() => {
+    setClearance(0);
+    if (!legend || !toolbar || typeof ResizeObserver === 'undefined') return;
+    const measure = () => {
+      const last = legend.lastElementChild;
+      const panel = toolbar.offsetParent;
+      if (!last || !panel) return;
+      const right = last.getBoundingClientRect().right - panel.getBoundingClientRect().left + LEGEND_GAP_PX;
+      setClearance((prev) => Math.max(prev, Math.ceil(right)));
+    };
+    // Any item that changes width moves the items after it, so observe each one.
+    const observer = new ResizeObserver(measure);
+    for (const item of Array.from(legend.children)) observer.observe(item);
+    measure();
+    return () => observer.disconnect();
+  }, [legend, toolbar, symbol]);
+  return clearance;
+}
+
+export function DrawingTools({ chart, symbol, bars, legend }: DrawingToolsProps) {
   const { t } = useI18n();
   const { theme } = useTheme();
   const [state, dispatch] = useReducer(drawingReducer, INITIAL_DRAWINGS);
+  const [toolbar, setToolbar] = useState<HTMLDivElement | null>(null);
+  const clearance = useLegendClearance(legend, toolbar, symbol);
   const latest = useRef({ symbol, bars });
   latest.current = { symbol, bars };
 
@@ -157,7 +193,14 @@ export function DrawingTools({ chart, symbol, bars }: DrawingToolsProps) {
   );
 
   return (
-    <div className="drawing-toolbar" role="toolbar" aria-label={t('draw.group')}>
+    <div
+      ref={setToolbar}
+      className="drawing-toolbar"
+      role="toolbar"
+      aria-label={t('draw.group')}
+      // The CSS position, or further right when the legend text reaches it.
+      style={clearance > 0 ? { left: `max(${DEFAULT_LEFT}, ${clearance}px)` } : undefined}
+    >
       {button('measure', t('draw.measure'), t('draw.measureTitle'), <MeasureIcon />)}
       {button('fib', t('draw.fib'), t('draw.fibTitle'), <FibIcon />)}
       {fibs && fibs.length > 0 && (
