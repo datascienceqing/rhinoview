@@ -28,6 +28,21 @@
 .fund-fact { display: flex; justify-content: space-between; gap: 8px; padding: 3px 0; }
 .fund-fact dt { color: var(--text-dim); }
 .fund-fact dd { margin: 0; font-variant-numeric: tabular-nums; }
+.fund-label { position: relative; display: inline-flex; align-items: center; gap: 5px; }
+/* The (i) button after a metric name; the popover opens under the name, over the rows below. */
+.fund-info {
+  width: 14px; height: 14px; padding: 0; border: 1px solid currentColor; border-radius: 50%;
+  background: transparent; color: var(--text-dim); font: italic 600 9px/12px Georgia, serif; cursor: pointer; opacity: 0.7;
+}
+.fund-info:hover, .fund-info[aria-expanded='true'] { color: var(--accent); opacity: 1; }
+.fund-info:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
+.fund-info-pop {
+  position: absolute; top: calc(100% + 6px); left: 0; z-index: 20; width: 280px; max-width: calc(100vw - 48px);
+  padding: 10px 12px; border: 1px solid var(--border); border-radius: 6px; background: var(--bg-elevated);
+  box-shadow: 0 4px 16px var(--shadow); color: var(--text); line-height: 1.5;
+}
+.fund-info-pop strong { display: block; margin-bottom: 4px; }
+.fund-info-pop p { margin: 0; color: var(--text-dim); }
 .fund-unavailable { color: var(--text-dim); font-style: italic; margin: 4px 0; }
 .fund-consensus { font-size: 20px; font-weight: 600; margin: 0 0 4px; }
 .fund-counts { display: flex; gap: 10px; flex-wrap: wrap; list-style: none; padding: 0; margin: 0 0 8px; color: var(--text-dim); }
