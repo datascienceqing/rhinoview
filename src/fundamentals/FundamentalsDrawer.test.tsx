@@ -22,6 +22,33 @@ const drawer = (symbol: string) => renderWithDataSource(<FundamentalsDrawer symb
 const metric = async (key: string) => (await screen.findByTestId(`metric-${key}`));
 
 describe('Overview tab', () => {
+  it('opens a metric explanation on a click of its (i) button, and closes it on Escape or a click outside', async () => {
+    const user = userEvent.setup();
+    const onClose = vi.fn();
+    renderWithDataSource(<FundamentalsDrawer symbol="AAPL" onClose={onClose} />);
+    const info = await screen.findByRole('button', { name: 'About Debt / equity' });
+    expect(info).toHaveAttribute('aria-expanded', 'false');
+    expect(screen.queryByRole('note')).toBeNull();
+
+    await user.click(info);
+    expect(info).toHaveAttribute('aria-expanded', 'true');
+    expect(screen.getByRole('note')).toHaveTextContent(/Total debt ÷ shareholders' equity/);
+
+    // Escape closes only the explanation; the next Escape closes the page.
+    await user.keyboard('{Escape}');
+    expect(screen.queryByRole('note')).toBeNull();
+    expect(onClose).not.toHaveBeenCalled();
+
+    // A click on another (i) button closes the first explanation and opens the other one.
+    await user.click(info);
+    await user.click(screen.getByRole('button', { name: 'About Current ratio' }));
+    expect(screen.getAllByRole('note')).toHaveLength(1);
+    expect(screen.getByRole('note')).toHaveTextContent(/Current assets ÷ current liabilities/);
+
+    await user.click(document.body);
+    expect(screen.queryByRole('note')).toBeNull();
+  });
+
   it('shows a negative P/E as NM with a tooltip (RIVN)', async () => {
     drawer('RIVN');
     const pe = await metric('peRatio');
@@ -74,7 +101,8 @@ describe('Overview tab', () => {
   it('labels the TTM per-share earnings as EPS (TTM), not diluted EPS', async () => {
     drawer('AAPL');
     await metric('epsDiluted');
-    expect(screen.getByText('EPS (TTM)')).toHaveAttribute('title', 'Net income per share, trailing twelve months');
+    await userEvent.setup().click(screen.getByRole('button', { name: 'About EPS (TTM)' }));
+    expect(screen.getByRole('note')).toHaveTextContent(/Net income per share for the trailing twelve months/);
     expect(screen.queryByText('EPS (diluted)')).toBeNull();
   });
 

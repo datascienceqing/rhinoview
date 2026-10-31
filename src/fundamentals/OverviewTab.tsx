@@ -1,3 +1,4 @@
+import { useEffect, useId, useRef, useState } from 'react';
 import type { AnalystConsensus, FinancialScores, FundamentalsOverview, KeyMetricsTTM } from '@shared/types';
 import { useAsync, useDataSource } from '../data';
 import { fetchOverview } from './api';
@@ -15,10 +16,8 @@ import { t, useI18n } from '../i18n';
 import type { MessageKey } from '../i18n';
 
 type Kind = 'multiple' | 'margin' | 'fraction' | 'ratio' | 'perShare';
-/** The label is `fund.metric.<key>`; a `hint` is `fund.metric.<key>.hint`. */
+/** The label is `fund.metric.<key>`; the (i) explanation is `fund.metric.<key>.info`. */
 interface MetricRow {
-  /** Tooltip on the label, for metrics whose name could be confused with another figure. */
-  hint?: true;
   key: keyof KeyMetricsTTM;
   kind: Kind;
 }
@@ -60,7 +59,7 @@ const GROUPS: Group[] = [
   {
     id: 'perShare',
     rows: [
-      { key: 'epsDiluted', kind: 'perShare', hint: true },
+      { key: 'epsDiluted', kind: 'perShare' },
       { key: 'revenuePerShare', kind: 'perShare' },
       { key: 'freeCashFlowPerShare', kind: 'perShare' },
       { key: 'bookValuePerShare', kind: 'perShare' },
@@ -146,9 +145,7 @@ function OverviewBody({ overview: o }: { overview: FundamentalsOverview }) {
                     const cell = metricCell(row, o.metrics[row.key], grossNotMeaningful);
                     return (
                       <div key={row.key} className="fund-fact">
-                        <dt title={row.hint ? t(`fund.metric.${row.key}.hint` as 'fund.metric.epsDiluted.hint') : undefined}>
-                          {t(`fund.metric.${row.key}`)}
-                        </dt>
+                        <MetricLabel label={t(`fund.metric.${row.key}`)} info={t(`fund.metric.${row.key}.info`)} />
                         <dd title={cell.title} data-testid={`metric-${row.key}`}>
                           {cell.text}
                         </dd>
@@ -184,16 +181,68 @@ function Fact({ label, value }: { label: string; value: string | null }) {
   );
 }
 
+/**
+ * A metric name with an (i) button. A click opens a short explanation; a click outside or
+ * Escape closes it. Escape is handled here, not on the document, so that the page sees the
+ * key as used and stays open.
+ */
+function MetricLabel({ label, info }: { label: string; info: string }) {
+  const { t } = useI18n();
+  const [open, setOpen] = useState(false);
+  const root = useRef<HTMLElement>(null);
+  const id = useId();
+
+  useEffect(() => {
+    if (!open) return;
+    const onDown = (e: MouseEvent) => {
+      if (root.current && e.target instanceof Node && !root.current.contains(e.target)) setOpen(false);
+    };
+    document.addEventListener('mousedown', onDown);
+    return () => document.removeEventListener('mousedown', onDown);
+  }, [open]);
+
+  return (
+    <dt
+      ref={root}
+      className="fund-label"
+      onKeyDown={(e) => {
+        if (open && e.key === 'Escape') {
+          e.preventDefault();
+          setOpen(false);
+        }
+      }}
+    >
+      {label}
+      <button
+        type="button"
+        className="fund-info"
+        aria-label={t('fund.metric.about', { name: label })}
+        aria-expanded={open}
+        aria-controls={open ? id : undefined}
+        onClick={() => setOpen((v) => !v)}
+      >
+        i
+      </button>
+      {open && (
+        <div id={id} role="note" className="fund-info-pop">
+          <strong>{label}</strong>
+          <p>{info}</p>
+        </div>
+      )}
+    </dt>
+  );
+}
+
 function Scores({ scores }: { scores: FinancialScores }) {
   const { t } = useI18n();
   return (
     <dl className="fund-facts">
       <div className="fund-fact">
-        <dt>{t('fund.piotroski')}</dt>
+        <MetricLabel label={t('fund.piotroski')} info={t('fund.piotroski.info')} />
         <dd data-testid="piotroski">{scores.piotroskiScore === null ? DASH : String(scores.piotroskiScore)}</dd>
       </div>
       <div className="fund-fact">
-        <dt>{t('fund.altman')}</dt>
+        <MetricLabel label={t('fund.altman')} info={t('fund.altman.info')} />
         <dd data-testid="altman">{formatNumber(scores.altmanZScore)}</dd>
       </div>
     </dl>
