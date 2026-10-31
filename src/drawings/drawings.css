@@ -5,8 +5,7 @@
   /* The same row as the indicator button (panes.css), below the confluence latch tabs. */
   top: 22px;
   /* The left edge left of the centre: the toolbar sits at the top, left of the centre.
-     On a narrow chart it stops 12px from the left edge. DrawingTools.tsx moves it further
-     right when the OHLCV legend reaches it, and it repeats this value (DEFAULT_LEFT). */
+     On a narrow chart it stops 12px from the left edge. */
   left: max(12px, calc(50% - 288px));
   z-index: 5;
   display: flex;
