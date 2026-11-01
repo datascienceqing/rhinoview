@@ -80,7 +80,7 @@ describe('catalogs', () => {
   // Indicator names, titles and legend line names stay in English (user decision, 2026-10-11).
   const INDICATOR_NAME = /^indicator\.(kind\.|title|line\.)/;
   // Standard abbreviations stay the same in Chinese (user decision).
-  const SAME = new Set<string>(['fund.metric.pegRatio', 'fund.metric.evToEbitda']);
+  const SAME = new Set<string>(['fund.metric.pegRatio', 'fund.metric.evToEbitda', 'toolbar.ai']);
   // Alert messages are compositions of parts that are translated one by one (the verb, the line).
   const COMPOSED = new Set<string>(['alerts.message.price', 'alerts.message.indicator']);
 

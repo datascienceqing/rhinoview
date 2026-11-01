@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import type { Snapshot } from '@shared/types';
 import { randomBars } from '../../../src/indicators/fixtures';
-import { buildFacts, sessionsBetween } from './build';
+import { buildFacts, featuredPlan, MAX_ZONE_MARKS, sessionsBetween } from './build';
 import type { FactsInput } from './build';
 
 // Fri 2026-10-16 12:00 New York, during the session.
@@ -99,3 +99,23 @@ describe('buildFacts', () => {
     expect(buildFacts(input({ direction: 'short' })).plans.every((p) => p.side === 'short')).toBe(true);
   });
 });
+
+describe('featuredPlan', () => {
+  const plan = (kind: string, meetsTwoToOne: boolean, rr: number) => ({ kind, meetsTwoToOne, targets: [{ rr }] });
+
+  it('prefers the pending plan with the best T1 R:R that reaches 2:1', () => {
+    expect(featuredPlan([plan('market', true, 5), plan('retest', true, 2), plan('continuation', true, 3)])?.kind).toBe('continuation');
+    expect(featuredPlan([plan('market', true, 1), plan('retest', false, 9)])?.kind).toBe('market');
+    expect(featuredPlan([plan('market', false, 1)])).toBeNull();
+  });
+
+  it('draws at most one plan per side and the nearest zones', () => {
+    const f = buildFacts(input());
+    const sides = new Set(f.marks.lines.map((l) => l.label.split(' ')[0]));
+    for (const side of sides) {
+      expect(new Set(f.marks.lines.filter((l) => l.label.startsWith(side as string)).map((l) => l.label.split(' ')[1])).size).toBe(1);
+    }
+    expect(f.marks.zones.length).toBeLessThanOrEqual(MAX_ZONE_MARKS);
+  });
+});
+

@@ -10,6 +10,6 @@ export type { AsyncState } from './useAsync';
 export { useBarHistory } from './useBarHistory';
 export type { BarHistory, BarHistoryState } from './useBarHistory';
 export { nowSeconds } from './time';
-export { apiRequest } from './request';
-export type { ApiRequestOptions, FetchLike } from './request';
+export { apiRequest, apiStream } from './request';
+export type { ApiRequestOptions, ApiStreamOptions, FetchLike } from './request';
 export { SYNTHETIC_PROVIDERS, fetchCapabilities, isSyntheticData, resetCapabilitiesCache, useCapabilities, useSyntheticData } from './capabilities';

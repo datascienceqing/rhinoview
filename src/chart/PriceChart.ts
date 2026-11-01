@@ -22,7 +22,8 @@ import type {
 } from 'lightweight-charts';
 import { snapMarkers } from './markers';
 import type { ChartMarker } from './markers';
-import type { Bar, ChartType } from '@shared/types';
+import type { AiMarkLine, AiMarks, Bar, ChartType } from '@shared/types';
+import { AiZonesPrimitive } from './AiZonesPrimitive';
 import { classifyUpdate, toCandles, toCloseLine } from './convert';
 import { VerticalPan } from './verticalPan';
 import { readTheme } from './theme';
@@ -92,6 +93,9 @@ export class PriceChart {
   /** Levels of the active price alerts of the shown symbol (plan section 4.7). */
   private alertLevels: readonly number[] = [];
   private alertLines: IPriceLine[] = [];
+  private aiMarks: AiMarks | null = null;
+  private aiLines: IPriceLine[] = [];
+  private aiZones: AiZonesPrimitive | null = null;
 
   private readonly onCrosshair = (param: MouseEventParams<Time>) => {
     const t = param.time;
@@ -219,6 +223,24 @@ export class PriceChart {
     this.writeAlertLines();
   }
 
+  /**
+   * The levels and zones of an AI analysis (docs/AI_HELPER_PLAN.md, step C): dotted lines
+   * with a short label, and bands under the candles. Null removes them.
+   */
+  setAiMarks(marks: AiMarks | null): void {
+    if (!this.chart) return;
+    this.aiMarks = marks;
+    this.writeAiLines();
+    const zones = marks?.zones ?? [];
+    if (zones.length && !this.aiZones) {
+      this.aiZones = new AiZonesPrimitive(zones, this.aiZoneStyle());
+      this.attachPricePrimitive(this.aiZones);
+    } else if (this.aiZones && zones.length === 0) {
+      this.detachPricePrimitive(this.aiZones);
+      this.aiZones = null;
+    } else this.aiZones?.update(zones, this.aiZoneStyle());
+  }
+
   /** Fit the price axis of every pane to its data again (the "Auto" button). */
   resetAutoScale(): void {
     if (!this.chart) return;
@@ -311,6 +333,8 @@ export class PriceChart {
     if (this.series) this.series.api.applyOptions(this.seriesColors(this.series.type));
     this.writeMarkers(); // the default marker colour is the accent
     for (const line of this.alertLines) line.applyOptions({ color: this.theme.accent });
+    this.writeAiLines();
+    this.aiZones?.update(this.aiMarks?.zones ?? [], this.aiZoneStyle());
     return true;
   }
 
@@ -351,8 +375,10 @@ export class PriceChart {
     this.markersApi = null;
     // The price lines went with the old series too.
     this.alertLines = [];
+    this.aiLines = [];
     this.series = this.addSeriesFor(chart, type);
     this.writeAlertLines();
+    this.writeAiLines();
     for (const p of this.pricePrimitives) this.series.api.attachPrimitive(p);
     this.writeData();
     if (range && this.bars.length > 0) chart.timeScale().setVisibleLogicalRange(range);
@@ -402,6 +428,8 @@ export class PriceChart {
     this.series = null;
     this.markersApi = null;
     this.alertLines = [];
+    this.aiLines = [];
+    this.aiZones = null;
     this.pricePrimitives.clear();
     this.verticalPan.dispose();
     chart.unsubscribeCrosshairMove(this.onCrosshair);
@@ -452,6 +480,32 @@ export class PriceChart {
         lineStyle: LineStyle.Dashed,
         axisLabelVisible: true,
         title: '🔔',
+      }),
+    );
+  }
+
+  private aiColor(role: AiMarkLine['role']): string {
+    const t = this.theme;
+    // The trigger is amber like the warn colour of the app; the others follow the up and down colours.
+    return role === 'trigger' ? AI_TRIGGER_COLOR : role === 'stop' || role === 'supply' ? t.down : role === 'target' || role === 'demand' ? t.up : t.accent;
+  }
+
+  private aiZoneStyle() {
+    return { demand: this.theme.up, supply: this.theme.down };
+  }
+
+  private writeAiLines(): void {
+    const s = this.series;
+    if (!s) return;
+    for (const line of this.aiLines) s.api.removePriceLine(line);
+    this.aiLines = (this.aiMarks?.lines ?? []).map((m) =>
+      s.api.createPriceLine({
+        price: m.price,
+        color: this.aiColor(m.role),
+        lineWidth: 1,
+        lineStyle: LineStyle.Dotted,
+        axisLabelVisible: true,
+        title: aiLineTitle(m),
       }),
     );
   }
@@ -519,3 +573,17 @@ export class PriceChart {
     }
   }
 }
+
+const AI_TRIGGER_COLOR = '#f5a623';
+
+/**
+ * A short axis title for an AI line: "short retest T1" → "AI▼ T1", "long market stop" → "AI▲ stop".
+ * The full label stays in the AI panel.
+ */
+export function aiLineTitle(m: AiMarkLine): string {
+  const words = m.label.split(' ');
+  const last = words[words.length - 1] ?? '';
+  const side = words[0] === 'long' ? '▲' : words[0] === 'short' ? '▼' : '';
+  return /^T\d$/.test(last) || last === 'stop' || last === 'entry' ? `AI${side} ${last}` : `AI${side}`;
+}
+

@@ -2,9 +2,14 @@
  * `POST /api/ai/analyze`: the checks before the stream, and the stream itself, with a fake
  * model on the synthetic engine.
  */
+import { mkdtemp, rm } from 'node:fs/promises';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import type { FastifyInstance } from 'fastify';
-import type { AiAnalyzeEvent, ApiResult, Capabilities } from '@shared/types';
+import type { AiAlertsResponse, AiAnalyzeEvent, ApiResult, Capabilities } from '@shared/types';
+import { openAlertsStore } from '../alerts/store';
+import { openAnalysesStore } from '../ai/analyses';
 import { buildServer } from '../index';
 import { createSyntheticEngine } from '../market';
 import type { ChatClient } from '../ai/deepseek';
@@ -119,3 +124,67 @@ describe('the key', () => {
     vi.unstubAllEnvs();
   });
 });
+
+describe('POST /api/ai/alerts', () => {
+  it('adds the valid alerts with their origin, and saves the analysis', async () => {
+    const dir = await mkdtemp(join(tmpdir(), 'rhinoview-ai-route-'));
+    try {
+      const alerts = await openAlertsStore(join(dir, 'alerts.json'), { now: () => NOW, warn: () => undefined });
+      const analyses = await openAnalysesStore(join(dir, 'analyses.json'));
+      app = buildServer({ engine: createSyntheticEngine(), now: () => NOW, provider: 'synthetic', alerts, ai: { client: null, dailyLimit: 5, analyses } });
+      const res = await app.inject({ method: 'POST', url: '/api/ai/alerts', payload: { symbol: 'aapl' } });
+      expect(res.statusCode).toBe(200);
+      const body = res.json() as ApiResult<AiAlertsResponse>;
+      if (!body.ok) throw new Error('not ok');
+      const r = body.data;
+      expect(r.symbol).toBe('AAPL');
+      expect(r.synthetic).toBe(true);
+      expect(r.added.length + r.rejected.length).toBeGreaterThan(0);
+      for (const a of r.added) expect(a.origin).toMatchObject({ kind: 'ai', analysisId: r.analysisId });
+      expect(alerts.list().map((a) => a.id).sort()).toEqual(r.added.map((a) => a.id).sort());
+      expect(analyses.get(r.analysisId)?.alertIds.sort()).toEqual(r.added.map((a) => a.id).sort());
+
+      // A second run finds the same levels and rejects them as duplicates.
+      const again = (await app.inject({ method: 'POST', url: '/api/ai/alerts', payload: { symbol: 'AAPL' } })).json() as ApiResult<AiAlertsResponse>;
+      expect(again.ok && again.data.added).toEqual([]);
+    } finally {
+      await rm(dir, { recursive: true, force: true });
+    }
+  });
+
+  it('answers "not available" without the stores', async () => {
+    const res = await server(null).inject({ method: 'POST', url: '/api/ai/alerts', payload: { symbol: 'AAPL' } });
+    expect(res.statusCode).toBe(500);
+    expect(res.json()).toMatchObject({ ok: false, error: { message: 'AI alerts are not available.' } });
+  });
+
+  it('rejects a body with unknown fields', async () => {
+    const dir = await mkdtemp(join(tmpdir(), 'rhinoview-ai-route-'));
+    try {
+      const alerts = await openAlertsStore(join(dir, 'alerts.json'), { now: () => NOW, warn: () => undefined });
+      const analyses = await openAnalysesStore(join(dir, 'analyses.json'));
+      app = buildServer({ engine: createSyntheticEngine(), now: () => NOW, alerts, ai: { client: null, dailyLimit: 5, analyses } });
+      const res = await app.inject({ method: 'POST', url: '/api/ai/alerts', payload: { symbol: 'AAPL', origin: {} } });
+      expect(res.statusCode).toBe(400);
+      expect(alerts.list()).toEqual([]);
+    } finally {
+      await rm(dir, { recursive: true, force: true });
+    }
+  });
+
+  it('never takes an origin from POST /api/alerts', async () => {
+    const dir = await mkdtemp(join(tmpdir(), 'rhinoview-ai-route-'));
+    try {
+      const alerts = await openAlertsStore(join(dir, 'alerts.json'), { now: () => NOW, warn: () => undefined });
+      app = buildServer({ engine: createSyntheticEngine(), now: () => NOW, alerts });
+      const res = await app.inject({
+        method: 'POST', url: '/api/alerts',
+        payload: { symbol: 'AAPL', condition: { type: 'price', direction: 'up', level: 300 }, origin: { kind: 'ai', analysisId: 'x', plan: 'p', role: 'entry' } },
+      });
+      expect(res.statusCode).toBe(400);
+    } finally {
+      await rm(dir, { recursive: true, force: true });
+    }
+  });
+});
+

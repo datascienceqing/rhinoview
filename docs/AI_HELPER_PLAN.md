@@ -1,6 +1,6 @@
 # Plan — AI helper and AI alerts
 
-Status: approved by the user (2026-10-31), with the recommendations for D1–D6. Step A done (2026-10-31): `server/ai/facts/`. Step B done (2026-10-31): `POST /api/ai/analyze`.
+Status: approved by the user (2026-10-31), with the recommendations for D1–D6. Step A done (2026-10-31): `server/ai/facts/`. Step B done (2026-10-31): `POST /api/ai/analyze`. Step C done (2026-10-31): the AI panel and the chart marks, branch `feat/ai-panel`. Step D done (2026-10-31): AI alerts, same branch.
 Branch: `feat/ai-helper-skills`.
 
 **Implementer:** read `AGENTS.md` first. All output for the user (reports, commit messages,
@@ -28,7 +28,12 @@ Done on this branch:
 - Step A: the facts builder in `server/ai/facts/`, with unit tests.
 - Step B: the DeepSeek client, the facts loader, the number check, and `POST /api/ai/analyze` (streamed).
 
-Not done: no AI panel, no chart marks layer, no AI alerts.
+- Step C: the AI panel (`src/ai/`), the toolbar button, and the chart marks (`src/chart/AiZonesPrimitive.ts`). The chart draws one featured plan for each side (entry, stop, T1, T2) and the 4 nearest zones.
+- Step D: "AI alerts…" on the chart menu, `POST /api/ai/alerts`, `Alert.origin`, and the analyses store.
+
+Not done: no explanation of a fired alert (step E).
+
+Change from the plan in step D: the alerts endpoint makes no DeepSeek call. The plans are already calculated, so a model call adds cost and time but no level. Step E uses the model to explain a fired alert.
 
 ## 3. Rule: the server calculates, the model explains
 

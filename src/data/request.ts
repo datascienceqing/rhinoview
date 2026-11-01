@@ -59,6 +59,77 @@ export async function apiRequest<T>(path: string, options: ApiRequestOptions = {
   return unwrap(parsed as ApiResult<T>, response.status);
 }
 
+export interface ApiStreamOptions {
+  /** JSON request body. The stream endpoints are POST. */
+  body: unknown;
+  signal?: AbortSignal | undefined;
+  baseUrl?: string;
+  fetch?: FetchLike | undefined;
+}
+
+/**
+ * A `text/event-stream` endpoint (the AI helper). Calls `onEvent` with each `data:` JSON
+ * object, in order, and resolves when the stream ends. A failure before the stream starts
+ * is an envelope, and it throws a DataError as `apiRequest` does.
+ */
+export async function apiStream<E>(path: string, onEvent: (event: E) => void, options: ApiStreamOptions): Promise<void> {
+  const { body, signal, baseUrl = '/api' } = options;
+  if (signal?.aborted) throw abortedError();
+  let response: Response;
+  try {
+    const doFetch: FetchLike = options.fetch ?? ((input, i) => fetch(input, i));
+    response = await doFetch(buildUrl(baseUrl, path, {}), {
+      method: 'POST',
+      signal: signal ?? null,
+      headers: { Accept: 'text/event-stream', 'Content-Type': 'application/json' },
+      body: JSON.stringify(body),
+    });
+  } catch (e) {
+    if (signal?.aborted || isAbortLike(e)) throw abortedError(e);
+    throw new DataError('NETWORK', 'Network request failed', { cause: e });
+  }
+
+  if (!(response.headers.get('Content-Type') ?? '').includes('text/event-stream') || !response.body) {
+    let parsed: unknown;
+    try {
+      parsed = await response.json();
+    } catch {
+      throw errorForUnparseable(response);
+    }
+    if (!isEnvelope(parsed)) throw errorForUnparseable(response);
+    unwrap(parsed as ApiResult<unknown>, response.status);
+    throw errorForUnparseable(response); // a success envelope where a stream was due
+  }
+
+  const reader = response.body.getReader();
+  const decoder = new TextDecoder();
+  let buffer = '';
+  const flush = (block: string) => {
+    const data = block
+      .split('\n')
+      .filter((l) => l.startsWith('data:'))
+      .map((l) => l.slice(5).trimStart())
+      .join('\n');
+    if (data) onEvent(JSON.parse(data) as E);
+  };
+  try {
+    for (;;) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      buffer += decoder.decode(value, { stream: true });
+      let end: number;
+      while ((end = buffer.indexOf('\n\n')) >= 0) {
+        flush(buffer.slice(0, end));
+        buffer = buffer.slice(end + 2);
+      }
+    }
+    flush(buffer);
+  } catch (e) {
+    if (signal?.aborted || isAbortLike(e)) throw abortedError(e);
+    throw new DataError('NETWORK', 'The stream broke', { cause: e });
+  }
+}
+
 function buildUrl(baseUrl: string, path: string, params: Record<string, string>): string {
   // Resolved against the page origin when there is one: browsers accept relative
   // URLs in fetch, but Node's fetch (used under test) does not.
