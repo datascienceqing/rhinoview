@@ -5,7 +5,7 @@
 import { readFile } from 'node:fs/promises';
 import { fileURLToPath } from 'node:url';
 
-export type SkillName = 'trade-check';
+export type SkillName = 'trade-check' | 'alert-explain';
 
 export interface Skill {
   name: SkillName;

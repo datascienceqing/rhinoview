@@ -56,6 +56,14 @@ function AlertDialogForm({ draft, onClose }: { draft: AlertDraft; onClose: () =>
   const [frequency, setFrequency] = useState<AlertFrequency>(draft.frequency ?? 'once');
   const [expiry, setExpiry] = useState<AlertExpiry>(draft.expiry ?? DEFAULT_ALERT_EXPIRY);
   const [message, setMessage] = useState(draft.message ?? '');
+  const messageInput = useRef<HTMLTextAreaElement>(null);
+  // Fit the height of the message field to its text (no `field-sizing: content` in all browsers).
+  useEffect(() => {
+    const el = messageInput.current;
+    if (!el) return;
+    el.style.height = 'auto';
+    el.style.height = `${el.scrollHeight + el.offsetHeight - el.clientHeight}px`;
+  }, [message]);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -244,14 +252,22 @@ function AlertDialogForm({ draft, onClose }: { draft: AlertDraft; onClose: () =>
           </small>
         </div>
 
-        <label className="alert-field">
+        <label className="alert-field alert-field-message">
           <span>{t('alerts.field.message')}</span>
-          <input
-            type="text"
+          {/* One line of text, shown on as many lines as it needs. Enter saves; a pasted line break becomes a space. */}
+          <textarea
+            ref={messageInput}
+            rows={1}
             maxLength={MAX_ALERT_MESSAGE_LENGTH}
             value={message}
             placeholder={conditionProblem === null ? defaultMessage(draft.symbol, condition) : ''}
-            onChange={(e) => setMessage(e.target.value)}
+            onChange={(e) => setMessage(e.target.value.replace(/\r?\n/g, ' '))}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter') {
+                e.preventDefault();
+                e.currentTarget.form?.requestSubmit();
+              }
+            }}
           />
         </label>
 

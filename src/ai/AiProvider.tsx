@@ -41,6 +41,8 @@ export interface AiState {
   setOpen(open: boolean): void;
   analysis: AiAnalysis | null;
   ask(symbol: string, question: string): void;
+  /** Explain a fired AI alert. `label` is the text that the panel shows as the question. */
+  explain(eventId: EntityId, symbol: string, label: string): void;
   stop(): void;
   /** Show the marks of the analysis on the chart. */
   showMarks: boolean;
@@ -111,18 +113,20 @@ export function AiProvider({ children }: { children: ReactNode }) {
     setAnalysis((a) => (a && (a.status === 'loading' || a.status === 'streaming') ? { ...a, status: a.text ? 'done' : 'idle' } : a));
   }, []);
 
-  const ask = useCallback((symbol: string, question: string) => {
+  /** Streams `path` into the analysis. A new call stops the one before it. */
+  const run = useCallback((path: string, body: unknown, symbol: string, question: string) => {
     controller.current?.abort();
     const ac = new AbortController();
     controller.current = ac;
     const sym = symbol.toUpperCase();
+    setOpen(true);
     setShowMarks(true);
     setAnalysis({ symbol: sym, question, status: 'loading', text: '', check: null, marks: null, synthetic: false, stale: false, missing: [], error: null });
     const update = (f: (a: AiAnalysis) => AiAnalysis) => {
       if (controller.current === ac) setAnalysis((a) => (a ? f(a) : a));
     };
     apiStream<AiAnalyzeEvent>(
-      '/ai/analyze',
+      path,
       (ev) => {
         if (ev.type === 'facts') {
           const check = (ev.facts.dataCheck ?? {}) as { stale?: boolean; missing?: string[] };
@@ -134,7 +138,7 @@ export function AiProvider({ children }: { children: ReactNode }) {
         else if (ev.type === 'done') update((a) => ({ ...a, status: 'done', text: ev.text, check: ev.check }));
         else update((a) => ({ ...a, status: 'error', error: ev.error.message }));
       },
-      { body: { symbol: sym, question }, signal: ac.signal },
+      { body, signal: ac.signal },
     )
       .then(() => update((a) => (a.status === 'streaming' || a.status === 'loading' ? { ...a, status: 'error', error: null } : a)))
       .catch((e: unknown) => {
@@ -143,6 +147,9 @@ export function AiProvider({ children }: { children: ReactNode }) {
         update((a) => ({ ...a, status: 'error', error: err.message }));
       });
   }, []);
+
+  const ask = useCallback((symbol: string, question: string) => run('/ai/analyze', { symbol: symbol.toUpperCase(), question }, symbol, question), [run]);
+  const explain = useCallback((eventId: EntityId, symbol: string, label: string) => run('/ai/explain', { eventId }, symbol, label), [run]);
 
   const clear = useCallback(() => {
     controller.current?.abort();
@@ -153,8 +160,8 @@ export function AiProvider({ children }: { children: ReactNode }) {
   useEffect(() => () => controller.current?.abort(), []);
 
   const value = useMemo<AiState>(
-    () => ({ open, setOpen, analysis, ask, stop, showMarks, setShowMarks, clear, runAlerts, aiAlerts, removeAiAlert, closeAiAlerts }),
-    [open, analysis, ask, stop, showMarks, clear, runAlerts, aiAlerts, removeAiAlert, closeAiAlerts],
+    () => ({ open, setOpen, analysis, ask, explain, stop, showMarks, setShowMarks, clear, runAlerts, aiAlerts, removeAiAlert, closeAiAlerts }),
+    [open, analysis, ask, explain, stop, showMarks, clear, runAlerts, aiAlerts, removeAiAlert, closeAiAlerts],
   );
   return <AiContext.Provider value={value}>{children}</AiContext.Provider>;
 }

@@ -193,3 +193,38 @@ describe('AI alerts in the panel', () => {
   });
 });
 
+
+describe('explain', () => {
+  function ExplainProbe() {
+    const { explain } = useAi();
+    return (
+      <button type="button" onClick={() => explain('ev1', 'ter', 'Explain the TER alert at 324.15.')}>
+        explain
+      </button>
+    );
+  }
+
+  it('opens the panel and streams the explanation of the event', async () => {
+    let body: unknown;
+    server.use(
+      http.post('*/api/ai/explain', async ({ request }) => {
+        body = await request.json();
+        return new HttpResponse(sse([{ type: 'facts', symbol: 'TER', marks: MARKS, facts: { synthetic: false } }, { type: 'done', text: '**Status:** Waiting.', check: { checked: 0, unknown: [] } }]), {
+          headers: { 'Content-Type': 'text/event-stream' },
+        });
+      }),
+    );
+    render(
+      <I18nProvider>
+        <AiProvider>
+          <ExplainProbe />
+          <AiPanel symbol="TER" />
+        </AiProvider>
+      </I18nProvider>,
+    );
+    fireEvent.click(screen.getByRole('button', { name: 'explain' }));
+    expect(await screen.findByText('Status:')).toBeInTheDocument();
+    expect(body).toEqual({ eventId: 'ev1' });
+    expect(screen.getByText('Explain the TER alert at 324.15.')).toBeInTheDocument();
+  });
+});

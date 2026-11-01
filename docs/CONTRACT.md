@@ -583,3 +583,21 @@ with one `AiAnalyzeEvent` as JSON. The order:
 - The facts are saved under `analysisId` in `AI_ANALYSES_FILE` (default
   `data/ai-analyses.json`, newest 200), for the explanation of a fired alert.
 - Without the alerts store or the analyses store: `INTERNAL` (500), "AI alerts are not available."
+
+## `POST /api/ai/explain`
+
+**Body:** `AiExplainRequest` — `{ eventId }`, strict (unknown fields → `BAD_REQUEST`).
+
+**Success:** a `text/event-stream` of `AiAnalyzeEvent`, the same as `POST /api/ai/analyze`.
+The model uses the `alert-explain` skill.
+
+- The event must be in the alert log and have an `origin`. Otherwise: `NOT_FOUND` (404) or
+  `BAD_REQUEST` (400), "This event is not from an AI alert."
+- The saved analysis of `origin.analysisId` must have the plan of `origin.plan`. Otherwise:
+  `NOT_FOUND` (404), "The analysis of this alert is not saved."
+- The server builds new facts. Then it calculates the trigger kind (`tag`, `close`, `break`,
+  `touch`) and the status (`triggered`, `waiting`, `failed`, `wick`) from the closed 4H and 1D
+  bars after the fire. The model does not decide them.
+- The `facts` event carries the explanation input: `alert`, `trigger`, `status`, `plan`,
+  `analysis`, `now`, `age`, `synthetic`, and `dataCheck`. Its `marks` are the lines of the plan.
+- The request counts against the daily limit, like `POST /api/ai/analyze`.

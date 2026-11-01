@@ -1,6 +1,6 @@
 # Plan — AI helper and AI alerts
 
-Status: approved by the user (2026-10-31), with the recommendations for D1–D6. Step A done (2026-10-31): `server/ai/facts/`. Step B done (2026-10-31): `POST /api/ai/analyze`. Step C done (2026-10-31): the AI panel and the chart marks, branch `feat/ai-panel`. Step D done (2026-10-31): AI alerts, same branch.
+Status: approved by the user (2026-10-31), with the recommendations for D1–D6. Step A done (2026-10-31): `server/ai/facts/`. Step B done (2026-10-31): `POST /api/ai/analyze`. Step C done (2026-10-31): the AI panel and the chart marks, branch `feat/ai-panel`. Step D done (2026-10-31): AI alerts, same branch. Step E done (2026-10-31): `POST /api/ai/explain` and "Explain" on AI alert events, branch `feat/ai-alert-explain`.
 Branch: `feat/ai-helper-skills`.
 
 **Implementer:** read `AGENTS.md` first. All output for the user (reports, commit messages,
@@ -104,18 +104,22 @@ Each new calculation gets unit tests, like the other indicators.
 
 ### Step E — explain a fired alert
 
-1. The server saves each analysis (facts, answer, plans) in `data/ai/analyses.json`. The file is gitignored.
-2. An `AlertEvent` from an AI alert gets the `analysisId`.
+The samples are in `docs/ai-samples/006-alert-messages.md`. The skill draft is
+`server/ai/skills/alert-explain.md`.
+
+1. The server saves each analysis (facts and plans) in `data/ai-analyses.json`. Done in step D.
+2. An `AlertEvent` from an AI alert copies the `origin` with the `analysisId`. Done in step D.
 3. The toast and the Alerts window show "Explain" for these events.
 4. "Explain" calls `POST /api/ai/explain` `{ eventId }`. The server builds new facts at the
-   fire time and sends them with the saved analysis to DeepSeek, with a new skill, `alert-explain`.
-5. The answer tells:
-   - What happened: a close through the level, or only a wick. The volume ratio.
-   - If the plan is still valid. If not, which condition failed.
-   - The next step of the plan: entry, take half off, move the stop, or cancel.
-   - What changed since the analysis: new structure events, news, earnings.
-
-The `alert-explain` skill needs samples. The user gives them before step E.
+   explanation time and sends them with the saved plan to DeepSeek.
+5. The server calculates the trigger kind and the status. The model does not decide them:
+   - Trigger kind: `tag` for a retest entry, `break` for a continuation entry, `close` for an invalidation,
+     `touch` for a target or an at-market entry.
+   - Status: `triggered`, `waiting`, `failed`, or `wick`, from the 4H and 1D bars after the fire.
+6. The answer starts with four fixed lines: side, why, status, stop. Then: what happened,
+   what changed, the next step, and the targets.
+7. Open: the alert message does not name the structure of the level yet. The 200-character
+   limit cuts the stop and T1 when the label is long. The explanation gives the structure.
 
 ## 5. Frozen files
 

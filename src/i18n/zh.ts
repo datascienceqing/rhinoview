@@ -550,6 +550,8 @@ export const zh: typeof en = {
   'alerts.notificationsAllow': '允许',
   'alerts.notificationsBlocked': '浏览器通知已被阻止。如需允许，请在浏览器中更改本网站的通知设置。',
   'alerts.toast.show': '在图表中查看',
+  'alerts.explain': '解读',
+  'ai.explain.question': (p: { symbol: string; level: string }) => `解读 ${p.symbol} 在 ${p.level} 的警报。`,
   'alerts.toast.more': (p: { count: number }) => `还有 ${p.count} 条警报`,
   'alerts.toast.label': (p: { symbol: string }) => `警报：${p.symbol}`,
   'alerts.loadFailed': '无法加载警报。',

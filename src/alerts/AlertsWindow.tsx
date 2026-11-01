@@ -5,6 +5,7 @@
  */
 import { useEffect, useRef, useState } from 'react';
 import type { Alert, AlertCondition, AlertEvent } from '@shared/types';
+import { useAiMaybe } from '../ai/AiProvider';
 import { INTL_LOCALE, useI18n } from '../i18n';
 import { useAlerts } from './AlertsProvider';
 import type { AlertsTab } from './AlertsProvider';
@@ -128,6 +129,7 @@ function AlertsWindowPanel() {
 function EventRows({ events, empty }: { events: AlertEvent[]; empty: boolean }) {
   const { t, locale } = useI18n();
   const { showOnChart, markChecked, removeEvent } = useAlerts();
+  const ai = useAiMaybe();
   if (events.length === 0) return <p className="alerts-empty">{empty ? t('alerts.empty.triggered') : t('alerts.noMatch')}</p>;
   const time = new Intl.DateTimeFormat(INTL_LOCALE[locale], { dateStyle: 'short', timeStyle: 'short' });
   return (
@@ -156,6 +158,19 @@ function EventRows({ events, empty }: { events: AlertEvent[]; empty: boolean }) 
               {time.format(e.firedAt * 1000)}
             </time>
           </button>
+          {ai && e.origin?.kind === 'ai' && (
+            <button
+              type="button"
+              className="link-button alert-row-explain"
+              onClick={() => {
+                showOnChart(e);
+                if (!e.checked) void markChecked([e.id]).catch(() => undefined);
+                ai.explain(e.id, e.symbol, t('ai.explain.question', { symbol: e.symbol, level: formatLevel(e.target) }));
+              }}
+            >
+              {t('alerts.explain')}
+            </button>
+          )}
           <button type="button" className="icon-button" aria-label={`${t('alerts.delete')} ${e.symbol}`} title={t('alerts.delete')} onClick={() => void removeEvent(e.id).catch(() => undefined)}>
             ×
           </button>
