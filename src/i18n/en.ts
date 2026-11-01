@@ -558,6 +558,8 @@ export const en = {
   'alerts.notificationsAllow': 'Allow',
   'alerts.notificationsBlocked': "Browser notifications are blocked. To allow them, change this site's notification setting in your browser.",
   'alerts.toast.show': 'Show on chart',
+  'alerts.explain': 'Explain',
+  'ai.explain.question': (p: { symbol: string; level: string }) => `Explain the ${p.symbol} alert at ${p.level}.`,
   'alerts.toast.more': (p: { count: number }) => `${p.count} more ${plural(p.count, 'alert', 'alerts')}`,
   'alerts.toast.label': (p: { symbol: string }) => `Alert: ${p.symbol}`,
   'alerts.loadFailed': 'Could not load the alerts.',

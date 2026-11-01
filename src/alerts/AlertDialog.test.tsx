@@ -90,6 +90,17 @@ describe('AlertDialog', () => {
     expect(mockAlerts().alerts[0]).toMatchObject({ expiresAt: 1_800_000_000, state: { lastSide: 'below', lastDayHigh: 189 }, revision: 4 });
   });
 
+  it('the message is one line: a pasted line break becomes a space, and Enter saves', async () => {
+    renderDialog({ symbol: 'MSFT', condition: { type: 'price', direction: 'up', level: 400 } });
+    await screen.findByRole('dialog');
+    const field = screen.getByLabelText('Message');
+    expect(field.tagName).toBe('TEXTAREA');
+    fireEvent.change(field, { target: { value: 'Wait for a 4H close.\nStop 410.' } });
+    expect(field).toHaveValue('Wait for a 4H close. Stop 410.');
+    fireEvent.keyDown(field, { key: 'Enter' });
+    await waitFor(() => expect(mockAlerts().alerts[0]?.message).toBe('Wait for a 4H close. Stop 410.'));
+  });
+
   it('a sub-cent level keeps its digits', async () => {
     renderDialog({ symbol: 'PENNY', condition: { type: 'price', direction: 'cross', level: 0.004123 } });
     await screen.findByRole('dialog');

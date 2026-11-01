@@ -4,6 +4,7 @@
  * TOAST_MS (the provider owns the timers). Dismiss marks the event as checked.
  */
 import type { AlertEvent } from '@shared/types';
+import { useAiMaybe } from '../ai/AiProvider';
 import { INTL_LOCALE, useI18n } from '../i18n';
 import { useAlerts } from './AlertsProvider';
 import { DIRECTION_ARROW, formatLevel, formatValue, messageOf } from './describe';
@@ -40,6 +41,7 @@ export function AlertToasts() {
 function Toast({ event }: { event: AlertEvent }) {
   const { t, locale } = useI18n();
   const { dismissToast, showOnChart } = useAlerts();
+  const ai = useAiMaybe();
   const value = event.condition.type === 'indicator' ? formatValue(event.value) : formatLevel(event.value);
   const time = new Intl.DateTimeFormat(INTL_LOCALE[locale], { timeStyle: 'short' }).format(event.firedAt * 1000);
   return (
@@ -64,6 +66,19 @@ function Toast({ event }: { event: AlertEvent }) {
         >
           {t('alerts.toast.show')}
         </button>
+        {ai && event.origin?.kind === 'ai' && (
+          <button
+            type="button"
+            className="link-button"
+            onClick={() => {
+              showOnChart(event);
+              ai.explain(event.id, event.symbol, t('ai.explain.question', { symbol: event.symbol, level: formatLevel(event.target) }));
+              dismissToast(event.id);
+            }}
+          >
+            {t('alerts.explain')}
+          </button>
+        )}
         <button type="button" className="link-button" onClick={() => dismissToast(event.id)}>
           {t('common.dismiss')}
         </button>

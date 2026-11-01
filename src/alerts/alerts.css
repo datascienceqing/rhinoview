@@ -381,7 +381,8 @@
 }
 .alert-field select,
 .alert-field input[type='number'],
-.alert-field input[type='text'] {
+.alert-field input[type='text'],
+.alert-field textarea {
   width: 100%;
   font: inherit;
   color: var(--text);
@@ -389,6 +390,15 @@
   border: 1px solid var(--border);
   border-radius: 4px;
   padding: 5px 8px;
+}
+/* The message is up to 200 characters: the label goes above a full-width field that grows. */
+.alert-field-message {
+  grid-template-columns: 1fr;
+}
+.alert-field textarea {
+  resize: none;
+  overflow: hidden;
+  line-height: 1.4;
 }
 .alert-radios {
   display: flex;
@@ -417,4 +427,10 @@
 .chart-container:focus-visible {
   outline: 2px solid var(--accent);
   outline-offset: -2px;
+}
+
+/* "Explain" on an event of an AI alert (docs/AI_HELPER_PLAN.md, step E). */
+.alert-row-explain {
+  flex: none;
+  padding: 0 6px;
 }

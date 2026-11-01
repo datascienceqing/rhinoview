@@ -188,3 +188,56 @@ describe('POST /api/ai/alerts', () => {
   });
 });
 
+
+describe('POST /api/ai/explain', () => {
+  it('explains a fired AI alert with the status, the plan, and the plan marks', async () => {
+    const dir = await mkdtemp(join(tmpdir(), 'rhinoview-ai-route-'));
+    try {
+      const alerts = await openAlertsStore(join(dir, 'alerts.json'), { now: () => NOW, warn: () => undefined });
+      const analyses = await openAnalysesStore(join(dir, 'analyses.json'));
+      const client = fakeClient(['**Side:** ', 'Short.']);
+      app = buildServer({ engine: createSyntheticEngine(), now: () => NOW, provider: 'synthetic', alerts, ai: { client, dailyLimit: 5, analyses } });
+      const made = (await app.inject({ method: 'POST', url: '/api/ai/alerts', payload: { symbol: 'AAPL' } })).json() as ApiResult<AiAlertsResponse>;
+      if (!made.ok) throw new Error('not ok');
+      const alert = made.data.added[0];
+      if (!alert || alert.condition.type !== 'price') throw new Error('no AI alert on the synthetic data');
+      const level = alert.condition.level;
+      const [fired] = await alerts.applyChecks([
+        { alertId: alert.id, revision: alert.revision, delayed: false, result: { fires: [{ crossed: alert.condition.direction === 'down' ? 'down' : 'up', value: level, target: level, time: NOW }], state: alert.state, status: 'triggered' } },
+      ]);
+      if (!fired) throw new Error('no event');
+
+      const res = await app.inject({ method: 'POST', url: '/api/ai/explain', payload: { eventId: fired.id } });
+      expect(res.statusCode).toBe(200);
+      const evs = events(res.payload);
+      expect(evs.map((e) => e.type)).toEqual(['facts', 'delta', 'delta', 'done']);
+      const first = evs[0];
+      if (first?.type !== 'facts') throw new Error('no facts');
+      expect(first.facts).toMatchObject({ alert: { role: alert.origin?.role, level }, synthetic: true });
+      expect(['triggered', 'waiting', 'failed', 'wick']).toContain((first.facts.status as { status: string }).status);
+      for (const l of first.marks.lines) expect(l.label.startsWith(`${alert.origin?.plan} `)).toBe(true);
+      expect(client.lastUser).toContain('"trigger"');
+    } finally {
+      await rm(dir, { recursive: true, force: true });
+    }
+  });
+
+  it('rejects an unknown event and an event that is not from an AI alert', async () => {
+    const dir = await mkdtemp(join(tmpdir(), 'rhinoview-ai-route-'));
+    try {
+      const alerts = await openAlertsStore(join(dir, 'alerts.json'), { now: () => NOW, warn: () => undefined });
+      const analyses = await openAnalysesStore(join(dir, 'analyses.json'));
+      const client = fakeClient([]);
+      app = buildServer({ engine: createSyntheticEngine(), now: () => NOW, alerts, ai: { client, dailyLimit: 5, analyses } });
+      expect((await app.inject({ method: 'POST', url: '/api/ai/explain', payload: { eventId: 'nope' } })).statusCode).toBe(404);
+      const a = await alerts.create({ symbol: 'AAPL', condition: { type: 'price', direction: 'up', level: 1 } });
+      const [e] = await alerts.applyChecks([{ alertId: a.id, revision: a.revision, delayed: false, result: { fires: [{ crossed: 'up', value: 2, target: 1, time: NOW }], state: a.state, status: 'triggered' } }]);
+      const res = await app.inject({ method: 'POST', url: '/api/ai/explain', payload: { eventId: e?.id } });
+      expect(res.statusCode).toBe(400);
+      expect(res.json()).toMatchObject({ ok: false, error: { message: 'This event is not from an AI alert.' } });
+      expect(client.calls).toBe(0);
+    } finally {
+      await rm(dir, { recursive: true, force: true });
+    }
+  });
+});

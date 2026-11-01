@@ -944,6 +944,14 @@ export type AiAnalyzeEvent =
   | { type: 'done'; text: string; check: AiNumberCheck }
   | { type: 'error'; error: ApiError };
 
+/**
+ * `POST /api/ai/explain` body: the event of a fired AI alert. The reply is the same stream as
+ * `POST /api/ai/analyze` (`AiAnalyzeEvent`), with the `alert-explain` skill.
+ */
+export interface AiExplainRequest {
+  eventId: EntityId;
+}
+
 /** `POST /api/ai/alerts` body. */
 export interface AiAlertsRequest {
   symbol: string;
