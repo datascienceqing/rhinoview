@@ -10,7 +10,7 @@
 import type { FastifyInstance, FastifyReply, FastifyRequest } from 'fastify';
 import { z } from 'zod';
 import { randomUUID } from 'node:crypto';
-import { MAX_AI_QUESTION_LENGTH } from '@shared/types';
+import { MAX_AI_ANSWER_LENGTH, MAX_AI_HISTORY_TURNS, MAX_AI_QUESTION_LENGTH } from '@shared/types';
 import type { AiAlertsResponse, AiAnalyzeEvent, AiMarks, Alert } from '@shared/types';
 import type { AlertsStore } from '../alerts/store';
 import { buildAiAlerts } from '../ai/alerts';
@@ -19,8 +19,8 @@ import { explainFacts, planMarks, savedPlan, statusOf } from '../ai/explain';
 import { redact } from '../env';
 import { buildFacts } from '../ai/facts/build';
 import type { Facts } from '../ai/facts/build';
-import type { ChatClient } from '../ai/deepseek';
-import { loadFactsInput } from '../ai/load';
+import type { ChatClient, ChatMessage, ThinkingLevel } from '../ai/deepseek';
+import { loadFactsInput, resolveDirection } from '../ai/load';
 import type { LoadDeps } from '../ai/load';
 import { checkNumbers } from '../ai/numberCheck';
 import { loadSkill } from '../ai/skills';
@@ -35,6 +35,8 @@ export interface AiRouteDeps extends LoadDeps {
   /** Null: `POST /api/ai/alerts` answers "not available". */
   alerts: AlertsStore | null;
   analyses: AnalysesStore | null;
+  /** Thinking effort for each skill. A skill that is not here uses the default of the client. */
+  thinking?: Partial<Record<SkillName, ThinkingLevel>>;
 }
 
 /** The question saved with the facts of an AI alerts request. It has no direction, so both sides are planned. */
@@ -46,10 +48,27 @@ const explainBody = z.object({ eventId: z.string().trim().min(1, 'must not be em
 
 /** The question of an explanation request. The facts are built for it, and the panel shows it. */
 export const AI_EXPLAIN_QUESTION = 'Explain the alert that fired.';
+const questionField = z.string().trim().min(1, 'must not be empty').max(MAX_AI_QUESTION_LENGTH, `must be at most ${MAX_AI_QUESTION_LENGTH} characters`);
 const body = z.object({
   symbol: symbolField,
-  question: z.string().trim().min(1, 'must not be empty').max(MAX_AI_QUESTION_LENGTH, `must be at most ${MAX_AI_QUESTION_LENGTH} characters`),
+  question: questionField,
+  detail: z.enum(['brief', 'full']).optional(),
+  history: z
+    .array(z.object({ question: questionField, answer: z.string().min(1, 'must not be empty').max(MAX_AI_ANSWER_LENGTH, `must be at most ${MAX_AI_ANSWER_LENGTH} characters`) }))
+    .max(MAX_AI_HISTORY_TURNS, `must have at most ${MAX_AI_HISTORY_TURNS} turns`)
+    .optional(),
 });
+
+/**
+ * The earlier turns as messages. An earlier user message has the question only: its facts
+ * are old, and the new message has the new facts.
+ */
+export function historyMessages(history: readonly { question: string; answer: string }[]): ChatMessage[] {
+  return history.flatMap((turn) => [
+    { role: 'user' as const, content: JSON.stringify({ question: turn.question }) },
+    { role: 'assistant' as const, content: turn.answer },
+  ]);
+}
 
 /** Calls a day, counted per New York day. In memory: a restart starts the count again. */
 export class DailyCounter {
@@ -71,6 +90,15 @@ export class DailyCounter {
   }
 }
 
+/** News for the model: without the URL, which costs tokens and is never quoted. */
+const newsForModel = <N extends { url: string | null }>(news: readonly N[]) => news.map(({ url: _url, ...n }) => n);
+
+/** The facts that the model gets: the question is already beside them, and the news has no URL. */
+export function factsForModel<F extends { question: string; news: readonly { url: string | null }[] }>(facts: F) {
+  const rest = Object.fromEntries(Object.entries(facts).filter(([key]) => key !== 'question')) as Omit<F, 'question' | 'news'>;
+  return { ...rest, news: newsForModel(facts.news) };
+}
+
 function send(reply: FastifyReply, event: AiAnalyzeEvent): void {
   reply.raw.write(`data: ${JSON.stringify(event)}\n\n`);
 }
@@ -86,6 +114,8 @@ async function streamAnswer(
   skillName: SkillName,
   input: unknown,
   facts: { symbol: string; facts: Record<string, unknown>; marks: AiMarks },
+  thinking: ThinkingLevel | undefined,
+  earlier: readonly ChatMessage[] = [],
 ): Promise<void> {
   const skill = await loadSkill(skillName);
   // From here on the reply is a stream; failures become an `error` event.
@@ -99,13 +129,15 @@ async function streamAnswer(
   try {
     const messages = [
       { role: 'system' as const, content: skill.body },
+      ...earlier,
       { role: 'user' as const, content: JSON.stringify(input) },
     ];
-    for await (const delta of client.stream(messages, abort.signal)) {
+    for await (const delta of client.stream(messages, abort.signal, thinking ? { thinking } : {})) {
       text += delta;
       send(reply, { type: 'delta', text: delta });
     }
-    send(reply, { type: 'done', text, check: checkNumbers(text, facts.facts) });
+    // A constant of the skill text ("0.5 × ATR", "0.33") is a rule, not an invented number.
+    send(reply, { type: 'done', text, check: checkNumbers(text, [facts.facts, skill.body]) });
   } catch (err) {
     if (!abort.signal.aborted) {
       const failure = err instanceof ApiFailure ? err : new ApiFailure('INTERNAL', MESSAGES.internal);
@@ -128,11 +160,12 @@ export function registerAiRoutes(app: FastifyInstance, deps: AiRouteDeps): void 
       const issue = parsed.error.issues[0];
       return sendFailure(reply, new ApiFailure('BAD_REQUEST', `${issue?.path.join('.') || 'body'}: ${issue?.message ?? 'invalid'}`));
     }
-    const { symbol, question } = parsed.data;
+    const { symbol, question, detail = 'full', history = [] } = parsed.data;
+    const direction = resolveDirection(question, history.map((t) => t.question));
 
     let facts: ReturnType<typeof buildFacts>;
     try {
-      facts = buildFacts(await loadFactsInput(deps, symbol, question));
+      facts = buildFacts(await loadFactsInput(deps, symbol, question, direction));
     } catch (err) {
       const failure = mapEngineError(err);
       if (failure.code === 'UPSTREAM_ERROR' || failure.code === 'INTERNAL') req.log.error({ cause: redact(String(err)) }, 'ai facts failed');
@@ -143,7 +176,10 @@ export function registerAiRoutes(app: FastifyInstance, deps: AiRouteDeps): void 
       return sendFailure(reply, new ApiFailure('RATE_LIMITED', 'The daily limit of AI requests is reached. Try again tomorrow.'));
     }
     const { marks, ...rest } = facts;
-    await streamAnswer(req, reply, client, 'trade-check', { question, facts: rest }, { symbol: facts.symbol, facts: rest as unknown as Record<string, unknown>, marks });
+    await streamAnswer(
+      req, reply, client, 'trade-check', { question, detail, facts: factsForModel(rest) },
+      { symbol: facts.symbol, facts: rest as unknown as Record<string, unknown>, marks }, deps.thinking?.['trade-check'], historyMessages(history),
+    );
   });
 
   /**
@@ -215,8 +251,8 @@ export function registerAiRoutes(app: FastifyInstance, deps: AiRouteDeps): void 
     const nowTime = deps.now();
     const status = statusOf({ role: origin.role, plan, level: event.target, firedAt: event.firedAt, now: nowTime, bars4h: input.bars['4h'], bars1d: input.bars['1D'] });
     const facts = explainFacts({ event, origin, analysisAt: analysis.createdAt, saved, plan, status, now, nowTime });
-    await streamAnswer(req, reply, client, 'alert-explain', { question: AI_EXPLAIN_QUESTION, facts }, {
+    await streamAnswer(req, reply, client, 'alert-explain', { question: AI_EXPLAIN_QUESTION, facts: { ...facts, now: { ...facts.now, news: newsForModel(facts.now.news) } } }, {
       symbol: event.symbol, facts: facts as unknown as Record<string, unknown>, marks: planMarks(saved, origin.plan),
-    });
+    }, deps.thinking?.['alert-explain']);
   });
 }

@@ -25,7 +25,8 @@ import { UNAVAILABLE_FUNDAMENTALS, createFundamentalsProvider } from './fundamen
 import type { FundamentalsProvider } from './fundamentals';
 import { createWorkspaceStore } from './workspace';
 import { DeepSeekClient } from './ai/deepseek';
-import type { ChatClient } from './ai/deepseek';
+import type { ChatClient, ThinkingLevel } from './ai/deepseek';
+import type { SkillName } from './ai/skills';
 import { registerAiRoutes } from './routes/ai';
 import { openAnalysesStore } from './ai/analyses';
 import type { AnalysesStore } from './ai/analyses';
@@ -57,7 +58,7 @@ export interface BuildServerOptions {
    */
   alertChecks?: { budgetPerMinute: number | null; tickMs?: number };
   /** The AI helper. Omitted or a null client: the AI endpoints answer "not configured". */
-  ai?: { client: ChatClient | null; dailyLimit: number; analyses?: AnalysesStore | null };
+  ai?: { client: ChatClient | null; dailyLimit: number; analyses?: AnalysesStore | null; thinking?: Partial<Record<SkillName, ThinkingLevel>> };
 }
 
 export function buildServer(opts: BuildServerOptions): FastifyInstance {
@@ -98,6 +99,7 @@ export function buildServer(opts: BuildServerOptions): FastifyInstance {
     dailyLimit: opts.ai?.dailyLimit ?? 0,
     alerts: opts.alerts ?? null,
     analyses: opts.ai?.analyses ?? null,
+    thinking: opts.ai?.thinking ?? {},
   });
   let scheduler: AlertScheduler | null = null;
   if (opts.alerts && opts.alertChecks) {
@@ -132,18 +134,26 @@ export async function createServer(): Promise<FastifyInstance> {
   const fundamentals = await createFundamentalsProvider();
   const workspace = await createWorkspaceStore(env.WORKSPACE_FILE);
   const alerts = await openAlertsStore(env.ALERTS_FILE);
-  return buildServer({ engine, provider: env.DATA_PROVIDER, faults: faultsFromEnv(), fundamentals,
+  // The client exists before the server, so the log target comes later.
+  let warn: (data: object, message: string) => void = () => undefined;
+  const app = buildServer({ engine, provider: env.DATA_PROVIDER, faults: faultsFromEnv(), fundamentals,
     workspace,
     alerts,
     alertChecks: { budgetPerMinute: env.DATA_PROVIDER === 'synthetic' ? null : env.ALERT_CALL_BUDGET },
     ai: {
       client: env.DEEPSEEK_API_KEY
-        ? new DeepSeekClient({ apiKey: env.DEEPSEEK_API_KEY, baseUrl: env.DEEPSEEK_BASE_URL, model: env.DEEPSEEK_MODEL })
+        ? new DeepSeekClient({
+            apiKey: env.DEEPSEEK_API_KEY, baseUrl: env.DEEPSEEK_BASE_URL, model: env.DEEPSEEK_MODEL,
+            onFailure: (f) => warn({ status: f.status, retried: f.retried, model: env.DEEPSEEK_MODEL, detail: redact(f.detail) }, 'deepseek request failed'),
+          })
         : null,
       dailyLimit: env.AI_DAILY_CALL_LIMIT,
       analyses: await openAnalysesStore(env.AI_ANALYSES_FILE),
+      thinking: { 'trade-check': env.DEEPSEEK_THINKING, 'alert-explain': env.DEEPSEEK_THINKING_EXPLAIN },
     },
   });
+  warn = (data, message) => app.log.warn(data, message);
+  return app;
 }
 
 // Only listen when run directly, so tests can import buildServer() without binding a port.

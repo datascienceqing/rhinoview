@@ -1,7 +1,7 @@
 ---
 name: alert-explain
 description: Explain a fired AI alert. Tell the side, why, if it is a trigger now, and the stop. Then the next step of the plan.
-version: 0.2.0
+version: 0.2.1
 timeframes: { primary: 1D, lower: 4h, higher: [1W] }
 samples:
   - docs/ai-samples/006-alert-messages.md
@@ -25,6 +25,7 @@ You receive one JSON object. The server calculated every number in it.
 
 | Field | Content |
 |---|---|
+| `synthetic`, `dataCheck` | `synthetic: true` means generated prices. `dataCheck` is the data check of the new facts: `stale`, `partialSession`, `missing` |
 | `alert` | The level, the direction, the role (`entry`, `invalidation`, `target`), the plan name, the fire time and price |
 | `trigger` | The kind (`tag`, `close`, `break`, `touch`) and the confirmation that the kind needs |
 | `status` | `triggered`, `waiting`, `failed`, or `wick`, with the reason. The server decides it |
@@ -54,6 +55,7 @@ You receive one JSON object. The server calculated every number in it.
 6. When `age.sinceAnalysis` is more than 10 sessions, tell the user that the plan is old,
    and that the new facts decide.
 7. When earnings are 10 sessions away or less, give the date and the size of 0.5%.
+8. When `synthetic` is true, say in one sentence that the prices are generated, not market prices.
 
 ## Output format
 

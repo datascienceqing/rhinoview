@@ -16,6 +16,8 @@ export type PlanKind = 'market' | 'retest' | 'continuation';
 export interface Level {
   price: number;
   label: string;
+  /** A projection (a range extension), not a level that price tested. */
+  projected?: true;
 }
 
 export interface PlanInput {
@@ -61,7 +63,7 @@ export interface Plan {
   targets: PlanTarget[];
   sizePct: 0.5 | 1;
   sizeReason: string | null;
-  /** The R:R to the last target is 2:1 or more. */
+  /** The R:R to T2 is 2:1 or more. With one target only, the R:R to T1. */
   meetsTwoToOne: boolean;
 }
 
@@ -69,6 +71,19 @@ export const STOP_ATR_MULT = 0.5;
 export const EARNINGS_SIZE_SESSIONS = 10;
 /** Targets are at least this many daily ATRs from the entry. */
 export const MIN_TARGET_ATR = 0.5;
+/** Projections past the dealing range, as multiples of its height from the far end. */
+export const EXTENSION_RATIOS = [1.272, 1.618] as const;
+
+/**
+ * Targets for a price at a new high or a new low, where no tested level is ahead: the
+ * range height projected past the range high (long) and past the range low (short).
+ */
+export function rangeExtensions(range: { high: number; low: number }): Record<Direction, Level[]> {
+  const height = range.high - range.low;
+  const make = (sign: 1 | -1, from: number) =>
+    EXTENSION_RATIOS.map((r) => ({ price: from + sign * (r - 1) * height, label: `range extension ${r}`, projected: true as const })).filter((l) => l.price > 0);
+  return { long: make(1, range.high), short: make(-1, range.low) };
+}
 
 export const pctFrom = (price: number, reference: number): number => ((price - reference) / reference) * 100;
 
@@ -109,7 +124,8 @@ export function buildPlan(input: PlanInput): Plan | null {
     targets,
     sizePct: reasons.length ? 0.5 : 1,
     sizeReason: reasons.length ? reasons.join('; ') : null,
-    meetsTwoToOne: (targets[targets.length - 1] as PlanTarget).rr >= 2,
+    // T2, not the last target: a far T3 (an extension) must not make a weak plan pass.
+    meetsTwoToOne: (targets[Math.min(1, targets.length - 1)] as PlanTarget).rr >= 2,
   };
 }
 
@@ -124,6 +140,11 @@ export interface PlanContext {
   lastBullishBreak: Level | null;
   againstTrend: Record<Direction, boolean>;
   earningsSessions: number | null;
+  /**
+   * Projected targets for each side (`rangeExtensions`). They are targets only, never an
+   * entry or an invalidation, and only past the last level ahead.
+   */
+  extensions?: Record<Direction, readonly Level[]>;
 }
 
 /**
@@ -148,6 +169,12 @@ export function plansFor(side: Direction, ctx: PlanContext): Plan[] {
   // Nearest first, in the trade direction (ahead) or against it (behind).
   const ahead = (from: number) => levels.filter((l) => sign * (l.price - from) > 0).sort((a, b) => sign * (a.price - b.price));
   const behind = (from: number) => levels.filter((l) => sign * (l.price - from) < 0).sort((a, b) => sign * (b.price - a.price));
+  // Targets: the levels ahead, then the projections past the last of them.
+  const targetsFrom = (from: number): Level[] => {
+    const tested = ahead(from);
+    const far = tested[tested.length - 1]?.price ?? from;
+    return [...tested, ...(ctx.extensions?.[side] ?? []).filter((e) => sign * (e.price - far) > 0)];
+  };
   // A target nearer than half a day's range is not worth the risk (the live TER answer had T1 0.47% away).
   const common = {
     side, atrLower: ctx.atrLower, againstHigherTrend: ctx.againstTrend[side], earningsSessions: ctx.earningsSessions,
@@ -160,7 +187,7 @@ export function plansFor(side: Direction, ctx: PlanContext): Plan[] {
   if (guard) {
     const p = buildPlan({
       ...common, kind: 'market', entryType: 'market', entryLow: ctx.price, entryHigh: ctx.price,
-      trigger: 'enter at the current price', invalidation: guard, targets: ahead(ctx.price),
+      trigger: 'enter at the current price', invalidation: guard, targets: targetsFrom(ctx.price),
     });
     if (p) out.push(p);
   }
@@ -174,7 +201,7 @@ export function plansFor(side: Direction, ctx: PlanContext): Plan[] {
       entryLow: Math.min(near, broken.price), entryHigh: Math.max(near, broken.price),
       trigger: `${side === 'short' ? 'sell' : 'buy'} limit after price comes back to ${broken.label} and a 4H candle rejects it`,
       invalidation: { price: broken.price, label: `close back ${side === 'short' ? 'above' : 'below'} ${broken.label}` },
-      targets: ahead(ctx.price),
+      targets: targetsFrom(ctx.price),
     });
     if (p) out.push(p);
   }
@@ -187,7 +214,7 @@ export function plansFor(side: Direction, ctx: PlanContext): Plan[] {
       ...common, kind: 'continuation', entryType: 'stop', entryLow: entry, entryHigh: entry,
       trigger: `${side === 'short' ? 'sell' : 'buy'} stop after a daily close ${side === 'short' ? 'below' : 'above'} ${next.label}`,
       invalidation: { price: next.price, label: `close back ${side === 'short' ? 'above' : 'below'} ${next.label}` },
-      targets: ahead(entry),
+      targets: targetsFrom(entry),
     });
     if (p) out.push(p);
   }

@@ -51,4 +51,10 @@ describe('parseSkill', () => {
     expect(s.body.startsWith('# Skill\n\nBody.')).toBe(true);
     expect(s.body).toContain('language of the question');
   });
+
+  it('accepts a number from a second source, for example the skill text', () => {
+    const text = 'T2 is the range extension 1.272. The stop uses 0.33 × ATR.';
+    expect(checkNumbers(text, { close: 10.5 }).unknown).toEqual(['1.272', '0.33']);
+    expect(checkNumbers(text, [{ close: 10.5 }, 'Projections: 1.272 and 1.618.']).unknown).toEqual(['0.33']);
+  });
 });

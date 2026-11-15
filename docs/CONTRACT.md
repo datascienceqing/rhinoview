@@ -531,8 +531,19 @@ When false, the UI hides every AI item.
 
 ## `POST /api/ai/analyze`
 
-**Body:** `AiAnalyzeRequest` — `{ symbol, question }`. `symbol` uses the workspace format.
-`question` is 1–`MAX_AI_QUESTION_LENGTH` (500) characters after a trim.
+**Body:** `AiAnalyzeRequest` — `{ symbol, question, detail?, history? }`.
+
+- `symbol` uses the workspace format.
+- `question` is 1–`MAX_AI_QUESTION_LENGTH` (500) characters after a trim.
+- The server reads the trade direction from the question, then from the questions in
+  `history` (newest first). With no direction, the server plans both sides.
+- `detail` is `brief` or `full` (the default). `brief` asks for the verdict, the best plan,
+  and the invalidation only. The facts and the marks are the same.
+- `history` is the earlier turns about the same symbol, oldest first: at most
+  `MAX_AI_HISTORY_TURNS` (6) items `{ question, answer }`, with an answer of at most
+  `MAX_AI_ANSWER_LENGTH` (20,000) characters. The model gets them as the conversation
+  before the new question. The server builds new facts for each request; it does not use
+  old facts. Each request counts against the daily limit.
 
 **Before the stream** — a normal `ApiResult` envelope with its HTTP status. None of these
 calls DeepSeek, and none counts against the daily limit:
@@ -556,9 +567,12 @@ with one `AiAnalyzeEvent` as JSON. The order:
   of the 4H or 1W bars, the snapshot, or a fundamentals call leaves that part empty; the
   facts list it in `dataCheck.missing`.
 - The number check (`server/ai/numberCheck.ts`) looks at each number with decimals and each
-  integer of 100 or more. `unknown` lists the numbers that are not in the facts.
+  integer of 100 or more. `unknown` lists the numbers that are not in the facts. A number
+  that the skill text contains (a rule constant) is not unknown.
 - DeepSeek errors: a refused key or no balance → `UNAUTHORIZED`; 429 → `RATE_LIMITED`; no
-  answer in 120 s → `UPSTREAM_TIMEOUT`; anything else → `UPSTREAM_ERROR`. The messages are
+  first token in 90 s, a silence of 60 s, or no end in 10 minutes → `UPSTREAM_TIMEOUT`; an
+  answer that does not end normally (cut by a length limit, a filter, or a closed
+  connection) and anything else → `UPSTREAM_ERROR`. The messages are
   constants; the key is in the `Authorization` header only, and never in a response or a log.
 - When the client closes the connection, the server stops the DeepSeek request.
 

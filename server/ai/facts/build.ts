@@ -11,7 +11,7 @@ import { atr, ema, macd, rsi } from '../../../src/indicators/math';
 import { DEFAULT_PARAMS } from '../../../src/indicators/types';
 import { scoreConfluence } from './confluence';
 import type { Arrow, ConfluenceResult, ConfluenceRow } from './confluence';
-import { pctFrom, plansFor } from './plans';
+import { pctFrom, plansFor, rangeExtensions } from './plans';
 import type { Direction, Level, Plan } from './plans';
 import { analyzeStructure, dealingRange, fibOfLastLeg } from './structure';
 import type { DealingRange, Fib, StructureEvent, Zone } from './structure';
@@ -179,11 +179,15 @@ export const MAX_ZONE_MARKS = 4;
 
 /**
  * The plan to draw for one side: the retest or continuation plan with the best T1 R:R among
- * those that reach 2:1; else the at-market plan when it reaches 2:1; else none.
+ * those that reach 2:1 at T2; else the at-market plan when it reaches 2:1; else none. A plan
+ * with a tested T1 comes before a plan whose T1 is a projection (a range extension).
  */
-export function featuredPlan<P extends { kind: string; meetsTwoToOne: boolean; targets: { rr: number }[] }>(plans: readonly P[]): P | null {
+export function featuredPlan<P extends { kind: string; meetsTwoToOne: boolean; targets: { rr: number; projected?: boolean }[] }>(plans: readonly P[]): P | null {
   const ok = plans.filter((p) => p.meetsTwoToOne);
-  const pending = ok.filter((p) => p.kind !== 'market').sort((a, b) => (b.targets[0]?.rr ?? 0) - (a.targets[0]?.rr ?? 0));
+  const tested = (p: P) => (p.targets[0]?.projected ? 0 : 1);
+  const pending = ok
+    .filter((p) => p.kind !== 'market')
+    .sort((a, b) => tested(b) - tested(a) || (b.targets[0]?.rr ?? 0) - (a.targets[0]?.rr ?? 0));
   return pending[0] ?? ok.find((p) => p.kind === 'market') ?? null;
 }
 
@@ -328,6 +332,8 @@ export function buildFacts(input: FactsInput): Facts {
     ...s1.orderBlocks.flatMap((z) => [{ price: z.top, label: `${z.side} order block top` }, { price: z.bottom, label: `${z.side} order block bottom` }]),
     ...(fibRaw ? fibRaw.levels.filter((l) => l.ratio > 0 && l.ratio < 1).map((l) => ({ price: l.price, label: `weekly fib ${l.name}` })) : []),
     ...mas.map((m) => ({ price: m.value, label: m.name })),
+    // The range ends: at a new high (low), the high (low) is not a confirmed swing yet.
+    ...(range ? [{ price: range.high, label: 'range high' }, { price: range.low, label: 'range low' }] : []),
   ];
   const lastBreak = (side: 'bullish' | 'bearish') => {
     const e = [...s1.events].reverse().find((x) => x.side === side);
@@ -335,7 +341,7 @@ export function buildFacts(input: FactsInput): Facts {
   };
   const plans: Plan[] = [];
   if (Number.isFinite(price) && Number.isFinite(atrDaily) && Number.isFinite(atrLower)) {
-    const ctx = { price, atrDaily, atrLower, levels, lastBearishBreak: lastBreak('bearish'), lastBullishBreak: lastBreak('bullish'), againstTrend, earningsSessions };
+    const ctx = { price, atrDaily, atrLower, levels, lastBearishBreak: lastBreak('bearish'), lastBullishBreak: lastBreak('bullish'), againstTrend, earningsSessions, ...(range ? { extensions: rangeExtensions(range) } : {}) };
     for (const side of input.direction ? [input.direction] : (['long', 'short'] as const)) plans.push(...plansFor(side, ctx));
   }
   const roundedPlans = plans.map((p) => ({
