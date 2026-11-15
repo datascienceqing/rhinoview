@@ -26,6 +26,16 @@ export function AiPanel({ symbol }: AiPanelProps) {
     if (open) input.current?.focus();
   }, [open]);
 
+  // A new symbol on the chart removes the question and the answer about the symbol before it.
+  // Only a change does this: "Explain" can show an answer about a symbol that is not on the chart.
+  const shown = useRef(symbol);
+  useEffect(() => {
+    if (shown.current === symbol) return;
+    shown.current = symbol;
+    setQuestion('');
+    if (analysis && analysis.symbol !== symbol.toUpperCase()) clear();
+  }, [symbol, analysis, clear]);
+
   if (!open) return null;
   const busy = analysis?.status === 'loading' || analysis?.status === 'streaming';
   const presets = [t('ai.preset.long', { symbol }), t('ai.preset.short', { symbol }), t('ai.preset.entry', { symbol })];
@@ -102,6 +112,7 @@ export function AiPanel({ symbol }: AiPanelProps) {
             {analysis.synthetic && <p className="ai-badge synthetic">{t('ai.synthetic')}</p>}
             {analysis.stale && <p className="ai-badge warn">{t('ai.stale')}</p>}
             {analysis.status === 'loading' && <p className="ai-hint">{t('ai.loading')}</p>}
+            {analysis.status === 'streaming' && !analysis.text && <p className="ai-hint">{t('ai.thinking')}</p>}
             {analysis.text && <Markdown text={analysis.text} flagged={flagged} flagTitle={t('ai.flaggedTitle')} />}
             {analysis.status === 'streaming' && <span className="ai-cursor" aria-hidden="true" />}
             {analysis.status === 'error' && <p className="ai-error" role="alert">{analysis.error ?? t('ai.broken')}</p>}

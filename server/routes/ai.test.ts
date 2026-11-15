@@ -23,12 +23,14 @@ afterEach(async () => {
   app = undefined;
 });
 
-function fakeClient(pieces: string[], fail?: ApiFailure): ChatClient & { calls: number; lastUser: string } {
+function fakeClient(pieces: string[], fail?: ApiFailure): ChatClient & { calls: number; lastUser: string; lastThinking: string | undefined } {
   const c = {
     calls: 0,
     lastUser: '',
-    async *stream(messages: readonly { role: string; content: string }[]) {
+    lastThinking: undefined as string | undefined,
+    async *stream(messages: readonly { role: string; content: string }[], _signal?: AbortSignal, options?: { thinking?: string }) {
       c.calls++;
+      c.lastThinking = options?.thinking;
       c.lastUser = messages.find((m) => m.role === 'user')?.content ?? '';
       for (const p of pieces) yield p;
       if (fail) throw fail;
@@ -64,6 +66,13 @@ describe('POST /api/ai/analyze', () => {
     expect(done?.type === 'done' && done.check.unknown).toEqual(['98765.43']);
     // The model gets the question and the facts, and nothing else.
     expect(Object.keys(JSON.parse(client.lastUser) as object)).toEqual(['question', 'facts']);
+  });
+
+  it('passes the thinking effort of the skill to the model', async () => {
+    const client = fakeClient(['ok']);
+    app = buildServer({ engine: createSyntheticEngine(), now: () => NOW, provider: 'synthetic', ai: { client, dailyLimit: 5, thinking: { 'trade-check': 'high' } } });
+    await analyze(app, { symbol: 'AAPL', question: 'Buy?' });
+    expect(client.lastThinking).toBe('high');
   });
 
   it('sends a model failure as an error event', async () => {

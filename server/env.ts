@@ -35,7 +35,13 @@ const schema = z
     /** The AI helper (docs/AI_HELPER_PLAN.md). Without a key, the AI endpoints are off. */
     DEEPSEEK_API_KEY: optional(z.string().min(1).optional()),
     DEEPSEEK_BASE_URL: optional(z.string().url().default('https://api.deepseek.com')),
-    DEEPSEEK_MODEL: optional(z.string().min(1).default('deepseek-chat')),
+    DEEPSEEK_MODEL: optional(z.string().min(1).default('deepseek-flash')),
+    /**
+     * Thinking effort for the analysis (the long `trade-check` answer) and for the explanation
+     * of a fired alert (a short answer with a fixed format). `off` gives the first word soonest.
+     */
+    DEEPSEEK_THINKING: optional(z.enum(['off', 'low', 'high', 'max']).default('high')),
+    DEEPSEEK_THINKING_EXPLAIN: optional(z.enum(['off', 'low', 'high', 'max']).default('off')),
     /** DeepSeek calls a day (New York day), for all users of this server together. */
     AI_DAILY_CALL_LIMIT: z.coerce.number().int().min(1).max(10_000).default(50),
     /** Where the facts behind the AI alerts are saved, for their explanation. Gitignored. */

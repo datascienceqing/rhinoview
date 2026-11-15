@@ -578,6 +578,7 @@ export const en = {
   'ai.stop': 'Stop',
   'ai.hint': 'The server calculates the levels and the plans. The AI explains them. The chart shows the levels.',
   'ai.loading': 'Calculating the facts…',
+  'ai.thinking': 'The model is preparing the answer…',
   'ai.otherSymbol': (p: { symbol: string }) => `This answer is about ${p.symbol}, not the symbol on the chart.`,
   'ai.synthetic': 'Generated prices, not market prices',
   'ai.stale': 'The data is older than the question',

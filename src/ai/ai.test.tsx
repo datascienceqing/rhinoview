@@ -122,6 +122,20 @@ describe('AiPanel', () => {
     expect(screen.queryByText('4.3', { selector: 'mark' })).toBeNull();
   });
 
+  it('shows a wait status after the facts, until the first word of the answer', async () => {
+    // The body sends the facts and stays open, as it does while the model thinks.
+    const enc = new TextEncoder();
+    const open = new ReadableStream<Uint8Array>({ start: (c) => c.enqueue(enc.encode(`data: ${JSON.stringify(facts())}\n\n`)) });
+    server.use(http.post('*/api/ai/analyze', () => new HttpResponse(open, { headers: { 'Content-Type': 'text/event-stream' } })));
+    renderPanel();
+    fireEvent.click(screen.getByRole('button', { name: 'Can I short AAPL here?' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Ask' }));
+
+    expect(await screen.findByText('The model is preparing the answer…')).toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: 'Stop' }));
+    await waitFor(() => expect(screen.queryByText('The model is preparing the answer…')).toBeNull());
+  });
+
   it('shows a stream error', async () => {
     server.use(streamHandler([facts(), { type: 'error', error: { code: 'UNAUTHORIZED', message: 'The AI service refused the API key.' } }]));
     renderPanel();
@@ -136,6 +150,32 @@ describe('AiPanel', () => {
     fireEvent.change(screen.getByRole('textbox', { name: 'Question' }), { target: { value: 'Buy?' } });
     fireEvent.click(screen.getByRole('button', { name: 'Ask' }));
     await waitFor(() => expect(screen.getByText(/This answer is about AAPL/)).toBeInTheDocument());
+    expect(screen.getByTestId('marks')).toHaveTextContent('none');
+  });
+});
+
+describe('AiPanel, symbol change', () => {
+  it('removes the question and the answer when the chart changes to a different symbol', async () => {
+    server.use(streamHandler([facts(), { type: 'delta', text: 'Old answer' }, { type: 'done', text: 'Old answer', check: { checked: 0, unknown: [] } }]));
+    const tree = (symbol: string) => (
+      <I18nProvider>
+        <AiProvider>
+          <Probe symbol={symbol} />
+          <AiPanel symbol={symbol} />
+        </AiProvider>
+      </I18nProvider>
+    );
+    const { rerender } = render(tree('AAPL'));
+    fireEvent.click(screen.getByRole('button', { name: 'open' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Can I short AAPL here?' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Ask' }));
+    expect(await screen.findByText('Old answer')).toBeInTheDocument();
+    await waitFor(() => expect(screen.getByTestId('marks')).toHaveTextContent('1'));
+
+    rerender(tree('MSFT'));
+    await waitFor(() => expect(screen.queryByText('Old answer')).toBeNull());
+    expect(screen.getByRole('textbox', { name: 'Question' })).toHaveValue('');
+    expect(screen.queryByText(/This answer is about AAPL/)).toBeNull();
     expect(screen.getByTestId('marks')).toHaveTextContent('none');
   });
 });

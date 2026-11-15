@@ -570,6 +570,7 @@ export const zh: typeof en = {
   'ai.stop': '停止',
   'ai.hint': '服务器计算价位和交易计划，AI 负责解释，图表显示价位。',
   'ai.loading': '正在计算数据…',
+  'ai.thinking': '模型正在准备回答…',
   'ai.otherSymbol': (p: { symbol: string }) => `此回答针对 ${p.symbol}，不是当前图表的品种。`,
   'ai.synthetic': '生成的价格，不是市场价格',
   'ai.stale': '数据早于提问时间',

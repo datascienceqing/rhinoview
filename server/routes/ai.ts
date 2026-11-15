@@ -19,7 +19,7 @@ import { explainFacts, planMarks, savedPlan, statusOf } from '../ai/explain';
 import { redact } from '../env';
 import { buildFacts } from '../ai/facts/build';
 import type { Facts } from '../ai/facts/build';
-import type { ChatClient } from '../ai/deepseek';
+import type { ChatClient, ThinkingLevel } from '../ai/deepseek';
 import { loadFactsInput } from '../ai/load';
 import type { LoadDeps } from '../ai/load';
 import { checkNumbers } from '../ai/numberCheck';
@@ -35,6 +35,8 @@ export interface AiRouteDeps extends LoadDeps {
   /** Null: `POST /api/ai/alerts` answers "not available". */
   alerts: AlertsStore | null;
   analyses: AnalysesStore | null;
+  /** Thinking effort for each skill. A skill that is not here uses the default of the client. */
+  thinking?: Partial<Record<SkillName, ThinkingLevel>>;
 }
 
 /** The question saved with the facts of an AI alerts request. It has no direction, so both sides are planned. */
@@ -86,6 +88,7 @@ async function streamAnswer(
   skillName: SkillName,
   input: unknown,
   facts: { symbol: string; facts: Record<string, unknown>; marks: AiMarks },
+  thinking: ThinkingLevel | undefined,
 ): Promise<void> {
   const skill = await loadSkill(skillName);
   // From here on the reply is a stream; failures become an `error` event.
@@ -101,7 +104,7 @@ async function streamAnswer(
       { role: 'system' as const, content: skill.body },
       { role: 'user' as const, content: JSON.stringify(input) },
     ];
-    for await (const delta of client.stream(messages, abort.signal)) {
+    for await (const delta of client.stream(messages, abort.signal, thinking ? { thinking } : {})) {
       text += delta;
       send(reply, { type: 'delta', text: delta });
     }
@@ -143,7 +146,7 @@ export function registerAiRoutes(app: FastifyInstance, deps: AiRouteDeps): void 
       return sendFailure(reply, new ApiFailure('RATE_LIMITED', 'The daily limit of AI requests is reached. Try again tomorrow.'));
     }
     const { marks, ...rest } = facts;
-    await streamAnswer(req, reply, client, 'trade-check', { question, facts: rest }, { symbol: facts.symbol, facts: rest as unknown as Record<string, unknown>, marks });
+    await streamAnswer(req, reply, client, 'trade-check', { question, facts: rest }, { symbol: facts.symbol, facts: rest as unknown as Record<string, unknown>, marks }, deps.thinking?.['trade-check']);
   });
 
   /**
@@ -217,6 +220,6 @@ export function registerAiRoutes(app: FastifyInstance, deps: AiRouteDeps): void 
     const facts = explainFacts({ event, origin, analysisAt: analysis.createdAt, saved, plan, status, now, nowTime });
     await streamAnswer(req, reply, client, 'alert-explain', { question: AI_EXPLAIN_QUESTION, facts }, {
       symbol: event.symbol, facts: facts as unknown as Record<string, unknown>, marks: planMarks(saved, origin.plan),
-    });
+    }, deps.thinking?.['alert-explain']);
   });
 }
