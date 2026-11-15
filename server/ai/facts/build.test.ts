@@ -109,6 +109,14 @@ describe('featuredPlan', () => {
     expect(featuredPlan([plan('market', false, 1)])).toBeNull();
   });
 
+  it('puts a plan with a tested T1 before a plan with a projected T1', () => {
+    const retest = { kind: 'retest', meetsTwoToOne: true, targets: [{ rr: 2.4 }, { rr: 5.21, projected: true as const }] };
+    const continuation = { kind: 'continuation', meetsTwoToOne: true, targets: [{ rr: 2.57, projected: true as const }] };
+    expect(featuredPlan([continuation, retest])?.kind).toBe('retest');
+    // With no tested plan at 2:1, the projected plan is still drawn.
+    expect(featuredPlan([continuation, { ...retest, meetsTwoToOne: false }])?.kind).toBe('continuation');
+  });
+
   it('draws at most one plan per side and the nearest zones', () => {
     const f = buildFacts(input());
     const sides = new Set(f.marks.lines.map((l) => l.label.split(' ')[0]));

@@ -14,7 +14,7 @@ import { buildServer } from '../index';
 import { createSyntheticEngine } from '../market';
 import type { ChatClient } from '../ai/deepseek';
 import { ApiFailure } from '../provider/errors';
-import { DailyCounter } from './ai';
+import { DailyCounter, factsForModel } from './ai';
 
 const NOW = Date.UTC(2026, 9, 16, 16) / 1000;
 let app: FastifyInstance | undefined;
@@ -66,6 +66,13 @@ describe('POST /api/ai/analyze', () => {
     expect(done?.type === 'done' && done.check.unknown).toEqual(['98765.43']);
     // The model gets the question and the facts, and nothing else.
     expect(Object.keys(JSON.parse(client.lastUser) as object)).toEqual(['question', 'facts']);
+    // The question is there one time, and the model does not get the marks.
+    const sent = JSON.parse(client.lastUser) as { question: string; facts: Record<string, unknown> };
+    expect(sent.question).toBe('Can I short AAPL here?');
+    expect(sent.facts).not.toHaveProperty('question');
+    expect(sent.facts).not.toHaveProperty('marks');
+    expect(sent.facts).toHaveProperty('confluence');
+    expect(sent.facts).toHaveProperty('plans');
   });
 
   it('passes the thinking effort of the skill to the model', async () => {
@@ -248,5 +255,12 @@ describe('POST /api/ai/explain', () => {
     } finally {
       await rm(dir, { recursive: true, force: true });
     }
+  });
+});
+
+describe('factsForModel', () => {
+  it('removes the question and the news URLs, and keeps the other fields', () => {
+    const out = factsForModel({ question: 'Buy?', symbol: 'AAPL', news: [{ date: '2026-10-15', title: 'T', url: 'https://x/1' }] });
+    expect(out).toEqual({ symbol: 'AAPL', news: [{ date: '2026-10-15', title: 'T' }] });
   });
 });

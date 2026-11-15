@@ -73,6 +73,15 @@ export class DailyCounter {
   }
 }
 
+/** News for the model: without the URL, which costs tokens and is never quoted. */
+const newsForModel = <N extends { url: string | null }>(news: readonly N[]) => news.map(({ url: _url, ...n }) => n);
+
+/** The facts that the model gets: the question is already beside them, and the news has no URL. */
+export function factsForModel<F extends { question: string; news: readonly { url: string | null }[] }>(facts: F) {
+  const rest = Object.fromEntries(Object.entries(facts).filter(([key]) => key !== 'question')) as Omit<F, 'question' | 'news'>;
+  return { ...rest, news: newsForModel(facts.news) };
+}
+
 function send(reply: FastifyReply, event: AiAnalyzeEvent): void {
   reply.raw.write(`data: ${JSON.stringify(event)}\n\n`);
 }
@@ -146,7 +155,7 @@ export function registerAiRoutes(app: FastifyInstance, deps: AiRouteDeps): void 
       return sendFailure(reply, new ApiFailure('RATE_LIMITED', 'The daily limit of AI requests is reached. Try again tomorrow.'));
     }
     const { marks, ...rest } = facts;
-    await streamAnswer(req, reply, client, 'trade-check', { question, facts: rest }, { symbol: facts.symbol, facts: rest as unknown as Record<string, unknown>, marks }, deps.thinking?.['trade-check']);
+    await streamAnswer(req, reply, client, 'trade-check', { question, facts: factsForModel(rest) }, { symbol: facts.symbol, facts: rest as unknown as Record<string, unknown>, marks }, deps.thinking?.['trade-check']);
   });
 
   /**
@@ -218,7 +227,7 @@ export function registerAiRoutes(app: FastifyInstance, deps: AiRouteDeps): void 
     const nowTime = deps.now();
     const status = statusOf({ role: origin.role, plan, level: event.target, firedAt: event.firedAt, now: nowTime, bars4h: input.bars['4h'], bars1d: input.bars['1D'] });
     const facts = explainFacts({ event, origin, analysisAt: analysis.createdAt, saved, plan, status, now, nowTime });
-    await streamAnswer(req, reply, client, 'alert-explain', { question: AI_EXPLAIN_QUESTION, facts }, {
+    await streamAnswer(req, reply, client, 'alert-explain', { question: AI_EXPLAIN_QUESTION, facts: { ...facts, now: { ...facts.now, news: newsForModel(facts.now.news) } } }, {
       symbol: event.symbol, facts: facts as unknown as Record<string, unknown>, marks: planMarks(saved, origin.plan),
     }, deps.thinking?.['alert-explain']);
   });

@@ -21,17 +21,22 @@ const COMMON_RULES = `
 ## Input format and language
 
 - The user message is one JSON object: \`{ "question": ..., "facts": ... }\`.
-- \`facts\` follows the "Input" section above. A field that is null or absent is missing data.
+- \`facts\` follows the "Input" section above. A field that is null, empty, or absent has no data: leave it out of the answer.
 - Prices in \`facts\` are rounded. Quote them as they are. Do not round them again.
 - Write the answer in the language of the question. Keep the names of indicators and patterns (EMA, RSI, BOS, CHoCH, FVG) in English.
 - Use Markdown. Do not write a title line.
 `;
 
+/** A skill file can end with notes that the model does not get. They start at this line. */
+export const DEVELOPER_NOTES = '<!-- developer-notes -->';
+
 export function parseSkill(name: SkillName, text: string): Skill {
   const m = /^---\n([\s\S]*?)\n---\n?([\s\S]*)$/.exec(text);
   if (!m) throw new Error(`Skill ${name} has no front matter.`);
   const version = /^version:\s*(\S+)/m.exec(m[1] as string)?.[1] ?? 'unknown';
-  return { name, version, body: `${(m[2] as string).trim()}\n${COMMON_RULES}` };
+  // The part after the marker is for developers: decisions, backtest results, server rules.
+  const body = (m[2] as string).split(DEVELOPER_NOTES)[0] as string;
+  return { name, version, body: `${body.trim()}\n${COMMON_RULES}` };
 }
 
 const cache = new Map<SkillName, Promise<Skill>>();

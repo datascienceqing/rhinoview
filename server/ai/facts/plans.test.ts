@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { scoreConfluence } from './confluence';
 import type { ConfluenceRow } from './confluence';
-import { buildPlan, mergeLevels, plansFor } from './plans';
+import { buildPlan, mergeLevels, plansFor, rangeExtensions } from './plans';
 
 describe('buildPlan', () => {
   it('reproduces plan A of sample 001 (CAT retest short)', () => {
@@ -81,6 +81,77 @@ describe('plansFor', () => {
 
   it('merges levels nearer than the gap', () => {
     expect(mergeLevels([{ price: 10, label: 'a' }, { price: 10.05, label: 'b' }, { price: 11, label: 'c' }], 0.1).map((l) => l.label)).toEqual(['a', 'c']);
+  });
+});
+
+describe('plans at a new high (AAPL, 2026-11-13)', () => {
+  // Price 356.27 under the range high 360.83: no tested level is above the price.
+  const range = { high: 360.83, low: 325.33 };
+  const broken = { price: 351.73, label: 'broken resistance 351.73' };
+  const ctx = {
+    price: 356.27, atrDaily: 8.22, atrLower: 5.24,
+    levels: [{ price: 354.41, label: 'bullish FVG top' }, { price: 351.73, label: 'bullish CHoCH level' }, { price: 338.7, label: 'swing low' }],
+    lastBearishBreak: null, lastBullishBreak: broken, againstTrend: { long: false, short: true }, earningsSessions: null,
+  };
+  const withRange = { ...ctx, levels: [...ctx.levels, { price: range.high, label: 'range high' }, { price: range.low, label: 'range low' }], extensions: rangeExtensions(range) };
+
+  it('projects the range height past each end', () => {
+    const ext = rangeExtensions(range);
+    expect(ext.long.map((l) => Number(l.price.toFixed(2)))).toEqual([370.49, 382.77]);
+    expect(ext.short.map((l) => Number(l.price.toFixed(2)))).toEqual([315.67, 303.39]);
+    expect(ext.long[0]).toMatchObject({ label: 'range extension 1.272', projected: true });
+  });
+
+  it('leaves out a projection that is not a positive price', () => {
+    expect(rangeExtensions({ high: 10, low: 1 }).short).toEqual([]);
+  });
+
+  it('has no long plan without the range levels', () => {
+    expect(plansFor('long', ctx)).toEqual([]);
+  });
+
+  it('makes the retest long with the range high as T1 and the extensions after it', () => {
+    const retest = plansFor('long', withRange).find((p) => p.kind === 'retest');
+    expect(retest?.entryLow).toBeCloseTo(351.73, 2);
+    expect(retest?.entryHigh).toBeCloseTo(352.55, 2);
+    expect(retest?.stop).toBeCloseTo(349.11, 2);
+    expect(retest?.targets.map((t) => Number(t.price.toFixed(2)))).toEqual([360.83, 370.49, 382.77]);
+    expect(retest?.targets.map((t) => t.label)).toEqual(['range high', 'range extension 1.272', 'range extension 1.618']);
+    expect(retest?.targets[0]?.rr).toBeCloseTo(2.41, 1);
+    expect(retest?.meetsTwoToOne).toBe(true);
+  });
+
+  it('uses only the extensions for the continuation long, and never as its trigger', () => {
+    const cont = plansFor('long', withRange).find((p) => p.kind === 'continuation');
+    expect(cont?.invalidation.price).toBe(360.83);
+    expect(cont?.targets.map((t) => t.label)).toEqual(['range extension 1.272', 'range extension 1.618']);
+  });
+
+  it('does not use an extension as a level behind the price', () => {
+    // Price at the range high: the long extension is above it, but it is not the invalidation of a short.
+    const shorts = plansFor('short', { ...withRange, price: 360.83 });
+    expect(shorts.find((p) => p.kind === 'market')).toBeUndefined();
+    expect(shorts.length).toBeGreaterThan(0);
+    for (const p of shorts) expect(p.invalidation.label).not.toContain('extension');
+  });
+});
+
+describe('meetsTwoToOne', () => {
+  const plan = (targets: number[]) =>
+    buildPlan({
+      kind: 'market', side: 'long', entryType: 'market', entryLow: 100, entryHigh: 100, trigger: 't',
+      invalidation: { price: 99, label: 'level' }, atrLower: 2, // stop 98, risk 2
+      targets: targets.map((price) => ({ price, label: 'T' })), againstHigherTrend: false, earningsSessions: null,
+    });
+
+  it('uses T2, not a far T3', () => {
+    expect(plan([102, 103, 120])?.meetsTwoToOne).toBe(false); // T2 is 1.5:1; T3 is 10:1
+    expect(plan([102, 104, 120])?.meetsTwoToOne).toBe(true); // T2 is 2:1
+  });
+
+  it('uses T1 when the plan has one target', () => {
+    expect(plan([104])?.meetsTwoToOne).toBe(true);
+    expect(plan([103])?.meetsTwoToOne).toBe(false);
   });
 });
 
