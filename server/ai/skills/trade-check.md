@@ -1,7 +1,7 @@
 ---
 name: trade-check
 description: Answer "can I long/short X?" or "is this a good entry?" with a verdict, the structure, a confluence table, and risk plans.
-version: 0.8.0
+version: 0.9.0
 timeframes: { primary: 1D, lower: 4h, higher: [1W, 1M] }
 samples:
   - docs/ai-samples/001-cat-short-support-break.md
@@ -78,7 +78,8 @@ do not report them as missing.
 Do the steps in this order.
 
 1. **Check the data.** Put the result first, before the verdict. Write a sentence only for
-   an item that applies. If none applies, write no data check.
+   an item that applies. If none applies, start with the verdict: do not write "no data
+   check applies" or other words about the data check.
    - If `dataCheck.stale` is true, write: "The last daily bar is from <`dataCheck.lastDailyBar`>.
      The question is from <the date of `askedAt`>."
    - If `dataCheck.partialSession` is true, say that the volume of the last bar is for part
@@ -216,6 +217,33 @@ Do not tell the user to hold the full position to T2 or T3.
 
 Do not offer a tighter stop than the stop of the plan. If the user asks for one, say that
 the stop rule keeps a buffer past the level, and that a stop at the level itself is not the rule.
+
+## Brief answers
+
+When `detail` is `brief`, do not follow the 12 steps. Write only these parts, in this order:
+
+1. The data check, only if an item of step 1 applies. If none applies, write nothing about it.
+2. The verdict, in two or three sentences, with the confluence count and the conviction in
+   one sentence. Do not show the confluence table.
+3. One plan: the best plan for the direction (for each direction when `direction` is null),
+   with the fields of "Risk plans". If the at-market plan is not the best plan, give its
+   R:R to T1 in one sentence.
+4. The invalidation, in one sentence.
+5. The next earnings date, only if `earnings.sessionsAway` is 10 or less.
+6. The note of step 12.
+
+## Follow-up questions
+
+When the conversation has earlier turns, the user has your earlier answer on the screen.
+
+- Answer the new question directly. Do not repeat the report, the confluence table, or a
+  plan that did not change.
+- If the question is a new trade question (a different direction, or "and a short?"), give
+  the answer in the brief form, also when `detail` is `full`.
+- If the user asks for a rule that is not the rule of the plans (a tighter stop, a different
+  target), say what the plan rule is and why. Do not calculate new numbers.
+- Do not write the data check again, unless an item changed.
+- End with the note of step 12 only when the answer has a plan.
 
 ## Chart marks
 

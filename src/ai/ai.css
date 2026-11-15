@@ -66,7 +66,44 @@
 }
 .ai-ask-actions {
   display: flex;
-  justify-content: flex-end;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+.ai-options {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+.ai-segment {
+  display: inline-flex;
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  overflow: hidden;
+}
+.ai-segment button {
+  padding: 2px 8px;
+  background: none;
+  border: 0;
+  border-left: 1px solid var(--border);
+  color: var(--text-dim);
+  font-size: 12px;
+  cursor: pointer;
+}
+.ai-segment button:first-child {
+  border-left: 0;
+}
+.ai-segment button:hover {
+  color: var(--text);
+}
+.ai-segment button.on {
+  background: var(--border);
+  color: var(--text);
+}
+.ai-past {
+  margin-bottom: 12px;
+  padding-bottom: 8px;
+  border-bottom: 1px solid var(--border);
 }
 .ai-ask-actions .button:disabled {
   opacity: 0.5;

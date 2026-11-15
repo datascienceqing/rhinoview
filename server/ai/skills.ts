@@ -20,7 +20,8 @@ const COMMON_RULES = `
 
 ## Input format and language
 
-- The user message is one JSON object: \`{ "question": ..., "facts": ... }\`.
+- The last user message is one JSON object: \`{ "question": ..., "detail": ..., "facts": ... }\`. \`detail\` can be absent.
+- An earlier user message has only \`{ "question": ... }\`. Its facts are not there, because they are old. Use only the \`facts\` of the last message. A number in your earlier answers can be old: if it is different in the new \`facts\`, use the new one and say that it changed.
 - \`facts\` follows the "Input" section above. A field that is null, empty, or absent has no data: leave it out of the answer.
 - Prices in \`facts\` are rounded. Quote them as they are. Do not round them again.
 - Write the answer in the language of the question. Keep the names of indicators and patterns (EMA, RSI, BOS, CHoCH, FVG) in English.

@@ -5,14 +5,30 @@
  */
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react';
 import type { ReactNode } from 'react';
-import type { AiAlertsResponse, AiAnalyzeEvent, AiMarks, AiNumberCheck, EntityId } from '@shared/types';
+import { MAX_AI_ANSWER_LENGTH, MAX_AI_HISTORY_TURNS } from '@shared/types';
+import type { AiAlertsResponse, AiAnalyzeEvent, AiAnalyzeRequest, AiDetail, AiMarks, AiNumberCheck, EntityId } from '@shared/types';
 import { deleteAlert } from '../alerts/api';
 import { apiRequest, apiStream, toDataError } from '../data';
 
 export type AiStatus = 'idle' | 'loading' | 'streaming' | 'done' | 'error';
 
+/** An earlier turn of the conversation: the panel shows it above the current turn. */
+export interface AiPastTurn {
+  question: string;
+  text: string;
+  check: AiNumberCheck | null;
+}
+
+export interface AskOptions {
+  detail?: AiDetail;
+}
+
 export interface AiAnalysis {
+  /** `explain` is the explanation of a fired alert: a question after it starts a new conversation. */
+  kind: 'analyze' | 'explain';
   symbol: string;
+  /** The earlier turns about this symbol, oldest first. */
+  history: AiPastTurn[];
   question: string;
   status: AiStatus;
   text: string;
@@ -40,7 +56,8 @@ export interface AiState {
   open: boolean;
   setOpen(open: boolean): void;
   analysis: AiAnalysis | null;
-  ask(symbol: string, question: string): void;
+  /** Ask about `symbol`. After an answer about the same symbol, the question is a follow-up. */
+  ask(symbol: string, question: string, options?: AskOptions): void;
   /** Explain a fired AI alert. `label` is the text that the panel shows as the question. */
   explain(eventId: EntityId, symbol: string, label: string): void;
   stop(): void;
@@ -80,6 +97,11 @@ export function AiProvider({ children }: { children: ReactNode }) {
   const [analysis, setAnalysis] = useState<AiAnalysis | null>(null);
   const [showMarks, setShowMarks] = useState(true);
   const controller = useRef<AbortController | null>(null);
+  // The newest analysis, for `ask`, which must not change when the analysis changes.
+  const latest = useRef<AiAnalysis | null>(null);
+  useEffect(() => {
+    latest.current = analysis;
+  }, [analysis]);
   const [aiAlerts, setAiAlerts] = useState<AiAlertsRun | null>(null);
   const alertsRun = useRef(0);
 
@@ -114,14 +136,14 @@ export function AiProvider({ children }: { children: ReactNode }) {
   }, []);
 
   /** Streams `path` into the analysis. A new call stops the one before it. */
-  const run = useCallback((path: string, body: unknown, symbol: string, question: string) => {
+  const run = useCallback((path: string, body: unknown, symbol: string, question: string, kind: AiAnalysis['kind'], history: AiPastTurn[]) => {
     controller.current?.abort();
     const ac = new AbortController();
     controller.current = ac;
     const sym = symbol.toUpperCase();
     setOpen(true);
     setShowMarks(true);
-    setAnalysis({ symbol: sym, question, status: 'loading', text: '', check: null, marks: null, synthetic: false, stale: false, missing: [], error: null });
+    setAnalysis({ kind, symbol: sym, history, question, status: 'loading', text: '', check: null, marks: null, synthetic: false, stale: false, missing: [], error: null });
     const update = (f: (a: AiAnalysis) => AiAnalysis) => {
       if (controller.current === ac) setAnalysis((a) => (a ? f(a) : a));
     };
@@ -148,8 +170,23 @@ export function AiProvider({ children }: { children: ReactNode }) {
       });
   }, []);
 
-  const ask = useCallback((symbol: string, question: string) => run('/ai/analyze', { symbol: symbol.toUpperCase(), question }, symbol, question), [run]);
-  const explain = useCallback((eventId: EntityId, symbol: string, label: string) => run('/ai/explain', { eventId }, symbol, label), [run]);
+  const ask = useCallback(
+    (symbol: string, question: string, options: AskOptions = {}) => {
+      const sym = symbol.toUpperCase();
+      const prev = latest.current;
+      // A follow-up: the turns before this one go with the question. A failed turn does not.
+      const history: AiPastTurn[] =
+        prev && prev.kind === 'analyze' && prev.symbol === sym
+          ? [...prev.history, ...(prev.text && prev.status !== 'error' ? [{ question: prev.question, text: prev.text, check: prev.check }] : [])]
+          : [];
+      const body: AiAnalyzeRequest = { symbol: sym, question };
+      if (options.detail) body.detail = options.detail;
+      if (history.length) body.history = history.slice(-MAX_AI_HISTORY_TURNS).map((t) => ({ question: t.question, answer: t.text.slice(0, MAX_AI_ANSWER_LENGTH) }));
+      run('/ai/analyze', body, symbol, question, 'analyze', history);
+    },
+    [run],
+  );
+  const explain = useCallback((eventId: EntityId, symbol: string, label: string) => run('/ai/explain', { eventId }, symbol, label, 'explain', []), [run]);
 
   const clear = useCallback(() => {
     controller.current?.abort();

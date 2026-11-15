@@ -5,6 +5,7 @@
 import { useEffect, useRef, useState } from 'react';
 import type { FormEvent } from 'react';
 import { MAX_AI_QUESTION_LENGTH } from '@shared/types';
+import type { AiDetail } from '@shared/types';
 import { DIRECTION_ARROW, formatLevel } from '../alerts/describe';
 import { useI18n } from '../i18n';
 import { useAi } from './AiProvider';
@@ -20,7 +21,15 @@ export function AiPanel({ symbol }: AiPanelProps) {
   const { t } = useI18n();
   const { open, setOpen, analysis, ask, stop, showMarks, setShowMarks, clear, aiAlerts } = useAi();
   const [question, setQuestion] = useState('');
+  const [detail, setDetail] = useState<AiDetail>('full');
   const input = useRef<HTMLTextAreaElement>(null);
+  const current = useRef<HTMLParagraphElement>(null);
+
+  // A new turn starts at the top of the visible part, below the earlier turns.
+  const turn = analysis ? analysis.history.length : -1;
+  useEffect(() => {
+    if (turn > 0) current.current?.scrollIntoView?.({ block: 'start' });
+  }, [turn]);
 
   useEffect(() => {
     if (open) input.current?.focus();
@@ -44,8 +53,12 @@ export function AiPanel({ symbol }: AiPanelProps) {
     e?.preventDefault();
     const q = question.trim();
     if (!q || busy) return;
-    ask(symbol, q);
+    ask(symbol, q, { detail });
+    setQuestion('');
   }
+
+  // A question after an answer about the symbol on the chart is a follow-up.
+  const followUp = analysis?.kind === 'analyze' && analysis.symbol === symbol.toUpperCase() && Boolean(analysis.text);
 
   const flagged = analysis?.check?.unknown ?? [];
   const otherSymbol = analysis && analysis.symbol !== symbol.toUpperCase();
@@ -73,7 +86,7 @@ export function AiPanel({ symbol }: AiPanelProps) {
           value={question}
           maxLength={MAX_AI_QUESTION_LENGTH}
           rows={2}
-          placeholder={t('ai.placeholder', { symbol })}
+          placeholder={followUp ? t('ai.placeholder.followUp', { symbol }) : t('ai.placeholder', { symbol })}
           aria-label={t('ai.question')}
           onChange={(e) => setQuestion(e.target.value)}
           onKeyDown={(e) => {
@@ -88,6 +101,15 @@ export function AiPanel({ symbol }: AiPanelProps) {
           ))}
         </div>
         <div className="ai-ask-actions">
+          <div className="ai-options">
+            <div className="ai-segment" role="radiogroup" aria-label={t('ai.detail')} title={t('ai.detail.title')}>
+              {(['brief', 'full'] as const).map((d) => (
+                <button key={d} type="button" role="radio" aria-checked={detail === d} className={detail === d ? 'on' : ''} onClick={() => setDetail(d)}>
+                  {t(`ai.detail.${d}`)}
+                </button>
+              ))}
+            </div>
+          </div>
           {busy ? (
             <button type="button" className="button" onClick={stop}>
               {t('ai.stop')}
@@ -105,7 +127,15 @@ export function AiPanel({ symbol }: AiPanelProps) {
         {!analysis && !aiAlerts && <p className="ai-hint">{t('ai.hint')}</p>}
         {analysis && (
           <>
-            <p className="ai-asked">
+            {analysis.history.map((past, i) => (
+              <div key={i} className="ai-past">
+                <p className="ai-asked">
+                  <span className="ai-asked-symbol">{analysis.symbol}</span> {past.question}
+                </p>
+                <Markdown text={past.text} flagged={past.check?.unknown ?? []} flagTitle={t('ai.flaggedTitle')} />
+              </div>
+            ))}
+            <p className="ai-asked" ref={current}>
               <span className="ai-asked-symbol">{analysis.symbol}</span> {analysis.question}
             </p>
             {otherSymbol && <p className="ai-note">{t('ai.otherSymbol', { symbol: analysis.symbol })}</p>}

@@ -35,6 +35,18 @@ export function reasonOf(question: string): string | null {
   return sentences.length > 1 ? sentences.slice(1).join(' ') : null;
 }
 
+/**
+ * The direction of a request: from the question, else from the earlier questions (newest
+ * first), else null (both sides).
+ */
+export function resolveDirection(question: string, earlier: readonly string[] = []): Direction | null {
+  for (const q of [question, ...[...earlier].reverse()]) {
+    const d = directionOf(q);
+    if (d) return d;
+  }
+  return null;
+}
+
 export interface LoadDeps {
   service: MarketService;
   fundamentals: FundamentalsProvider;
@@ -43,7 +55,7 @@ export interface LoadDeps {
 }
 
 /** Throws the service's ApiFailure when the daily bars fail (unknown symbol, no data). Other parts are optional. */
-export async function loadFactsInput(deps: LoadDeps, symbol: string, question: string): Promise<FactsInput> {
+export async function loadFactsInput(deps: LoadDeps, symbol: string, question: string, direction: Direction | null = directionOf(question)): Promise<FactsInput> {
   const now = deps.now();
   const bars = (tf: Timeframe & keyof typeof HISTORY_DAYS) =>
     deps.service.bars({ symbol, timeframe: tf, from: now - HISTORY_DAYS[tf] * DAY, to: now, adjusted: true }).then((r) => r.bars);
@@ -64,7 +76,7 @@ export async function loadFactsInput(deps: LoadDeps, symbol: string, question: s
     symbol: quote?.symbol ?? symbol.toUpperCase(),
     question,
     askedAt: now,
-    direction: directionOf(question),
+    direction,
     reason: reasonOf(question),
     provider: deps.provider,
     quote,

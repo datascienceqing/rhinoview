@@ -23,15 +23,17 @@ afterEach(async () => {
   app = undefined;
 });
 
-function fakeClient(pieces: string[], fail?: ApiFailure): ChatClient & { calls: number; lastUser: string; lastThinking: string | undefined } {
+function fakeClient(pieces: string[], fail?: ApiFailure): ChatClient & { calls: number; lastUser: string; lastThinking: string | undefined; lastMessages: { role: string; content: string }[] } {
   const c = {
     calls: 0,
     lastUser: '',
     lastThinking: undefined as string | undefined,
+    lastMessages: [] as { role: string; content: string }[],
     async *stream(messages: readonly { role: string; content: string }[], _signal?: AbortSignal, options?: { thinking?: string }) {
       c.calls++;
       c.lastThinking = options?.thinking;
-      c.lastUser = messages.find((m) => m.role === 'user')?.content ?? '';
+      c.lastMessages = [...messages];
+      c.lastUser = [...messages].reverse().find((m) => m.role === 'user')?.content ?? '';
       for (const p of pieces) yield p;
       if (fail) throw fail;
     },
@@ -65,7 +67,7 @@ describe('POST /api/ai/analyze', () => {
     expect(done?.type === 'done' && done.text).toBe('No — the R:R is 98765.43:1.');
     expect(done?.type === 'done' && done.check.unknown).toEqual(['98765.43']);
     // The model gets the question and the facts, and nothing else.
-    expect(Object.keys(JSON.parse(client.lastUser) as object)).toEqual(['question', 'facts']);
+    expect(Object.keys(JSON.parse(client.lastUser) as object)).toEqual(['question', 'detail', 'facts']);
     // The question is there one time, and the model does not get the marks.
     const sent = JSON.parse(client.lastUser) as { question: string; facts: Record<string, unknown> };
     expect(sent.question).toBe('Can I short AAPL here?');
@@ -73,6 +75,38 @@ describe('POST /api/ai/analyze', () => {
     expect(sent.facts).not.toHaveProperty('marks');
     expect(sent.facts).toHaveProperty('confluence');
     expect(sent.facts).toHaveProperty('plans');
+  });
+
+  it('sends the earlier turns before the new question, without old facts', async () => {
+    const client = fakeClient(['ok']);
+    const history = [{ question: 'Can I short AAPL here?', answer: 'No. Wait for 101.5.' }];
+    const res = await analyze(server(client), { symbol: 'AAPL', question: 'Where is the stop?', history });
+    expect(res.statusCode).toBe(200);
+    expect(client.lastMessages.map((m) => m.role)).toEqual(['system', 'user', 'assistant', 'user']);
+    expect(JSON.parse(client.lastMessages[1]?.content ?? '{}')).toEqual({ question: 'Can I short AAPL here?' });
+    expect(client.lastMessages[2]?.content).toBe('No. Wait for 101.5.');
+    // The new question has no direction, so the direction comes from the earlier question.
+    const sent = JSON.parse(client.lastUser) as { question: string; detail: string; facts: { direction: string } };
+    expect(sent.question).toBe('Where is the stop?');
+    expect(sent.detail).toBe('full');
+    expect(sent.facts.direction).toBe('short');
+  });
+
+  it('passes the answer size to the model', async () => {
+    const client = fakeClient(['ok']);
+    await analyze(server(client), { symbol: 'AAPL', question: 'Can I short AAPL?', detail: 'brief' });
+    expect((JSON.parse(client.lastUser) as { detail: string }).detail).toBe('brief');
+  });
+
+  it.each([
+    ['an answer size that is not brief or full', { detail: 'long' }],
+    ['more than 6 earlier turns', { history: Array.from({ length: 7 }, () => ({ question: 'q', answer: 'a' })) }],
+    ['an earlier turn without an answer', { history: [{ question: 'q', answer: '' }] }],
+  ])('rejects %s', async (_name, extra) => {
+    const client = fakeClient(['ok']);
+    const res = await analyze(server(client), { symbol: 'AAPL', question: 'Buy?', ...extra });
+    expect(res.statusCode).toBe(400);
+    expect(client.calls).toBe(0);
   });
 
   it('passes the thinking effort of the skill to the model', async () => {

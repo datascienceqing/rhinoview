@@ -110,7 +110,7 @@ describe('AiPanel', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Ask' }));
 
     expect(await screen.findByText(/1 of 1 number is not in the calculated data/)).toBeInTheDocument();
-    expect(seen.body).toEqual({ symbol: 'AAPL', question: 'Can I short AAPL here?' });
+    expect(seen.body).toEqual({ symbol: 'AAPL', question: 'Can I short AAPL here?', detail: 'full' });
     expect(screen.getByText('4.3', { selector: 'mark' })).toBeInTheDocument();
     expect(screen.getByText('Generated prices, not market prices')).toBeInTheDocument();
     expect(screen.getByTestId('marks')).toHaveTextContent('1');
@@ -151,6 +151,77 @@ describe('AiPanel', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Ask' }));
     await waitFor(() => expect(screen.getByText(/This answer is about AAPL/)).toBeInTheDocument());
     expect(screen.getByTestId('marks')).toHaveTextContent('none');
+  });
+});
+
+describe('AiPanel, follow-up and options', () => {
+  const done = (text: string): AiAnalyzeEvent => ({ type: 'done', text, check: { checked: 0, unknown: [] } });
+  const question = () => screen.getByRole('textbox', { name: 'Question' });
+  const askQuestion = (text: string) => {
+    fireEvent.change(question(), { target: { value: text } });
+    fireEvent.click(screen.getByRole('button', { name: 'Ask' }));
+  };
+
+  it('sends the earlier turn with a follow-up question, and shows both turns', async () => {
+    const bodies: unknown[] = [];
+    const answers = ['First answer', 'Second answer'];
+    server.use(
+      http.post('*/api/ai/analyze', async ({ request }) => {
+        bodies.push(await request.json());
+        const text = answers[bodies.length - 1] ?? '';
+        return new HttpResponse(sse([facts(), { type: 'delta', text }, done(text)]), { headers: { 'Content-Type': 'text/event-stream' } });
+      }),
+    );
+    renderPanel();
+    askQuestion('Can I long AAPL here?');
+    expect(await screen.findByText('First answer')).toBeInTheDocument();
+    // The box is empty after a question, and it asks for a follow-up.
+    await waitFor(() => expect(question()).toHaveValue(''));
+    await waitFor(() => expect(question()).toHaveAttribute('placeholder', 'Ask a follow-up question about AAPL.'));
+
+    askQuestion('Where is the stop?');
+    expect(await screen.findByText('Second answer')).toBeInTheDocument();
+    expect(screen.getByText('First answer')).toBeInTheDocument();
+    expect(bodies[0]).toEqual({ symbol: 'AAPL', question: 'Can I long AAPL here?', detail: 'full' });
+    expect(bodies[1]).toEqual({
+      symbol: 'AAPL', question: 'Where is the stop?', detail: 'full',
+      history: [{ question: 'Can I long AAPL here?', answer: 'First answer' }],
+    });
+
+    // Clear starts a new conversation.
+    fireEvent.click(screen.getByRole('button', { name: 'Clear' }));
+    askQuestion('Again?');
+    await waitFor(() => expect(bodies).toHaveLength(3));
+    expect(bodies[2]).toEqual({ symbol: 'AAPL', question: 'Again?', detail: 'full' });
+  });
+
+  it('does not send a failed turn as history', async () => {
+    const bodies: unknown[] = [];
+    server.use(
+      http.post('*/api/ai/analyze', async ({ request }) => {
+        bodies.push(await request.json());
+        const events: AiAnalyzeEvent[] =
+          bodies.length === 1 ? [facts(), { type: 'delta', text: 'Half' }, { type: 'error', error: { code: 'UPSTREAM_ERROR', message: 'The AI service failed.' } }] : [facts(), done('ok')];
+        return new HttpResponse(sse(events), { headers: { 'Content-Type': 'text/event-stream' } });
+      }),
+    );
+    renderPanel();
+    askQuestion('Buy?');
+    expect(await screen.findByText('The AI service failed.')).toBeInTheDocument();
+    askQuestion('Buy now?');
+    await waitFor(() => expect(bodies).toHaveLength(2));
+    expect(bodies[1]).not.toHaveProperty('history');
+  });
+
+  it('sends the answer size of the switch, and has no direction control', async () => {
+    const seen: { body?: unknown } = {};
+    server.use(streamHandler([facts(), done('ok')], seen));
+    renderPanel();
+    expect(screen.queryByRole('radio', { name: 'Short' })).toBeNull();
+    expect(screen.getByRole('radio', { name: 'Full' })).toHaveAttribute('aria-checked', 'true');
+    fireEvent.click(screen.getByRole('radio', { name: 'Brief' }));
+    askQuestion('Should I buy puts?');
+    await waitFor(() => expect(seen.body).toEqual({ symbol: 'AAPL', question: 'Should I buy puts?', detail: 'brief' }));
   });
 });
 

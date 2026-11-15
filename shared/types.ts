@@ -900,10 +900,32 @@ export type AlertStreamMessage =
 
 export const MAX_AI_QUESTION_LENGTH = 500;
 
+/** Earlier turns that a follow-up question sends: the newest `MAX_AI_HISTORY_TURNS` of them. */
+export const MAX_AI_HISTORY_TURNS = 6;
+/** The longest earlier answer that a follow-up question can send. The client cuts a longer one. */
+export const MAX_AI_ANSWER_LENGTH = 20_000;
+
+/** `brief`: the verdict, the best plan, and the invalidation. `full`: the whole report. */
+export type AiDetail = 'brief' | 'full';
+
+/** One earlier turn of the conversation: the question and the answer text. */
+export interface AiTurn {
+  question: string;
+  answer: string;
+}
+
 /** `POST /api/ai/analyze` body. */
 export interface AiAnalyzeRequest {
   symbol: string;
   question: string;
+  /** Default `full`. */
+  detail?: AiDetail;
+  /**
+   * The earlier turns about the same symbol, oldest first. The server builds new facts for
+   * each request. When the question has no direction, the server uses the direction of the
+   * earlier questions.
+   */
+  history?: AiTurn[];
 }
 
 /** A level that the chart draws for an analysis. Made from the facts, never from the model text. */
